@@ -72,6 +72,36 @@ a Fireline bead or be closed as an intentional boundary.
    `undefined`. This is a public-surface gap because `SandboxSpec.env` is
    accepted by `@fireline/client/spec`. Follow-up bead: `mono-oet.29.5`.
 
+9. The editable-agent web app needs explicit endpoint wiring.
+
+   The browser UI cannot discover the launch or durable streams URLs from the
+   local runtime package. The user must run `fireline-v3-dev`, copy the port
+   choices into the page, and keep the runtime process alive while testing.
+   This is acceptable for discovery but still too manual for a product-shaped
+   app example.
+
+   Direct browser `POST` to `http://127.0.0.1:4464/v1/launches` is currently
+   blocked before launch creation because preflight
+   `OPTIONS /v1/launches` returns `405 Method Not Allowed`. The app therefore
+   uses a clearly documented Vite dev proxy for this checkpoint. This should
+   become a Fireline CORS/configuration bead before the browser example is made
+   canonical.
+
+10. Browser chat uses ACP directly because launch-control stops at coordinates.
+
+   The app uses `@fireline/client/acp` and a local WebSocket stream adapter to
+   send follow-up prompts after the launch returns `runtime.acp.url` and
+   `startSession.acpSessionId`. This is package-shaped and public, but it is
+   still low-level for an application author.
+
+11. Unsupported placement and middleware choices are visible but disabled.
+
+   The web app only enables inline JS local brain placement, local or stream
+   filesystem placement, and trace/context/budget middleware. Remote brain,
+   registry ACP agent, Docker/provider-backed hands, remote hands, approval,
+   webhook, Telegram, memory, secrets, and external tool attachment are not
+   faked in this checkpoint.
+
 ## Follow-Up Bead Candidates
 
 - Public runtime artifact availability for external consumers.

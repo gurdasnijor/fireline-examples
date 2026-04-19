@@ -21,6 +21,14 @@ package-shaped, but they are not registry-published refs.
   - `textPrompt`
 - `@fireline/client/launch-control`
   - `FirelineLaunchControlClient`
+- `@fireline/client/middleware`
+  - `trace`
+  - `contextInjection`
+  - `budget`
+- `@fireline/client/acp`
+  - `ClientSideConnection`
+  - `PROTOCOL_VERSION`
+  - ACP protocol types used by the browser WebSocket adapter
 
 ## Runtime-Required Internal Resolution
 
@@ -39,7 +47,11 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run typecheck`
 - `pnpm run check:surface`
 - `pnpm run smoke:inline-js-local`
+- `pnpm run dev:editable-agent-web`
+- `pnpm run build:editable-agent-web`
 - `pnpm exec fireline-v3-dev -- tsx examples/01-inline-js-local/run.ts`
+- `pnpm exec fireline-v3-dev`
+- `vite` through `pnpm run dev:editable-agent-web`
 - `fireline-v3-dev` from `@fireline/runtime`
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
@@ -66,9 +78,15 @@ private client subpath, even though external app code does not touch it.
 - `GET ${FIRELINE_LAUNCH_URL}/{launchId}` may be used by launch-control as a fallback.
 - `POST ${FIRELINE_LAUNCH_URL}/{launchId}:stop` stops the launch.
 - `${FIRELINE_DURABLE_STREAMS_URL}/fireline-v3-dev-daemon` is used by launch-control to observe launch state when coordinates are present.
+- `ws://.../acp` from the launch runtime result is used by
+  `examples/02-editable-agent-web` to send follow-up prompts through ACP.
 - `GET ${FIRELINE_DAEMON_URL}/healthz` is used by `fireline-v3-dev` readiness checks.
 - `GET http://127.0.0.1:7496/healthz` is used by the scratch smoke's
   `fireline-v3-dev` local streams readiness checks.
+- `http://127.0.0.1:5173/fireline/*` is the discovery web app's Vite proxy
+  for the local launch endpoint at `http://127.0.0.1:4464/*`.
+- `http://127.0.0.1:5173/fireline-streams/*` is the discovery web app's Vite
+  proxy for durable streams at `http://127.0.0.1:7501/*`.
 
 ## Historical Checkpoint Workaround
 
@@ -87,3 +105,7 @@ package-shaped baseline after PR #210 does not use those variables.
 - `fsBackend: "local"` with `contextInjection(...)` and `budget(...)`.
 - `fsBackend: "streamFs"` with `trace(...)`, `contextInjection(...)`, and
   `budget(...)`.
+
+`examples/02-editable-agent-web` exposes the same supported local brain and
+filesystem placements through a browser UI. Unsupported placement and
+middleware options remain disabled.

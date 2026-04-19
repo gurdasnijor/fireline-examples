@@ -7,6 +7,8 @@
   "scripts": {
     "check": "pnpm run typecheck && pnpm run check:surface",
     "check:surface": "tsx scripts/check-surface.ts",
+    "build:editable-agent-web": "vite build --config examples/02-editable-agent-web/vite.config.ts",
+    "dev:editable-agent-web": "vite --config examples/02-editable-agent-web/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "smoke:inline-js-local": "fireline-v3-dev -- tsx examples/01-inline-js-local/run.ts"
   },
@@ -16,7 +18,13 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "tsx": "^4.20.6",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vite": "^8.0.8"
   }
 }

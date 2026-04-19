@@ -1,3 +1,4 @@
 node_modules/
 inline-js-local-output/
+dist/
 .DS_Store
