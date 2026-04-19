@@ -1,4 +1,11 @@
 node_modules/
 inline-js-local-output/
 dist/
+.next/
+.open-next/
+examples/**/.next/
+examples/**/.open-next/
+examples/**/next-env.d.ts
+.wrangler/
+examples/**/.wrangler/
 .DS_Store

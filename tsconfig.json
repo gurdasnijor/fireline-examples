@@ -15,5 +15,14 @@
     "examples/**/*.ts",
     "examples/**/*.tsx",
     "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "examples/**/.next",
+    "examples/**/.open-next",
+    "examples/**/next-env.d.ts",
+    "examples/04-next-basic",
+    "examples/05-next-open-cloudflare"
   ]
 }

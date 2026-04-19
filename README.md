@@ -27,6 +27,10 @@ Current checkpoint:
   launch/session/state coordinates, send a follow-up ACP prompt, and stop the
   launch. Unsupported brain, hands, and middleware choices are disabled and
   logged in `FRICTION_LOG.md`.
+- `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
+  `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
+  examples. They keep Fireline calls package-shaped and client-side while
+  recording framework seams instead of canonizing product examples.
 
 Setup:
 
@@ -95,3 +99,15 @@ local runtime directly: `http://127.0.0.1:4464/v1/launches` and
 
 No Vite proxy is used for launch-control. Direct loopback CORS is required from
 Fireline PR #220 or later.
+
+Framework-shaped checks:
+
+```sh
+pnpm run build:tanstack-shaped
+pnpm run build:next-basic
+pnpm run build:next-open-cloudflare
+pnpm run build:opennext-cloudflare
+```
+
+The OpenNext/Cloudflare build uses the local adapter shape only. It is not a
+deployment recipe.

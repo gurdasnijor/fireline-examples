@@ -34,7 +34,13 @@ console.log('surface check passed')
 
 async function* walk(dirUrl: URL): AsyncGenerator<string> {
   for (const entry of await readdir(dirUrl, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist') continue
+    if (
+      entry.name === 'node_modules' ||
+      entry.name === '.git' ||
+      entry.name === 'dist' ||
+      entry.name === '.next' ||
+      entry.name === '.open-next'
+    ) continue
     const child = new URL(entry.name, dirUrl)
     if (entry.isDirectory()) {
       yield* walk(new URL(`${entry.name}/`, dirUrl))

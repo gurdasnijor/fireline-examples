@@ -120,6 +120,41 @@ a Fireline bead or be closed as an intentional boundary.
    Those are acceptable discovery-repo shortcuts and should not drive Fireline
    API shape unless repeated by real consumers.
 
+14. Framework apps must keep Fireline launch code on the client side for now.
+
+   The Next and OpenNext/Cloudflare-shaped examples place Fireline launch code
+   behind `"use client"` pages. That keeps the current package-shaped imports
+   out of Next server components and Cloudflare Worker server bundles. This is
+   acceptable for discovery, but it leaves an architectural question for real
+   apps that want server-mediated launch-control calls, secrets, auth, or
+   tenant policy in a Worker/server environment.
+
+15. Next/Turbopack and NodeNext TypeScript disagree on import style.
+
+   The repo-level `tsc --moduleResolution NodeNext` wants explicit `.js`
+   extensions for relative TypeScript imports. Next/Turbopack client builds
+   failed on `./run-inline-launch.js` and required extensionless imports in the
+   Next app files. The root typecheck therefore excludes the Next example
+   directories and relies on `next build` for those framework checks. This is a
+   framework/repo-shape seam, not a Fireline API bug.
+
+16. OpenNext expects an app-local build script and creates adapter output.
+
+   `opennextjs-cloudflare build` shells out to `pnpm build` from the app
+   directory, so the OpenNext-shaped example needs an app-local `package.json`
+   even though the repo is otherwise a single package. The build also writes
+   `.open-next/` and `.wrangler/`, which are ignored. This is framework
+   scaffolding roughness, not Fireline API surface.
+
+17. OpenNext/Cloudflare raises a Fireline deployment question.
+
+   The Cloudflare-shaped example can build when Fireline calls stay in the
+   client bundle. A real OpenNext app may want Worker-side launch-control to
+   hide endpoints, auth, idempotency, and tenant policy. That needs explicit
+   confirmation that `@fireline/client/spec` and `@fireline/client/launch-control`
+   remain Worker-safe in this server framework path, plus a public pattern for
+   ACP chat from the browser.
+
 ## Idiomaticity Audit
 
 - Public API gap: endpoint/bootstrap discovery remains manual. A browser app
@@ -138,6 +173,12 @@ a Fireline bead or be closed as an intentional boundary.
 - Example roughness: disabled remote brain/hands/middleware choices are
   intentionally visible but unsupported. They should become separate examples
   or beads before being enabled.
+- Framework seam: Next examples need framework-local build/type checks because
+  Next/Turbopack import resolution differs from the repo-level NodeNext
+  typecheck.
+- Framework seam: OpenNext/Cloudflare builds require app-local package scripts
+  and generated adapter directories, and the current safe path keeps Fireline
+  launch calls in browser code.
 
 ## Follow-Up Bead Candidates
 

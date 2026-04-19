@@ -32,6 +32,28 @@ editable-agent-web no-proxy checkpoint used artifacts rebuilt from Fireline
   - `PROTOCOL_VERSION`
   - ACP protocol types used by the browser WebSocket adapter
 
+The framework-shaped examples use the same Fireline public subpaths from client
+components or browser bundles. They do not import Fireline root exports,
+runtime internals, or private package source.
+
+## Framework Imports
+
+- `@tanstack/react-router`
+  - `RouterProvider`
+  - `createRootRoute`
+  - `createRoute`
+  - `createRouter`
+- `@tanstack/react-query`
+  - `QueryClient`
+  - `QueryClientProvider`
+  - `useMutation`
+- `next`
+  - Next.js app router build/dev commands for `examples/04-next-basic` and
+    `examples/05-next-open-cloudflare`
+- `@opennextjs/cloudflare`
+  - `initOpenNextCloudflareForDev`
+  - `defineCloudflareConfig`
+
 ## Runtime-Required Internal Resolution
 
 - `@fireline/client/internal/js-module-runner`
@@ -51,9 +73,17 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run smoke:inline-js-local`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
+- `pnpm run build:tanstack-shaped`
+- `pnpm run build:next-basic`
+- `pnpm run build:next-open-cloudflare`
+- `pnpm run build:opennext-cloudflare`
 - `pnpm exec fireline-v3-dev -- tsx examples/01-inline-js-local/run.ts`
 - `pnpm exec fireline-v3-dev`
 - `vite` through `pnpm run dev:editable-agent-web`
+- `vite` through `pnpm run dev:tanstack-shaped`
+- `next dev` through the Next framework scripts
+- `next build` through the Next framework scripts
+- `opennextjs-cloudflare build` through `pnpm run build:opennext-cloudflare`
 - `fireline-v3-dev` from `@fireline/runtime`
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
@@ -86,8 +116,8 @@ private client subpath, even though external app code does not touch it.
 - `GET http://127.0.0.1:7496/healthz` is used by the scratch smoke's
   `fireline-v3-dev` local streams readiness checks.
 - `http://127.0.0.1:4464/v1/launches` is the direct launch endpoint used by
-  `examples/02-editable-agent-web`; local loopback CORS is expected after
-  Fireline PR #220.
+  `examples/02-editable-agent-web` and the framework-shaped browser examples;
+  local loopback CORS is expected after Fireline PR #220.
 - `http://127.0.0.1:7501/v1/stream/fireline-v3-dev-daemon` is the direct
   durable launch-state stream used by `examples/02-editable-agent-web`.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned
@@ -115,6 +145,11 @@ package-shaped baseline after PR #210 does not use those variables.
 `examples/02-editable-agent-web` exposes the same supported local brain and
 filesystem placements through a browser UI. Unsupported placement and
 middleware options remain disabled.
+
+`examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
+`examples/05-next-open-cloudflare` run a smaller launch/stop path rather than
+the editable chat path. They exist to validate framework import graphs,
+client/server boundaries, and build constraints.
 
 ## No-Proxy Editable Web Checkpoint
 
