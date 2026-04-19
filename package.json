@@ -1,0 +1,22 @@
+{
+  "name": "fireline-examples-discovery",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Discovery-only external consumer examples for Fireline managed-agent surfaces.",
+  "scripts": {
+    "check": "pnpm run typecheck && pnpm run check:surface",
+    "check:surface": "tsx scripts/check-surface.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke:inline-js-local": "fireline-v3-dev -- tsx examples/01-inline-js-local/run.ts"
+  },
+  "dependencies": {
+    "@fireline/client": "file:/tmp/fireline-mono-oet.29.3-artifacts/fireline-client-0.0.1.tgz",
+    "@fireline/runtime": "file:/tmp/fireline-mono-oet.29.3-artifacts/fireline-runtime-0.0.1.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.6.0"
+  }
+}
