@@ -17,7 +17,6 @@ export type MiddlewareChoice = 'trace' | 'contextInjection' | 'budget'
 
 export interface EditableLaunchOptions {
   readonly launchUrl: string
-  readonly durableStreamsUrl: string
   readonly agentCode: string
   readonly initialPrompt: string
   readonly brainPlacement: BrainPlacement
@@ -35,8 +34,6 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
   const clientRequestId = `editable-agent-web-${Date.now()}-${Math.random().toString(16).slice(2)}`
   const client = new FirelineLaunchControlClient({
     launchUrl: options.launchUrl,
-    durableStreamsUrl: options.durableStreamsUrl,
-    launchStateStream: 'fireline-v3-dev-daemon',
   })
   const spec = await editableSpec(options, clientRequestId)
   const request = createLaunchRequest(spec, {

@@ -51,12 +51,14 @@ a Fireline bead or be closed as an intentional boundary.
    exports it, but the current binary surface does not make the behavior
    discoverable.
 
-6. The minimal managed-agent path is v3-shaped.
+6. The minimal managed-agent path is still contract-heavy.
 
-   A basic local inline agent still needs launch URL, durable streams URL,
-   launch-control wait semantics, runtime state stream coordinates, and stop
-   semantics. That is powerful, but it may be too much for the simplest public
-   managed-agent example unless a higher-level helper is introduced later.
+   A basic local inline agent still needs a launch URL, launch-control wait
+   semantics, runtime state coordinates, and stop semantics. LaunchUrl-only
+   configuration is now viable for examples 01-05, but the author still has to
+   understand low-level launch/session coordinates. That is powerful, but it
+   may be too much for the simplest public managed-agent example unless a
+   higher-level helper is introduced later.
 
 7. Naming remains transitional.
 
@@ -83,9 +85,11 @@ a Fireline bead or be closed as an intentional boundary.
 
    After Fireline #220, direct browser CORS preflight for
    `http://127.0.0.1:4464/v1/launches` succeeds, so the app no longer uses a
-   Vite proxy. Endpoint discovery is still manual: the consumer has to know the
-   launch port and durable-streams port from the `fireline-v3-dev` process.
-   Follow-up bead: `mono-oet.29.10`.
+   Vite proxy. After `mono-oet.29.12`, examples 01-05 only ask the user for
+   `FIRELINE_LAUNCH_URL`; durable stream coordinates are response data rather
+   than app config. Endpoint discovery is still manual because the consumer has
+   to know the launch port from the `fireline-v3-dev` process. Follow-up bead:
+   `mono-oet.29.10`.
 
 10. Browser chat uses ACP directly because launch-control stops at coordinates.
 
@@ -155,11 +159,20 @@ a Fireline bead or be closed as an intentional boundary.
    remain Worker-safe in this server framework path, plus a public pattern for
    ACP chat from the browser.
 
+18. Launch-control still exposes transitional durable-stream configuration names.
+
+   Examples 01-05 no longer pass a durable streams URL, stream name, or daemon
+   stream identifier into app configuration. That proves launchUrl-only
+   consumption is possible for this discovery lane. The public launch-control
+   compatibility surface still contains durable stream configuration fields,
+   so docs and examples need to avoid teaching those as consumer inputs until
+   Fireline `mono-oet.29.11` lands.
+
 ## Idiomaticity Audit
 
 - Public API gap: endpoint/bootstrap discovery remains manual. A browser app
-  should not need hard-coded `4464` and `7501` ports or copied terminal output.
-  See `mono-oet.29.10`.
+  should not need hard-coded `4464` ports or copied terminal output. See
+  `mono-oet.29.10`.
 - Public API gap: browser ACP chat requires a custom WebSocket `Stream`,
   `ClientSideConnection` initialization, permission defaults, prompt wrapper,
   update bridge, and close handling. See `mono-oet.29.8`.
@@ -168,6 +181,9 @@ a Fireline bead or be closed as an intentional boundary.
   `mono-oet.29.9`.
 - Already fixed Fireline gap: direct local launch-control CORS is now enabled
   by PR #220, so the app no longer uses a Vite proxy.
+- Already narrowed example gap: examples 01-05 now use launchUrl-only app
+  configuration. Durable state stream URLs remain runtime-owned response
+  coordinates, not user-authored config.
 - Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule
   launches is closed by `mono-oet.29.5` / PR #214.
 - Example roughness: disabled remote brain/hands/middleware choices are
@@ -188,6 +204,8 @@ a Fireline bead or be closed as an intentional boundary.
 - `mono-oet.29.7`: framework-shaped TypeScript examples for TanStack,
   straightforward Next.js, and OpenNext/Cloudflare-shaped Next.
 - `mono-oet.29.10`: endpoint/bootstrap discovery for local browser apps.
+- `mono-oet.29.11`: launch-control durable stream configuration cleanup after
+  launchUrl-only consumption is validated.
 - `mono-oet.29.8`: browser-safe ACP connection helper.
 - `mono-oet.29.9`: idiomatic managed-agent launch/session helper after API
   freeze gates permit it.

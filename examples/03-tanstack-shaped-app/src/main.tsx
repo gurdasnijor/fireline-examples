@@ -39,12 +39,10 @@ declare module '@tanstack/react-router' {
 
 function TanStackDiscoveryPage() {
   const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
-  const [durableStreamsUrl, setDurableStreamsUrl] = useState('http://127.0.0.1:7501/v1/stream')
   const [prompt, setPrompt] = useState('Hello from TanStack Router + Query.')
   const mutation = useMutation({
     mutationFn: () => runInlineLaunch({
       launchUrl,
-      durableStreamsUrl,
       prompt,
       example: '03-tanstack-shaped-app',
     }),
@@ -58,10 +56,6 @@ function TanStackDiscoveryPage() {
         <label>
           Launch endpoint
           <input value={launchUrl} onChange={(event) => setLaunchUrl(event.target.value)} />
-        </label>
-        <label>
-          Durable streams endpoint
-          <input value={durableStreamsUrl} onChange={(event) => setDurableStreamsUrl(event.target.value)} />
         </label>
         <label>
           Prompt

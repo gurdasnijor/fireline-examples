@@ -9,15 +9,12 @@ import { FirelineLaunchControlClient } from '@fireline/client/launch-control'
 
 export async function runInlineLaunch(options: {
   readonly launchUrl: string
-  readonly durableStreamsUrl: string
   readonly prompt: string
   readonly example: string
 }) {
   const clientRequestId = `${options.example}-${Date.now()}`
   const client = new FirelineLaunchControlClient({
     launchUrl: options.launchUrl,
-    durableStreamsUrl: options.durableStreamsUrl,
-    launchStateStream: 'fireline-v3-dev-daemon',
   })
   const artifact = await inlineBundleArtifact({
     entrypoint: 'agent.mjs',

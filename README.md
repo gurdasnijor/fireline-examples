@@ -94,8 +94,10 @@ pnpm run dev:editable-agent-web
 ```
 
 Open `http://127.0.0.1:5173/`. The default endpoints call the package-shaped
-local runtime directly: `http://127.0.0.1:4464/v1/launches` and
-`http://127.0.0.1:7501/v1/stream`.
+local launch runtime directly: `http://127.0.0.1:4464/v1/launches`.
+Durable state coordinates are returned by launch-control responses and displayed
+as opaque runtime data; the app no longer asks users to configure a durable
+streams URL.
 
 No Vite proxy is used for launch-control. Direct loopback CORS is required from
 Fireline PR #220 or later.

@@ -16,11 +16,8 @@ import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const launchUrl = requiredEnv('FIRELINE_LAUNCH_URL')
-const durableStreamsUrl = requiredEnv('FIRELINE_DURABLE_STREAMS_URL')
 const client = new FirelineLaunchControlClient({
   launchUrl,
-  durableStreamsUrl,
-  launchStateStream: 'fireline-v3-dev-daemon',
 })
 const outputRoot = process.env.FIRELINE_EXAMPLE_OUTPUT_ROOT ??
   join(process.cwd(), 'inline-js-local-output')

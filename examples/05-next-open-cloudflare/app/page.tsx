@@ -5,7 +5,6 @@ import { runInlineLaunch } from './run-inline-launch'
 
 export default function Page() {
   const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
-  const [durableStreamsUrl, setDurableStreamsUrl] = useState('http://127.0.0.1:7501/v1/stream')
   const [prompt, setPrompt] = useState('Hello from OpenNext on Cloudflare shape.')
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState('No launch yet.')
@@ -15,7 +14,6 @@ export default function Page() {
     try {
       const result = await runInlineLaunch({
         launchUrl,
-        durableStreamsUrl,
         prompt,
         example: '05-next-open-cloudflare',
       })
@@ -39,10 +37,6 @@ export default function Page() {
         <label>
           Launch endpoint
           <input value={launchUrl} onChange={(event) => setLaunchUrl(event.target.value)} />
-        </label>
-        <label>
-          Durable streams endpoint
-          <input value={durableStreamsUrl} onChange={(event) => setDurableStreamsUrl(event.target.value)} />
         </label>
         <label>
           Prompt

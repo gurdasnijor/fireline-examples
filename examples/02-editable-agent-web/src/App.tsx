@@ -24,7 +24,6 @@ interface LogEntry {
 
 export function App() {
   const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
-  const [durableStreamsUrl, setDurableStreamsUrl] = useState('http://127.0.0.1:7501/v1/stream')
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
   const [filesystemPlacement, setFilesystemPlacement] = useState<FilesystemPlacement>('local')
   const [middleware, setMiddleware] = useState<readonly MiddlewareChoice[]>(['trace'])
@@ -62,7 +61,6 @@ export function App() {
       addLog('launch', 'Creating launch and waiting for session coordinates.')
       const next = await createEditableLaunch({
         launchUrl,
-        durableStreamsUrl,
         agentCode,
         initialPrompt,
         brainPlacement,
@@ -147,10 +145,6 @@ export function App() {
           <label>
             Launch endpoint
             <input value={launchUrl} onChange={(event) => setLaunchUrl(event.target.value)} />
-          </label>
-          <label>
-            Durable streams endpoint
-            <input value={durableStreamsUrl} onChange={(event) => setDurableStreamsUrl(event.target.value)} />
           </label>
           <label>
             Brain placement
