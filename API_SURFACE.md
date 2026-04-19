@@ -9,7 +9,9 @@ variable, binary, and endpoint used by this discovery repo.
 - `@fireline/runtime`: `file:/tmp/fireline-mono-oet.29.3-artifacts/fireline-runtime-0.0.1.tgz`
 
 These are local tarball refs produced from Fireline packages. They are
-package-shaped, but they are not registry-published refs.
+package-shaped, but they are not registry-published refs. The current
+editable-agent-web no-proxy checkpoint used artifacts rebuilt from Fireline
+`0c6f6ae8`.
 
 ## Fireline Imports
 
@@ -83,10 +85,14 @@ private client subpath, even though external app code does not touch it.
 - `GET ${FIRELINE_DAEMON_URL}/healthz` is used by `fireline-v3-dev` readiness checks.
 - `GET http://127.0.0.1:7496/healthz` is used by the scratch smoke's
   `fireline-v3-dev` local streams readiness checks.
-- `http://127.0.0.1:5173/fireline/*` is the discovery web app's Vite proxy
-  for the local launch endpoint at `http://127.0.0.1:4464/*`.
-- `http://127.0.0.1:5173/fireline-streams/*` is the discovery web app's Vite
-  proxy for durable streams at `http://127.0.0.1:7501/*`.
+- `http://127.0.0.1:4464/v1/launches` is the direct launch endpoint used by
+  `examples/02-editable-agent-web`; local loopback CORS is expected after
+  Fireline PR #220.
+- `http://127.0.0.1:7501/v1/stream/fireline-v3-dev-daemon` is the direct
+  durable launch-state stream used by `examples/02-editable-agent-web`.
+- `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned
+  from the launch result and used by `examples/02-editable-agent-web` for
+  follow-up prompts.
 
 ## Historical Checkpoint Workaround
 
@@ -109,3 +115,16 @@ package-shaped baseline after PR #210 does not use those variables.
 `examples/02-editable-agent-web` exposes the same supported local brain and
 filesystem placements through a browser UI. Unsupported placement and
 middleware options remain disabled.
+
+## No-Proxy Editable Web Checkpoint
+
+After Fireline PR #220, the app does not use a Vite proxy or custom fetch
+rewrite. The direct no-proxy smoke verified:
+
+- Launch-control CORS preflight from `http://127.0.0.1:5173` to
+  `http://127.0.0.1:4464/v1/launches` returned `200 OK`.
+- Direct launch created `0127f0e6f04a5048958ce620c85cf42566`.
+- Launch result exposed runtime ACP URL, runtime state coordinates, durable
+  wait coordinates, and session `jsmod-f2a2f090-6e18-457f-a243-76b3152c4682`.
+- Follow-up ACP prompt returned `stopReason: "end_turn"`.
+- Stop returned `status: "stopped"`.

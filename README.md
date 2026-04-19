@@ -89,8 +89,9 @@ In another shell:
 pnpm run dev:editable-agent-web
 ```
 
-Open `http://127.0.0.1:5173/`. The default endpoints use a Vite dev proxy:
-`http://127.0.0.1:5173/fireline/v1/launches` and
-`http://127.0.0.1:5173/fireline-streams/v1/stream`. Direct browser calls to
-`http://127.0.0.1:4464/v1/launches` currently fail CORS preflight and are
-logged in `FRICTION_LOG.md`.
+Open `http://127.0.0.1:5173/`. The default endpoints call the package-shaped
+local runtime directly: `http://127.0.0.1:4464/v1/launches` and
+`http://127.0.0.1:7501/v1/stream`.
+
+No Vite proxy is used for launch-control. Direct loopback CORS is required from
+Fireline PR #220 or later.

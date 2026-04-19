@@ -23,8 +23,8 @@ interface LogEntry {
 }
 
 export function App() {
-  const [launchUrl, setLaunchUrl] = useState(() => defaultUrl('/fireline/v1/launches'))
-  const [durableStreamsUrl, setDurableStreamsUrl] = useState(() => defaultUrl('/fireline-streams/v1/stream'))
+  const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
+  const [durableStreamsUrl, setDurableStreamsUrl] = useState('http://127.0.0.1:7501/v1/stream')
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
   const [filesystemPlacement, setFilesystemPlacement] = useState<FilesystemPlacement>('local')
   const [middleware, setMiddleware] = useState<readonly MiddlewareChoice[]>(['trace'])
@@ -254,9 +254,4 @@ function summarizeUpdate(notification: unknown): string {
     return `${kind}: ${String(update.content.text)}`
   }
   return `${kind}: ${JSON.stringify(update)}`
-}
-
-function defaultUrl(path: string): string {
-  if (globalThis.location) return new URL(path, globalThis.location.origin).toString()
-  return path
 }

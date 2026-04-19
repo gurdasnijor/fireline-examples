@@ -69,8 +69,9 @@ a Fireline bead or be closed as an intentional boundary.
 
    The matrix sets `sandbox.env.FIRELINE_EXAMPLE_CASE`, but every launched
    inline JS module observed `process.env.FIRELINE_EXAMPLE_CASE` as
-   `undefined`. This is a public-surface gap because `SandboxSpec.env` is
-   accepted by `@fireline/client/spec`. Follow-up bead: `mono-oet.29.5`.
+   `undefined`. This was a public-surface gap because `SandboxSpec.env` is
+   accepted by `@fireline/client/spec`. Follow-up bead `mono-oet.29.5` is
+   closed by Fireline PR #214.
 
 9. The editable-agent web app needs explicit endpoint wiring.
 
@@ -80,19 +81,19 @@ a Fireline bead or be closed as an intentional boundary.
    This is acceptable for discovery but still too manual for a product-shaped
    app example.
 
-   Direct browser `POST` to `http://127.0.0.1:4464/v1/launches` is currently
-   blocked before launch creation because preflight
-   `OPTIONS /v1/launches` returns `405 Method Not Allowed`. The app therefore
-   uses a clearly documented Vite dev proxy for this checkpoint. This should
-   become a Fireline CORS/configuration bead before the browser example is made
-   canonical.
+   After Fireline #220, direct browser CORS preflight for
+   `http://127.0.0.1:4464/v1/launches` succeeds, so the app no longer uses a
+   Vite proxy. Endpoint discovery is still manual: the consumer has to know the
+   launch port and durable-streams port from the `fireline-v3-dev` process.
+   Follow-up bead: `mono-oet.29.10`.
 
 10. Browser chat uses ACP directly because launch-control stops at coordinates.
 
    The app uses `@fireline/client/acp` and a local WebSocket stream adapter to
    send follow-up prompts after the launch returns `runtime.acp.url` and
    `startSession.acpSessionId`. This is package-shaped and public, but it is
-   still low-level for an application author.
+   still low-level for an application author. Follow-up bead:
+   `mono-oet.29.8`.
 
 11. Unsupported placement and middleware choices are visible but disabled.
 
@@ -102,9 +103,50 @@ a Fireline bead or be closed as an intentional boundary.
    webhook, Telegram, memory, secrets, and external tool attachment are not
    faked in this checkpoint.
 
+12. The launch/session composition is contract-level, not app-level.
+
+   The editable web app has to call `inlineBundleArtifact`, wrap it with
+   `jsModuleAgentForm`, create a `conductorSpec`, create a launch request,
+   duplicate runtime/start-session labels, choose wait semantics, await the
+   launch result, then attach ACP for interactive prompts. That is useful for
+   validating contracts, but too verbose as the first thing a normal TS app
+   author should write. This is a missing public API/support layer, not just
+   example roughness. Follow-up bead: `mono-oet.29.9`.
+
+13. Some roughness belongs to the discovery example.
+
+   The UI keeps endpoint fields editable, stores no preferences, uses a basic
+   textarea instead of a code editor, and renders session updates as raw text.
+   Those are acceptable discovery-repo shortcuts and should not drive Fireline
+   API shape unless repeated by real consumers.
+
+## Idiomaticity Audit
+
+- Public API gap: endpoint/bootstrap discovery remains manual. A browser app
+  should not need hard-coded `4464` and `7501` ports or copied terminal output.
+  See `mono-oet.29.10`.
+- Public API gap: browser ACP chat requires a custom WebSocket `Stream`,
+  `ClientSideConnection` initialization, permission defaults, prompt wrapper,
+  update bridge, and close handling. See `mono-oet.29.8`.
+- Public API gap: launching an editable inline agent and attaching a chat
+  session crosses too many low-level surfaces for the basic app path. See
+  `mono-oet.29.9`.
+- Already fixed Fireline gap: direct local launch-control CORS is now enabled
+  by PR #220, so the app no longer uses a Vite proxy.
+- Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule
+  launches is closed by `mono-oet.29.5` / PR #214.
+- Example roughness: disabled remote brain/hands/middleware choices are
+  intentionally visible but unsupported. They should become separate examples
+  or beads before being enabled.
+
 ## Follow-Up Bead Candidates
 
 - Public runtime artifact availability for external consumers.
 - Documented state-directory control for local durable-streams.
 - Public replacement or wrapper for the inline JS module runner requirement.
-- A simpler managed-agent launch helper after the API freeze gate permits it.
+- `mono-oet.29.7`: framework-shaped TypeScript examples for TanStack,
+  straightforward Next.js, and OpenNext/Cloudflare-shaped Next.
+- `mono-oet.29.10`: endpoint/bootstrap discovery for local browser apps.
+- `mono-oet.29.8`: browser-safe ACP connection helper.
+- `mono-oet.29.9`: idiomatic managed-agent launch/session helper after API
+  freeze gates permit it.

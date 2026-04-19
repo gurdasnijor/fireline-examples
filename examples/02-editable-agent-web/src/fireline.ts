@@ -37,7 +37,6 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     launchUrl: options.launchUrl,
     durableStreamsUrl: options.durableStreamsUrl,
     launchStateStream: 'fireline-v3-dev-daemon',
-    fetch: proxyAwareFetch,
   })
   const spec = await editableSpec(options, clientRequestId)
   const request = createLaunchRequest(spec, {
@@ -73,32 +72,6 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     timeoutMs: 30_000,
   })
   return { client, created, result }
-}
-
-async function proxyAwareFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
-  return fetch(rewriteLocalRuntimeUrl(input), init)
-}
-
-function rewriteLocalRuntimeUrl(input: string | URL | Request): string | URL | Request {
-  const raw = input instanceof Request ? input.url : String(input)
-  if (!globalThis.location) return input
-  const url = new URL(raw, globalThis.location.origin)
-  if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
-    return input
-  }
-  if (url.port === '4464') {
-    url.protocol = globalThis.location.protocol
-    url.host = globalThis.location.host
-    url.pathname = `/fireline${url.pathname}`
-    return url.toString()
-  }
-  if (url.port === '7501') {
-    url.protocol = globalThis.location.protocol
-    url.host = globalThis.location.host
-    url.pathname = `/fireline-streams${url.pathname}`
-    return url.toString()
-  }
-  return input
 }
 
 async function editableSpec(
