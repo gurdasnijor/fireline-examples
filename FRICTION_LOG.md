@@ -344,6 +344,22 @@ a Fireline bead or be closed as an intentional boundary.
    because transitive Node-compat checks in the package stack read it. This is
    acceptable discovery evidence, not a polished Deno SDK experience.
 
+30. ACP registry resolution works for the safe command slice, but real catalog coverage is still gated.
+
+   `examples/17-acp-registry-chat` validates `acpRegistry(...)` with an inline
+   ACP registry fixture row that lowers to the currently supported `command`
+   distribution. The resolved agent launches through the same stream-native
+   path as the other examples, middleware decoration works, ACP attachment
+   works, a follow-up prompt returns `end_turn`, and stop reaches `stopped`.
+
+   Fresh-daemon and prior-daemon reuse E2E both passed. The example
+   intentionally does not use public binary-only rows or env-bearing rows.
+   Binary registry install/cache remains fail-closed pending TL1/PO signoff and
+   implementation from `mono-oet.26.6`; launcher env metadata remains out of
+   scope for this slice. Successful runs can still show the known ACP websocket
+   reset/closed teardown warnings tracked separately under
+   `mono-oet.29.3.24`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -390,6 +406,9 @@ a Fireline bead or be closed as an intentional boundary.
 - Evidence seam: runnable examples now use stable git artifact refs instead of
   manual artifact staging, but refs still need to be repinned deliberately when
   Fireline changes.
+- Registry seam: `acpRegistry(...)` can resolve command/npx/uvx rows today, but
+  binary-only and launcher-env rows remain explicit non-goals for examples
+  until the Fireline signoff and implementation gates land.
 
 ## Follow-Up Bead Candidates
 

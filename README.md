@@ -74,6 +74,12 @@ Current checkpoint:
 - `examples/16-deno` is a Deno package-consumer shape. It uses documented
   `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`
   package subpaths through Deno's Node/npm compatibility layer.
+- `examples/17-acp-registry-chat` resolves a safe ACP registry fixture row
+  with `acpRegistry(...)` from `@fireline/client`, launches the resulting command
+  distribution through durable streams, attaches to the returned ACP session,
+  sends a follow-up prompt, and stops the launch. It deliberately avoids
+  binary registry installs, launcher env metadata, retired launch-control
+  surfaces, and managed-agent helper sugar.
 
 Setup:
 
@@ -335,6 +341,30 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
       --allow-net=127.0.0.1 \
       --allow-env=FIRELINE_LAUNCH_CONTROL_STREAM_URL,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
       "$FIRELINE_EXAMPLES_ROOT/examples/16-deno/main.ts"
+```
+
+Run the ACP registry chat shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-17-fresh-state
+export FIRELINE_PORT=4617
+export FIRELINE_STREAMS_PORT=7717
+export FIRELINE_CONTROL_STREAM=fireline-acp-registry-chat-control
+rm -rf "$FIRELINE_STATE_DIR"
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    ACP_REGISTRY_CHAT_RUN_ID="registry-chat-run-001" \
+    ACP_REGISTRY_CHAT_ATTEMPT_ID="attempt-1" \
+    pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
+      "$FIRELINE_EXAMPLES_ROOT/examples/17-acp-registry-chat/src/run.ts"
 ```
 
 Run the Flamecast-shaped characterization from scratch state:

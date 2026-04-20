@@ -8,6 +8,8 @@ variable, binary, and endpoint used by this discovery repo.
 - `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
 - `@fireline/runtime`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
 - `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@agentclientprotocol/sdk`: `0.19.0` for the local ACP stdio agent used by
+  `examples/17-acp-registry-chat`.
 
 These are immutable git artifact refs from the pre-npm package artifact
 channel. They are package-shaped and reviewer-installable without local
@@ -41,6 +43,7 @@ npm package names.
   - `BrowserAcpConnection`
 - `@fireline/client`
   - default `fireline`
+  - `acpRegistry`
   - `fireline.appendLaunchRequest`
   - `fireline.db`
 
@@ -90,6 +93,7 @@ violations.
 - `pnpm run smoke:python-raw-http`
 - `pnpm run smoke:rust-raw-http`
 - `pnpm run smoke:go-raw-http`
+- `pnpm run smoke:acp-registry-chat`
 - `pnpm run check:deno`
 - `pnpm run smoke:deno`
 - `pnpm run dev:editable-agent-web`
@@ -116,6 +120,8 @@ violations.
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `go run examples/15-go-raw-http/main.go`
+- `tsx examples/17-acp-registry-chat/src/run.ts`
+- `node examples/17-acp-registry-chat/registry-agent.mjs`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
 - `vite` through the private Vite child script
 - `vite` through the Vite example scripts
@@ -149,13 +155,14 @@ violations.
   the launch/control stream URL when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Examples 06, 08, 11-14, and 16 append
+  in `/v1/stream`. Examples 06, 08, 11-14, 16, and 17 append
   `/<FIRELINE_CONTROL_STREAM>` to this base when the exact launch/control
   stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Examples 06, 08, 11-14, and 16 also use it to derive the launch/control
-  stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
+  URL. Examples 06, 08, 11-14, 16, and 17 also use it to derive the
+  launch/control stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not
+  set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
 - `FIRELINE_STREAMS_PORT`: set in scratch smoke recipes to avoid reusing
@@ -237,6 +244,15 @@ violations.
   retries of the same attempt; change it for a new attempt.
 - `BUN_EXAMPLE_PROMPT`: optional example-only initial prompt for the Bun
   launch.
+- `ACP_REGISTRY_CHAT_RUN_ID`: example-only ACP registry chat run coordinate.
+  Reuse it for retries of the same run.
+- `ACP_REGISTRY_CHAT_ATTEMPT_ID`: example-only ACP registry chat attempt
+  coordinate. Reuse it for retries of the same attempt; change it for a new
+  attempt.
+- `ACP_REGISTRY_CHAT_INITIAL_PROMPT`: optional initial prompt sent by launch
+  session startup in `examples/17-acp-registry-chat`.
+- `ACP_REGISTRY_CHAT_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt sent
+  after `examples/17-acp-registry-chat` attaches to the launched session.
 
 ## Endpoints
 
@@ -248,8 +264,8 @@ violations.
   endpoints used internally by `@fireline/state` observe
   `collections.launches`.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned in
-  `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` for
-  follow-up prompts.
+  `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` and
+  `examples/17-acp-registry-chat` for follow-up prompts.
 - `GET http://127.0.0.1:<streams-port>/healthz` is used by `fireline-v3-dev`
   local streams readiness checks.
 
@@ -409,6 +425,22 @@ shape:
 - The Deno command requires `--allow-net=127.0.0.1` and an explicit
   `--allow-env` list including Fireline example env vars and `NODE_ENV`.
 
+`examples/17-acp-registry-chat` exercises the safe ACP registry slice:
+
+- `src/run.ts` imports root `@fireline/client` for `acpRegistry(...)`, plus
+  documented `@fireline/client/spec`, `@fireline/client/events`,
+  `@fireline/client/middleware`, `@fireline/client/acp-browser`, and
+  `@fireline/state` package subpaths.
+- The registry row is an inline fixture catalog with a supported `command`
+  distribution. It points at `registry-agent.mjs`, a local ACP stdio agent.
+- The example decorates the resolved registry agent with local sandbox labels
+  and trace/context/budget middleware, launches through
+  `fireline.launch_request`, observes `collections.launches`, attaches to the
+  returned ACP session, sends a follow-up prompt, appends
+  `fireline.launch_stop`, and observes `stopped`.
+- The example deliberately avoids binary registry install/cache, launcher env
+  metadata, retired launch-control surfaces, and managed-agent helper sugar.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -441,10 +473,11 @@ stream-native path:
 
 `examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
 `examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
-`examples/14-bun`, and `examples/16-deno` use the same stream-native path with
-larger generated harness or runtime-specific shapes. They are characterization evidence for product
-consumer boundaries, not a promise that `@fireline/client/spec` names are
-frozen.
+`examples/14-bun`, `examples/16-deno`, and
+`examples/17-acp-registry-chat` use the same stream-native path with larger
+generated harness, runtime-specific, or registry-resolution shapes. They are
+characterization evidence for product consumer boundaries, not a promise that
+`@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 

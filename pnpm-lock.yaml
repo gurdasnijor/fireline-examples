@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: 0.19.0
+        version: 0.19.0(zod@4.3.6)
       '@fireline/client':
         specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
         version: git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2(typescript@5.9.3)
