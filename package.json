@@ -20,10 +20,10 @@
     "smoke:inline-js-local": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-examples-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; export FIRELINE_LAUNCH_CONTROL_STREAM_URL=${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-http://127.0.0.1:${STREAMS_PORT}/v1/stream/${CONTROL_STREAM}}; fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/01-inline-js-local/run.ts'"
   },
   "dependencies": {
-    "@fireline/client": "file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-client-0.0.1.tgz",
-    "@fireline/runtime": "file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-runtime-0.0.1.tgz",
-    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
-    "@fireline/state": "file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-state-0.0.1.tgz"
+    "@fireline/client": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz",
+    "@fireline/runtime": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz",
+    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
+    "@fireline/state": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.1",

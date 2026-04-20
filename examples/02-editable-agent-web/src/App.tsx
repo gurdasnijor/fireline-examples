@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { connectBrowserAcp, type BrowserAcpConnection } from '@fireline/client/acp-browser'
 import {
   createEditableLaunch,
+  stopEditableLaunch,
   type BrainPlacement,
   type EditableLaunchResult,
   type FilesystemPlacement,
@@ -41,7 +42,7 @@ export function App() {
   const launch = result?.row
   const acpSessionId = launch?.startSession?.acpSessionId
   const canChat = Boolean(acp.current && acpSessionId && !busy)
-  const canClose = Boolean(result && !busy)
+  const canStop = Boolean(result && !busy)
   const coordinates = useMemo(() => launch ? JSON.stringify({
     launchId: launch.launchId,
     clientRequestId: launch.clientRequestId,
@@ -102,14 +103,20 @@ export function App() {
     }, 'Sending prompt')
   }
 
-  async function closeLaunchView() {
+  async function stopLaunch() {
     if (!result) return
     await withBusy(async () => {
       await closeAcp()
+      addLog('stop', `Appending launch_stop for ${result.row.launchId}.`)
+      const stopped = await stopEditableLaunch({
+        controlStreamUrl,
+        launch: result,
+        reason: 'Stopped from editable-agent-web UI',
+      })
       result.db.close()
       setResult(undefined)
-      addLog('close', 'Closed local launch observation and ACP connection.')
-    }, 'Closing')
+      addLog('stop', `Launch ${stopped.row.launchId} reached ${stopped.row.status}.`)
+    }, 'Stopping')
   }
 
   async function withBusy(work: () => Promise<void>, label: string) {
@@ -206,7 +213,7 @@ export function App() {
             <input value={chatPrompt} onChange={(event) => setChatPrompt(event.target.value)} />
           </label>
           <button type="button" onClick={sendPrompt} disabled={!canChat}>Send</button>
-          <button type="button" onClick={closeLaunchView} disabled={!canClose}>Close ACP</button>
+          <button type="button" onClick={stopLaunch} disabled={!canStop}>Stop</button>
         </div>
       </section>
 

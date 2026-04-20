@@ -19,7 +19,7 @@ a Fireline bead or be closed as an intentional boundary.
    external consumer needs immutable published package refs or documented git
    artifact refs.
 
-   For the `mono-oet.29.16` smoke, the examples repo also pins the local
+   For the `mono-oet.29.3.1` smoke, the examples repo also pins the local
    `@fireline/runtime-darwin-arm64` platform tarball directly because pnpm did
    not materialize the local meta package's optional platform dependency
    reliably. The binaries had to be packed with `npm pack`; `pnpm pack`
@@ -63,24 +63,29 @@ a Fireline bead or be closed as an intentional boundary.
    alignment by hand. Follow-up bead candidate: endpoint/bootstrap discovery
    for stream-native local apps.
 
-8. Stream-native stop/cancel is not used by target examples.
+8. Stream-native stop is now usable, but still low-level.
 
-   The old HTTP launch-control stop path was removed from examples 01-05.
-   Current examples can close ACP and local `@fireline/state` observation
-   handles, but they do not teach a public stream-native stop/cancel primitive.
-   Follow-up `mono-oet.29.19` is assigned to BE1. Do not block this checkpoint
-   on it; keep examples honest by closing only local handles.
+   Fireline PR #242 landed `appendLaunchStop` and daemon stop projection. The
+   examples now append `fireline.launch_stop` and observe `stopped` launch rows
+   instead of closing only local handles or teaching the old HTTP stop path.
+   This validates the primitive, but a normal app still has to assemble the
+   stop envelope, observation loop, ACP cleanup, and UI state by hand.
 
-9. `@fireline/state` launch observation has duplicate launch-id shapes.
+9. `@fireline/state` launch row identity is fixed, but live observation is not.
 
-   The control stream contains the expected `fireline.launch_request`,
-   `fireline.runtime_instance`, and `fireline.launch_result` events. The
-   materialized `collections.launches` output currently emits rows for both the
-   bare launch id and `launch:<id>`, with session coordinates on the prefixed
-   row. The shared helper accepts both forms and polls `db.preload()` while
-   waiting, because the initial live subscription did not deliver the final
-   launch result during the first smoke. This needs a Fireline/state follow-up
-   before canonical examples teach exact launch id matching.
+   Fireline PR #245 fixed the duplicate bare/prefixed launch row shape. The
+   examples now match exact bare `launchId` values, and the `mono-oet.29.3.1`
+   smoke observed one target row per validated launch.
+
+   Remaining substrate gap: live `@fireline/state` subscriptions still throw
+   from `@durable-streams/state`/TanStack DB while processing
+   `fireline.runtime_instance` rows:
+   `Cannot read properties of undefined (reading 'Symbol(liveQueryInternal)')`.
+   A long-lived DB created before runtime rows can miss the later materialized
+   launch result. The shared helper therefore waits by taking fresh
+   `createFirelineDB(...).preload()` snapshots and reading
+   `collections.launches`. This is explicitly non-canonical discovery glue and
+   is tracked as Fireline follow-up `mono-oet.29.3.2`.
 
 10. Browser ACP attachment is improved but still low-level.
 
@@ -138,12 +143,12 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: local stream-native bootstrap still requires
   manual alignment between the configured control stream URL and the dev daemon
   stream watcher.
-- Missing Fireline/public support: target examples no longer use the old HTTP
-  stop path, but no stream-native stop/cancel primitive is available in this
-  checkpoint. Tracked by `mono-oet.29.19`.
-- Missing Fireline/state cleanup: `collections.launches` should expose one
-  canonical launch row per launch id, and live observation should deliver the
-  result row without example-side polling.
+- Missing Fireline/public support: stream-native stop now works through
+  `appendLaunchStop`, but app authors still need to compose stop append,
+  observation, and ACP cleanup directly.
+- Missing Fireline/state cleanup: live `collections.launches` observation
+  should deliver runtime/result/stop updates without fresh-DB preload snapshots.
+  Tracked by `mono-oet.29.3.2`.
 - Missing Fireline/public support: launching an editable inline agent and
   attaching a chat session crosses many low-level surfaces. This should not
   become a local examples helper before `mono-oet.29.14` lands.
@@ -153,6 +158,10 @@ a Fireline bead or be closed as an intentional boundary.
   launches is closed by `mono-oet.29.5` / PR #214.
 - Already fixed Fireline gap: browser ACP attachment now uses
   `@fireline/client/acp-browser` from PR #231.
+- Already fixed Fireline gap: `appendLaunchStop` and stream-native stopped row
+  projection are available after PR #242.
+- Already fixed Fireline gap: launch collection rows use exact bare launch ids
+  after PR #245.
 - Example roughness: disabled remote brain/hands/middleware choices are
   intentionally visible but unsupported. They should become separate examples
   or beads before being enabled.
@@ -169,8 +178,10 @@ a Fireline bead or be closed as an intentional boundary.
 - Documented state-directory control for local durable-streams.
 - Public replacement or wrapper for the inline JS module runner requirement.
 - Endpoint/bootstrap discovery for local stream-native browser apps.
-- Stream-native stop/cancel primitive before canonical app examples claim stop.
-- Canonical `@fireline/state` launch row identity and live-update behavior.
+- Stop/session lifecycle convenience remains blocked until the lower-level
+  materialized launch model is intentionally wrapped.
+- Canonical `@fireline/state` live-update behavior for launch rows
+  (`mono-oet.29.3.2`).
 - Server/Worker stream append pattern for framework apps that need auth,
   idempotency, tenant policy, or secrets.
 - Idiomatic managed-agent launch/session helper after the lower-level

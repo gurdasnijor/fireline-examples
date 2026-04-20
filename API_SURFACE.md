@@ -5,14 +5,14 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-client-0.0.1.tgz`
-- `@fireline/runtime`: `file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-runtime-0.0.1.tgz`
-- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
-- `@fireline/state`: `file:/tmp/fireline-mono-oet.29.16-artifacts/fireline-state-0.0.1.tgz`
+- `@fireline/client`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz`
+- `@fireline/runtime`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz`
+- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
+- `@fireline/state`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz`
 
 These are local tarball refs produced from Fireline packages at Fireline main
-`a1f6da7b`, after #228, #231, #233, and #237 landed. They are package-shaped,
-but they are not registry-published refs.
+`bdb1ad02`, after #242 stream-native stop and #245 launch row normalization
+landed. They are package-shaped, but they are not registry-published refs.
 
 The direct platform package ref is included because the local tarball install
 did not materialize the meta package's optional platform dependency reliably.
@@ -28,7 +28,9 @@ This is discovery artifact friction, not intended public app configuration.
   - `textPrompt`
 - `@fireline/client/events`
   - `appendLaunchRequest`
+  - `appendLaunchStop`
   - `LaunchRequestEnvelope`
+  - `LaunchStopEnvelope`
 - `@fireline/state`
   - `createFirelineDB`
   - `FirelineDB`
@@ -43,8 +45,8 @@ This is discovery artifact friction, not intended public app configuration.
 
 Examples 01-05 do not import Fireline root exports, `@fireline/client/launch-control`,
 runtime internals, or private package source. The target launch path appends
-`fireline.launch_request` to the configured control stream and observes
-`@fireline/state` `collections.launches`.
+`fireline.launch_request` and `fireline.launch_stop` to the configured control
+stream and observes `@fireline/state` `collections.launches`.
 
 ## Framework Imports
 
@@ -121,7 +123,8 @@ private client subpath, even though external app code does not touch it.
 
 - `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` is passed to `DurableStream` by
   `@fireline/client/events`; `appendLaunchRequest` appends the
-  `fireline.launch_request` envelope through that package.
+  `fireline.launch_request` envelope and `appendLaunchStop` appends the
+  `fireline.launch_stop` envelope through that package.
 - `GET ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` and the stream subscription
   endpoints used internally by `@fireline/state` observe
   `collections.launches`.
@@ -163,22 +166,27 @@ client/server boundaries, and build constraints.
 
 ## Stream-Native Checkpoint
 
-After Fireline #228, #231, #233, and #237, examples 01-05 use the stream-native
-path:
+After Fireline #228, #231, #233, #237, #242, and #245, examples 01-05 use the
+stream-native path:
 
 - Build a `CreateLaunchRequest` with `@fireline/client/spec`.
 - Append `fireline.launch_request` with `appendLaunchRequest`.
 - Materialize launch rows with `createFirelineDB(...).collections.launches`.
 - Use `@fireline/client/acp-browser` for browser ACP attachment once
   `LaunchRow.runtime.acp.url` and `LaunchRow.startSession.acpSessionId` exist.
+- Append `fireline.launch_stop` with `appendLaunchStop` and observe the
+  materialized launch row reach `stopped`.
 
-Current app-level gap: there is no stream-native stop/cancel primitive used by
-these examples, so examples close local ACP/observation handles rather than
-teaching the old HTTP stop path. Follow-up is tracked in Fireline
-`mono-oet.29.19`.
+Validated `mono-oet.29.3.1` behavior:
 
-Current `@fireline/state` observation rough edge: launch rows can appear with
-both bare launch ids and `launch:<id>` ids, and session coordinates currently
-land on the prefixed row. The shared example matcher accepts both forms and
-continues observing through `collections.launches`; this should be cleaned up
-before these examples become canonical.
+- Launch rows now use bare launch ids only in observed target rows. The old
+  `launch:<id>` compatibility matcher was removed from the examples.
+- Stream-native stop is validated in examples 01 and 02 and wired into the
+  framework launch helpers.
+
+Current `@fireline/state` observation rough edge: live subscriptions still log
+`Cannot read properties of undefined (reading 'Symbol(liveQueryInternal)')`
+while processing runtime instance rows. The examples use fresh
+`createFirelineDB(...).preload()` snapshots against `collections.launches` while
+waiting for launch/stop rows, and keep this logged as substrate friction rather
+than hiding it as canonical app shape.

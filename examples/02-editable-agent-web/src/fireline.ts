@@ -10,7 +10,11 @@ import {
 } from '@fireline/client/spec'
 import { budget, contextInjection, trace } from '@fireline/client/middleware'
 import type { FirelineDB, LaunchRow } from '@fireline/state'
-import { appendAndObserveLaunch } from '../../shared/stream-launch.js'
+import {
+  appendAndObserveLaunch,
+  appendAndObserveLaunchStop,
+  type StreamLaunchStopResult,
+} from '../../shared/stream-launch.js'
 
 export type BrainPlacement = 'inline-js-local'
 export type FilesystemPlacement = 'local' | 'streamFs'
@@ -55,7 +59,7 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     },
     wait: {
       until: 'session',
-      timeoutMs: 30_000,
+      timeoutMs: 60_000,
     },
   })
 
@@ -64,9 +68,24 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     request,
     idempotencyKey: clientRequestId,
     requestedBy: 'examples/02-editable-agent-web',
-    timeoutMs: 30_000,
+    timeoutMs: 60_000,
   })
   return result
+}
+
+export async function stopEditableLaunch(options: {
+  readonly controlStreamUrl: string
+  readonly launch: EditableLaunchResult
+  readonly reason?: string
+}): Promise<StreamLaunchStopResult> {
+  return await appendAndObserveLaunchStop({
+    controlStreamUrl: options.controlStreamUrl,
+    launchId: options.launch.row.launchId,
+    clientRequestId: options.launch.row.clientRequestId,
+    requestedBy: 'examples/02-editable-agent-web',
+    reason: options.reason ?? 'editable-agent-web stop requested',
+    timeoutMs: 60_000,
+  })
 }
 
 async function editableSpec(

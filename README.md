@@ -18,12 +18,13 @@ Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
   JS local matrix by appending `fireline.launch_request` events through
-  `@fireline/client/events` and observing `@fireline/state` launches.
+  `@fireline/client/events`, observing `@fireline/state` launches, and
+  stopping each launch with `fireline.launch_stop`.
 - `examples/02-editable-agent-web` is a TypeScript/TSX app-shaped discovery
   example. It lets a user edit inline agent code, append a launch request,
   inspect launch/session/runtime coordinates from `collections.launches`, send
-  a follow-up ACP prompt through `@fireline/client/acp-browser`, and close the
-  local ACP/observation handles.
+  a follow-up ACP prompt through `@fireline/client/acp-browser`, and stop the
+  launch with `appendLaunchStop`.
 - `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
   `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
   examples. They keep Fireline calls package-shaped and client-side while
@@ -43,9 +44,9 @@ daemon watches the same configured control stream.
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.16-state
-export FIRELINE_PORT=4484
-export FIRELINE_STREAMS_PORT=7584
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.1-state
+export FIRELINE_PORT=4485
+export FIRELINE_STREAMS_PORT=7585
 export FIRELINE_CONTROL_STREAM=fireline-examples-control
 export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
 export FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_STATE_DIR/inline-js-local-output"
@@ -70,9 +71,9 @@ Run the editable-agent web app with a package-shaped Fireline runtime:
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.16-state
-export FIRELINE_PORT=4484
-export FIRELINE_STREAMS_PORT=7584
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.1-state
+export FIRELINE_PORT=4485
+export FIRELINE_STREAMS_PORT=7585
 export FIRELINE_CONTROL_STREAM=fireline-examples-control
 export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
 mkdir -p "$FIRELINE_STATE_DIR"
@@ -93,7 +94,8 @@ VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL="$FIRELINE_LAUNCH_CONTROL_STREAM_URL" \
 
 Open `http://127.0.0.1:5173/`. The app appends to the configured
 launch/control stream and observes the `@fireline/state` launches collection.
-It does not call `/v1/launches` or use `@fireline/client/launch-control`.
+It stops through `appendLaunchStop`. It does not call `/v1/launches` or use
+`@fireline/client/launch-control`.
 
 Framework-shaped checks:
 

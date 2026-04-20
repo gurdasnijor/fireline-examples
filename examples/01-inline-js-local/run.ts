@@ -13,7 +13,7 @@ import {
 } from '@fireline/client/middleware'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { appendAndObserveLaunch } from '../shared/stream-launch.js'
+import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../shared/stream-launch.js'
 
 const controlStreamUrl = requiredEnv('FIRELINE_LAUNCH_CONTROL_STREAM_URL')
 const outputRoot = process.env.FIRELINE_EXAMPLE_OUTPUT_ROOT ??
@@ -146,7 +146,7 @@ async function runCase(entry: MatrixCase) {
     },
     wait: {
       until: 'session',
-      timeoutMs: 30_000,
+      timeoutMs: 60_000,
     },
   })
 
@@ -155,10 +155,18 @@ async function runCase(entry: MatrixCase) {
     request,
     idempotencyKey: clientRequestId,
     requestedBy: 'examples/01-inline-js-local',
-    timeoutMs: 30_000,
+    timeoutMs: 60_000,
   })
 
   const fileContents = await readFile(outputFile, 'utf8')
+  const stopped = await appendAndObserveLaunchStop({
+    controlStreamUrl,
+    launchId: launch.row.launchId,
+    clientRequestId,
+    requestedBy: 'examples/01-inline-js-local',
+    reason: `matrix case ${entry.name} complete`,
+    timeoutMs: 60_000,
+  })
   launch.db.close()
 
   return {
@@ -172,6 +180,13 @@ async function runCase(entry: MatrixCase) {
     envelope: {
       type: launch.envelope.type,
       key: launch.envelope.key,
+    },
+    stop: {
+      status: stopped.row.status,
+      envelope: {
+        type: stopped.envelope.type,
+        key: stopped.envelope.key,
+      },
     },
     runtime: launch.row.runtime
       ? {

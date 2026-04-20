@@ -5,7 +5,7 @@ import {
   jsModuleAgentForm,
   textPrompt,
 } from '@fireline/client/spec'
-import { appendAndObserveLaunch } from '../../shared/stream-launch'
+import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch'
 
 export async function runInlineLaunch(options: {
   readonly controlStreamUrl: string
@@ -60,7 +60,7 @@ export async function runInlineLaunch(options: {
     },
     wait: {
       until: 'session',
-      timeoutMs: 30_000,
+      timeoutMs: 60_000,
     },
   })
   const result = await appendAndObserveLaunch({
@@ -68,7 +68,15 @@ export async function runInlineLaunch(options: {
     request,
     idempotencyKey: clientRequestId,
     requestedBy: `examples/${options.example}`,
-    timeoutMs: 30_000,
+    timeoutMs: 60_000,
+  })
+  const stopped = await appendAndObserveLaunchStop({
+    controlStreamUrl: options.controlStreamUrl,
+    launchId: result.row.launchId,
+    clientRequestId,
+    requestedBy: `examples/${options.example}`,
+    reason: `${options.example} smoke complete`,
+    timeoutMs: 60_000,
   })
   result.db.close()
   return {
@@ -78,6 +86,13 @@ export async function runInlineLaunch(options: {
     envelope: {
       type: result.envelope.type,
       key: result.envelope.key,
+    },
+    stop: {
+      status: stopped.row.status,
+      envelope: {
+        type: stopped.envelope.type,
+        key: stopped.envelope.key,
+      },
     },
     runtime: result.row.runtime,
     session: result.row.startSession,
