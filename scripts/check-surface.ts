@@ -59,6 +59,7 @@ async function* walk(dirUrl: URL): AsyncGenerator<string> {
       entry.name === 'node_modules' ||
       entry.name === '.git' ||
       entry.name === 'dist' ||
+      entry.name === 'target' ||
       entry.name === '.next' ||
       entry.name === '.open-next'
     ) continue
@@ -74,7 +75,7 @@ async function* walk(dirUrl: URL): AsyncGenerator<string> {
 }
 
 function isCheckedFile(path: string): boolean {
-  return /\.(mjs|js|ts|tsx|md|json)$/.test(path)
+  return /\.(mjs|js|ts|tsx|rs|md|json|toml)$/.test(path)
 }
 
 function* importSpecifiers(text: string): Generator<string> {

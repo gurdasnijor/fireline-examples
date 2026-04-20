@@ -79,6 +79,8 @@ violations.
 - `pnpm run check:surface`
 - `pnpm run smoke:inline-js-local`
 - `pnpm run smoke:server-wrapper`
+- `pnpm run smoke:python-raw-http`
+- `pnpm run smoke:rust-raw-http`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
 - `pnpm run build:tanstack-shaped`
@@ -90,6 +92,8 @@ violations.
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `tsx examples/07-server-worker-wrapper/src/run.ts`
+- `python3 examples/09-python-raw-http/run.py`
+- `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
 - `vite` through the private Vite child script
 - `vite` through the Vite example scripts
@@ -136,6 +140,15 @@ violations.
   smoke recipe so generated output does not land under the repo.
 - `FIRELINE_STATE_DIR`: scratch-directory convention for this spike.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
+- `FIRELINE_PYTHON_RAW_*`: example-only run, launch, client-request,
+  state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
+  overrides for `examples/09-python-raw-http`.
+- `FIRELINE_RUST_RAW_*`: example-only run, launch, client-request,
+  state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
+  overrides for `examples/10-rust-raw-http`.
+- `CARGO_TARGET_DIR`: reviewer-recipe scratch target directory for
+  `examples/10-rust-raw-http`, set under `/tmp` so Cargo output does not land
+  in the repo.
 - `FIRELINE_V3_DEV`: example-only dev-script override for local evidence runs
   that need to point at a checked-out `fireline-v3-dev` wrapper before package
   artifacts are refreshed. Normal consumers use the package-provided
@@ -254,6 +267,17 @@ client/server boundaries, and build constraints.
   `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
   `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
   `FIRELINE_CONTROL_STREAM`.
+
+`examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
+surface with only Python stdlib HTTP and JSON modules. It builds
+`fireline.launch_request` and `fireline.launch_stop` envelopes without
+Fireline package imports, appends them with raw HTTP `POST`, and observes
+first-class `fireline.launch` rows with raw HTTP `GET`.
+
+`examples/10-rust-raw-http` exercises the T3 Rust raw Durable Streams HTTP
+surface with `reqwest`, `tokio`, and `serde_json`, but no Fireline crates. It
+uses the same envelope shape and launch-row observation path as the Python
+example, keeping Fireline as an HTTP service boundary.
 
 ## Stream-Native Checkpoint
 

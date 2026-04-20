@@ -34,6 +34,10 @@ Current checkpoint:
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, appends launch/stop through durable streams, observes
   `collections.launches`, and attaches to ACP for a follow-up prompt.
+- `examples/09-python-raw-http` and `examples/10-rust-raw-http` are raw
+  Durable Streams HTTP consumers. They do not import Fireline packages or
+  crates; they build `fireline.launch_request` / `fireline.launch_stop`
+  envelopes and observe first-class `fireline.launch` rows over plain HTTP.
 - `examples/07-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
   tenant checks, idempotency, launch/stop append, and launch observation.
