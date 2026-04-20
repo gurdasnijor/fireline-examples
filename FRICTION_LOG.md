@@ -223,12 +223,13 @@ a Fireline bead or be closed as an intentional boundary.
 
 22. Raw HTTP examples are clear but intentionally low-level.
 
-   `examples/07-curl-shell-raw-http`, `examples/09-python-raw-http`, and
-   `examples/10-rust-raw-http` prove that shell, Python, and Rust consumers can
-   use Fireline through the Durable Streams wire contract without helper
-   packages or crates. They also make the trade-off visible: consumers must
-   build the `fireline.launch_request` and `fireline.launch_stop` envelopes,
-   poll/read stream rows, and filter `fireline.launch` records themselves.
+   `examples/07-curl-shell-raw-http`, `examples/09-python-raw-http`,
+   `examples/10-rust-raw-http`, and `examples/15-go-raw-http` prove that
+   shell, Python, Rust, and Go consumers can use Fireline through the Durable
+   Streams wire contract without helper packages, crates, or SDKs. They also
+   make the trade-off visible: consumers must build the
+   `fireline.launch_request` and `fireline.launch_stop` envelopes, poll/read
+   stream rows, and filter `fireline.launch` records themselves.
 
 23. Direct Cloudflare Worker usage is package-shaped but still low-level.
 
@@ -314,6 +315,21 @@ a Fireline bead or be closed as an intentional boundary.
    still print the same ACP websocket reset/closed teardown warnings seen in
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
+
+28. Go raw HTTP works without an SDK, but repeats the low-level envelope burden.
+
+   `examples/15-go-raw-http` validates a plain Go consumer using only standard
+   library HTTP/JSON/crypto/filesystem packages. Fresh-daemon and prior-daemon
+   reuse E2E both passed, and the example appended
+   `fireline.launch_request` / `fireline.launch_stop` events and observed a
+   final `stopped` `fireline.launch` row.
+
+   The friction is the same as the other raw HTTP examples: the consumer owns
+   branded inline bundle artifact construction, launch/stop envelope shape,
+   idempotency keys, stream URL derivation, repeated stream reads, and launch
+   row filtering. Successful fresh-daemon logs also showed the known ACP
+   websocket reset/closed teardown warning; the Go example did not patch around
+   it.
 
 ## Idiomaticity Audit
 

@@ -52,10 +52,11 @@ Current checkpoint:
   `@fireline/client/events`, and `@fireline/state` package subpaths. It uses
   explicit `pnpm dlx wrangler@4.83.0` commands and documents the Wrangler
   `--var` behavior required for custom scratch ports.
-- `examples/09-python-raw-http` and `examples/10-rust-raw-http` are raw
-  Durable Streams HTTP consumers. They do not import Fireline packages or
-  crates; they build `fireline.launch_request` / `fireline.launch_stop`
-  envelopes and observe first-class `fireline.launch` rows over plain HTTP.
+- `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
+  `examples/15-go-raw-http` are raw Durable Streams HTTP consumers. They do
+  not import Fireline packages, crates, or SDKs; they build
+  `fireline.launch_request` / `fireline.launch_stop` envelopes and observe
+  first-class `fireline.launch` rows over plain HTTP.
 - `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
   tenant checks, idempotency, launch/stop append, and launch observation.
@@ -282,6 +283,29 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     BUN_EXAMPLE_RUN_ID="bun-run-001" \
     BUN_EXAMPLE_ATTEMPT_ID="attempt-1" \
     bun "$FIRELINE_EXAMPLES_ROOT/examples/14-bun/src/run.ts"
+```
+
+Run the Go raw Durable Streams HTTP shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-16-go-state
+export FIRELINE_PORT=4626
+export FIRELINE_STREAMS_PORT=7726
+export FIRELINE_CONTROL_STREAM=fireline-go-raw-control
+export FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_STATE_DIR/output"
+rm -rf "$FIRELINE_STATE_DIR"
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_EXAMPLE_OUTPUT_ROOT" \
+    go run "$FIRELINE_EXAMPLES_ROOT/examples/15-go-raw-http/main.go"
 ```
 
 Run the Flamecast-shaped characterization from scratch state:

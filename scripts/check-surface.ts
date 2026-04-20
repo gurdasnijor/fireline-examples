@@ -86,7 +86,7 @@ async function* walk(dirUrl: URL): AsyncGenerator<string> {
 }
 
 function isCheckedFile(path: string): boolean {
-  return /\.(mjs|js|ts|tsx|rs|md|json|toml)$/.test(path)
+  return /\.(mjs|js|ts|tsx|rs|go|md|json|toml)$/.test(path)
 }
 
 function* importSpecifiers(text: string): Generator<string> {

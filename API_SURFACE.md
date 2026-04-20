@@ -89,6 +89,7 @@ violations.
 - `pnpm run smoke:curl-shell-raw-http`
 - `pnpm run smoke:python-raw-http`
 - `pnpm run smoke:rust-raw-http`
+- `pnpm run smoke:go-raw-http`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
 - `pnpm run build:tanstack-shaped`
@@ -111,6 +112,7 @@ violations.
 - `bun examples/14-bun/src/run.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
+- `go run examples/15-go-raw-http/main.go`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
 - `vite` through the private Vite child script
 - `vite` through the Vite example scripts
@@ -168,6 +170,9 @@ violations.
 - `FIRELINE_RUST_RAW_*`: example-only run, launch, client-request,
   state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
   overrides for `examples/10-rust-raw-http`.
+- `FIRELINE_GO_RAW_*`: example-only run, launch, client-request,
+  state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
+  overrides for `examples/15-go-raw-http`.
 - `CARGO_TARGET_DIR`: reviewer-recipe scratch target directory for
   `examples/10-rust-raw-http`, set under `/tmp` so Cargo output does not land
   in the repo.
@@ -395,6 +400,12 @@ first-class `fireline.launch` rows with raw HTTP `GET`.
 surface with `reqwest`, `tokio`, and `serde_json`, but no Fireline crates. It
 uses the same envelope shape and launch-row observation path as the Python
 example, keeping Fireline as an HTTP service boundary.
+
+`examples/15-go-raw-http` exercises the T9 Go raw Durable Streams HTTP surface
+with only Go standard library HTTP, JSON, crypto, and filesystem packages. It
+uses the same envelope shape and launch-row observation path as the Python and
+Rust examples, keeping Fireline as an HTTP service boundary and avoiding any
+Fireline Go SDK or source imports.
 
 ## Stream-Native Checkpoint
 
