@@ -72,35 +72,106 @@ The `FIRELINE_BIN` and `FIRELINE_STREAMS_BIN` overrides were historical
 checkpoint workarounds before `mono-oet.29.4` closed. Do not use them for the
 package-shaped baseline after PR #210.
 
-Run the editable-agent web app with a package-shaped Fireline runtime:
+Run the editable-agent web app with a package-shaped Fireline runtime. The
+recommended local command starts Vite as a child of `fireline-v3-dev` so the
+app receives the daemon's exact `FIRELINE_LAUNCH_CONTROL_STREAM_URL`:
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.1-state
-export FIRELINE_PORT=4485
-export FIRELINE_STREAMS_PORT=7585
+export FIRELINE_STATE_DIR=/tmp/fireline-editable-agent-web-state
 export FIRELINE_CONTROL_STREAM=fireline-examples-control
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
 mkdir -p "$FIRELINE_STATE_DIR"
 cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
-FIRELINE_PORT="$FIRELINE_PORT" \
-FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
-  --state-stream "$FIRELINE_CONTROL_STREAM"
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web
 ```
 
-In another shell:
+Open `http://127.0.0.1:5173/` and click **Run**. The app pre-fills the
+launch/control stream URL from the daemon handoff when available. If you run
+Vite separately, it falls back to
+`http://127.0.0.1:7474/v1/stream/fireline-examples-control`, probes the local
+streams health endpoint, and shows a copyable one-line derivation:
 
 ```sh
-VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL="$FIRELINE_LAUNCH_CONTROL_STREAM_URL" \
-  pnpm run dev:editable-agent-web
+export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-examples-control}"
 ```
 
-Open `http://127.0.0.1:5173/`. The app appends to the configured
-launch/control stream and observes the `@fireline/state` launches collection.
-It stops through `appendLaunchStop`. It does not call `/v1/launches` or use
-`@fireline/client/launch-control`.
+If a prior daemon is already running on `127.0.0.1:4437`, reuse it by starting
+Vite through `fireline-v3-dev` with the daemon's state stream. The wrapper
+exports the exact launch/control URL to the Vite app:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_CONTROL_STREAM=fireline-v3-dev-daemon
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web --port 5193
+```
+
+Open `http://127.0.0.1:5193/` and click **Run**. If the UI shows
+`Stream not found`, the selected launch/control URL does not match the reused
+daemon. Paste the exact `FIRELINE_LAUNCH_CONTROL_STREAM_URL` printed/exported
+by `fireline-v3-dev`, click **Use daemon default**, or restart with the
+matching `--state-stream`.
+
+If you intentionally use non-default ports without the `fireline-v3-dev`
+wrapper, seed the Vite app explicitly:
+
+```sh
+VITE_FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+VITE_FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+pnpm run dev:editable-agent-web
+```
+
+The app appends to the configured launch/control stream and observes the
+`@fireline/state` launches collection. It stops through `appendLaunchStop`. It
+does not call `/v1/launches` or use `@fireline/client/launch-control`.
+
+Reviewer reproduce: fresh daemon runnable path:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-review-editable-fresh-state
+export FIRELINE_CONTROL_STREAM=fireline-review-editable-fresh
+rm -rf "$FIRELINE_STATE_DIR"
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --port 5537 \
+  --streams-port 8574 \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web --port 5192
+```
+
+Open `http://127.0.0.1:5192/`, click **Run**, then click **Stop**. Expected:
+the URL field matches
+`http://127.0.0.1:8574/v1/stream/fireline-review-editable-fresh`, the session
+log reaches a running launch with ACP coordinates, and Stop observes
+`stopped`.
+
+Reviewer reproduce: prior daemon reuse:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_CONTROL_STREAM=fireline-v3-dev-daemon
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web --port 5193
+```
+
+Open `http://127.0.0.1:5193/`, click **Run**, then click **Stop**. With
+Fireline PR #291 or newer, `fireline-v3-dev` creates/verifies the exported
+launch/control stream before starting Vite, so the reused-daemon path should
+reach a running launch and then `stopped`.
+
+If a stale daemon or stream store from an older run is still bound to the same
+ports, Run may time out or return `Stream not found`. Expected UI behavior: the
+session log includes a recovery entry naming the missing stream and directs the
+reviewer to paste the exact daemon URL, use the daemon default, or restart with
+the matching `--state-stream`.
 
 Framework-shaped checks:
 

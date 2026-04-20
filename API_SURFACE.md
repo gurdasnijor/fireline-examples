@@ -106,9 +106,20 @@ private client subpath, even though external app code does not touch it.
 
 - `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: read by examples 01-03 and passed into
   the Next-shaped examples as `controlStreamUrl`. Example 06 accepts it as the
-  highest-precedence exact launch/control stream append target.
+  highest-precedence exact launch/control stream append target. The
+  `dev:editable-agent-web` script maps this daemon handoff to
+  `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL` when Vite is run as a
+  `fireline-v3-dev` child.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
-  examples 02-03.
+  examples 02-03. Example 02 defaults to
+  `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when this is not
+  set, and exposes mismatch recovery guidance when a reused daemon does not
+  watch that stream.
+- `VITE_FIRELINE_STREAMS_PORT`: optional example 02 Vite seed for deriving the
+  launch/control stream URL when the local streams server is not on `7474`.
+- `VITE_FIRELINE_CONTROL_STREAM`: optional example 02 Vite seed for deriving
+  the launch/control stream URL when the local control stream name is not
+  `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
   in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this base
   when the exact launch/control stream URL is not provided.

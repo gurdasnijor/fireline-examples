@@ -56,12 +56,30 @@ a Fireline bead or be closed as an intentional boundary.
 
 7. Local runtime/bootstrap discovery is still manual.
 
-   The examples require the app-facing `FIRELINE_LAUNCH_CONTROL_STREAM_URL` and
-   the local `fireline-v3-dev --state-stream <control-stream>` process to point
-   at the same durable stream. This is intentionally explicit in the discovery
-   repo, but a normal external consumer should not have to assemble that
-   alignment by hand. Follow-up bead candidate: endpoint/bootstrap discovery
-   for stream-native local apps.
+   `examples/02-editable-agent-web` derives
+   `http://127.0.0.1:7474/v1/stream/fireline-examples-control` by default,
+   probes the local streams health endpoint, and shows a copyable
+   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` derivation for custom ports or stream
+   names. Its dev script now maps the `FIRELINE_LAUNCH_CONTROL_STREAM_URL`
+   exported by `fireline-v3-dev` into Vite config, which is the safest path
+   when a prior daemon is reused. On `Stream not found`/404, the UI names the
+   missing stream and shows restart or exact-URL recovery instructions. Other
+   examples still require the app-facing
+   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` and the local
+   `fireline-v3-dev --state-stream <control-stream>` process to point at the
+   same durable stream. This is intentionally explicit in the discovery repo,
+   but a normal external consumer should not have to assemble that alignment by
+   hand. Follow-up bead candidate: endpoint/bootstrap discovery for
+   stream-native local apps.
+
+   `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
+   blocker: `fireline-v3-dev` could reuse an existing daemon, export
+   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` for `fireline-v3-dev-daemon`, and then
+   fail append with `HTTP Error 404 ... Stream not found:
+   fireline-v3-dev-daemon`. Fireline PR #291 / `mono-oet.29.3.22` fixed that
+   launcher/stream mismatch by creating and verifying the exported stream before
+   child startup. The examples branch keeps diagnostics and recovery guidance
+   for genuinely stale port/process/store reuse.
 
 8. Stream-native stop is now usable, but still low-level.
 
@@ -194,9 +212,12 @@ a Fireline bead or be closed as an intentional boundary.
 
 - Missing Fireline/public support: published package refs or documented git
   artifact refs are still needed for normal external consumers.
-- Missing Fireline/public support: local stream-native bootstrap still requires
-  manual alignment between the configured control stream URL and the dev daemon
-  stream watcher.
+- Missing Fireline/public support: local stream-native bootstrap still relies on
+  the `fireline-v3-dev` env handoff or equivalent control-stream alignment. PR
+  #291 fixed the reused-daemon appendability gap for the wrapper path, but stale
+  processes or mismatched stream stores can still leave reviewers with a timeout
+  or `Stream not found`; the example now surfaces recovery instructions instead
+  of leaving the raw failure alone.
 - Missing Fireline/public support: stream-native stop now works through
   `appendLaunchStop`, but app authors still need to compose stop append,
   observation, and ACP cleanup directly.
