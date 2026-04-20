@@ -67,6 +67,9 @@ Current checkpoint:
   an Edge handler that uses Worker-safe `@fireline/client/spec`,
   `@fireline/client/events`, and `@fireline/state` package subpaths, then runs
   locally in `@edge-runtime/vm`.
+- `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
+  `@fireline/client` package surface, appends launch/stop through durable
+  streams, and observes launch rows with `fireline.db(...)`.
 
 Setup:
 
@@ -257,6 +260,28 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     VERCEL_EDGE_RUN_ID="vercel-edge-run-001" \
     VERCEL_EDGE_ATTEMPT_ID="attempt-1" \
     sh -c 'pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run build:vercel-edge-runtime >/dev/null && pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx "$FIRELINE_EXAMPLES_ROOT/examples/13-vercel-edge-runtime/src/run-local.ts"'
+```
+
+Run the Bun runtime shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-15-state
+export FIRELINE_PORT=4615
+export FIRELINE_STREAMS_PORT=7715
+export FIRELINE_CONTROL_STREAM=fireline-bun-control
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    BUN_EXAMPLE_RUN_ID="bun-run-001" \
+    BUN_EXAMPLE_ATTEMPT_ID="attempt-1" \
+    bun "$FIRELINE_EXAMPLES_ROOT/examples/14-bun/src/run.ts"
 ```
 
 Run the Flamecast-shaped characterization from scratch state:

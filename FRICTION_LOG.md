@@ -297,6 +297,24 @@ a Fireline bead or be closed as an intentional boundary.
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
 
+27. Bun can resolve and run the package-shaped root client surface, but the launch flow remains low-level.
+
+   `examples/14-bun` validates a Bun process that imports root
+   `@fireline/client`, builds launch data with `@fireline/client/spec`,
+   appends stop through `@fireline/client/events`, and observes launch rows
+   through `fireline.db(...)`.
+
+   This proves the current git artifact package refs are usable from Bun
+   without Fireline source imports, but it still requires the app to derive the
+   launch/control stream URL, choose a stable `clientRequestId`, observe
+   `collections.launches`, and append stop directly. It is still discovery
+   evidence, not a stable high-level SDK.
+
+   Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
+   still print the same ACP websocket reset/closed teardown warnings seen in
+   other inline JS module examples; TL1 tracks that separately under
+   `mono-oet.29.3.24`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git

@@ -98,6 +98,7 @@ violations.
 - `pnpm run build:vercel-edge-runtime`
 - `pnpm run smoke:flamecast-shaped`
 - `pnpm run smoke:vercel-edge-runtime`
+- `pnpm run smoke:bun`
 - `pnpm run dev:cloudflare-worker-direct`
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml`
@@ -107,6 +108,7 @@ violations.
 - `tsx examples/11-server-worker-wrapper/src/run.ts`
 - `tsx examples/12-vercel-function-node/src/run-local.ts`
 - `tsx examples/13-vercel-edge-runtime/src/run-local.ts`
+- `bun examples/14-bun/src/run.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
@@ -118,6 +120,7 @@ violations.
 - `fireline-v3-dev` from `@fireline/runtime`
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
+- `bun`
 
 ## Environment Variables
 
@@ -140,12 +143,12 @@ violations.
   the launch/control stream URL when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Examples 06, 08, and 11-13 append
+  in `/v1/stream`. Examples 06, 08, and 11-14 append
   `/<FIRELINE_CONTROL_STREAM>` to this base when the exact launch/control
   stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Examples 06, 08, and 11-13 also use it to derive the launch/control
+  URL. Examples 06, 08, and 11-14 also use it to derive the launch/control
   stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
@@ -216,6 +219,13 @@ violations.
   attempt.
 - `VERCEL_EDGE_PROMPT`: optional example-only initial prompt for the Vercel
   Edge Runtime launch.
+- `BUN_EXAMPLE_TENANT_ID`: example-only Bun tenant coordinate.
+- `BUN_EXAMPLE_RUN_ID`: example-only Bun run coordinate. Reuse it for retries
+  of the same run.
+- `BUN_EXAMPLE_ATTEMPT_ID`: example-only Bun attempt coordinate. Reuse it for
+  retries of the same attempt; change it for a new attempt.
+- `BUN_EXAMPLE_PROMPT`: optional example-only initial prompt for the Bun
+  launch.
 
 ## Endpoints
 
@@ -361,6 +371,20 @@ shape:
 - The example deliberately avoids root `@fireline/client`, Node built-ins,
   `/v1/launches`, and `@fireline/client/launch-control` in the Edge handler.
 
+`examples/14-bun` exercises a Bun runtime shape:
+
+- `src/launch.ts` imports root `@fireline/client` and uses
+  `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, plus
+  `@fireline/client/spec` for launch data and `@fireline/client/events` for
+  stop.
+- `src/run.ts` is executed by `bun` and invokes the launch handler with a
+  Fetch `Request`.
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -386,10 +410,11 @@ stream-native path:
   materialized launch row reach `stopped`.
 
 `examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
-`examples/12-vercel-function-node`, and `examples/13-vercel-edge-runtime` use
-the same stream-native path with larger generated harness or serverless shapes.
-They are characterization evidence for product consumer boundaries, not a
-promise that `@fireline/client/spec` names are frozen.
+`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`, and
+`examples/14-bun` use the same stream-native path with larger generated harness
+or runtime-specific shapes. They are characterization evidence for product
+consumer boundaries, not a promise that `@fireline/client/spec` names are
+frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 
