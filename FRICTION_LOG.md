@@ -172,6 +172,14 @@ a Fireline bead or be closed as an intentional boundary.
    recommended ergonomic path for normal app code after managed-agent helpers
    are ready.
 
+19. Curl/shell raw HTTP evidence inherits known local daemon stop noise.
+
+   The retro E2E replay for `mono-oet.29.3.21.2` validates fresh-daemon and
+   one-daemon/two-run reuse flows, but the local runtime logs ACP websocket
+   close/reset warnings during stop even though the durable `fireline.launch`
+   row reaches `stopped`. This is recorded as known substrate friction under
+   `mono-oet.29.3.24`; examples should not patch around it locally.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -195,6 +203,9 @@ a Fireline bead or be closed as an intentional boundary.
   canonical JSON fixture or generated sample for the inline JS module artifact
   shape. Example 07 carries a local builder so it can avoid `@fireline/client`,
   but that is intentionally discovery code rather than a public helper.
+- Missing Fireline/substrate cleanup: local daemon stop can log ACP websocket
+  close/reset warnings after raw HTTP examples observe the launch row reach
+  `stopped`. Tracked by `mono-oet.29.3.24`.
 - Already fixed Fireline gap: direct local launch-control CORS was enabled by
   PR #220, but target examples now bypass `/v1/launches` entirely.
 - Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule

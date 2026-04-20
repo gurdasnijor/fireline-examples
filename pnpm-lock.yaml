@@ -9,17 +9,14 @@ importers:
   .:
     dependencies:
       '@fireline/client':
-        specifier: file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz
-        version: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz(typescript@5.9.3)
+        specifier: git+https://github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
+        version: git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2(typescript@5.9.3)
       '@fireline/runtime':
-        specifier: file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz
-        version: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz
-      '@fireline/runtime-darwin-arm64':
-        specifier: file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz
-        version: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz
+        specifier: git+https://github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
+        version: git+https://git@github.com:smithery-ai/fireline.git#e09c0e4bee4d5edb917d0f81972a74b4babcb020(zod@4.3.6)
       '@fireline/state':
-        specifier: file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz
-        version: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz(typescript@5.9.3)
+        specifier: git+https://github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
+        version: git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f(typescript@5.9.3)
     devDependencies:
       '@opennextjs/cloudflare':
         specifier: 1.19.1
@@ -951,26 +948,38 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fireline/client@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz':
-    resolution: {integrity: sha512-ZM2xp8/0mxuz93aGN8mhev6mSrOLzxpvS9K4xuuxxNdkH83/sffDKTJKXNLHjfwqZD9TiMavVmwgIanhjR8wmQ==, tarball: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz}
+  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2':
+    resolution: {commit: fb3d505380b92a82bfefe59ebb38ae123aa196a2, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
     bundledDependencies:
       - '@agentclientprotocol/sdk'
       - '@fireline/state'
 
-  '@fireline/runtime-darwin-arm64@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz':
-    resolution: {integrity: sha512-FKs4WqRhTAraLF9fDoun3cwVH7Qhu2GG1CXc/xhGaz1xLYRvOtcVk6m4DxAahERNDUboQlBa3clmkfEARu6vpw==, tarball: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz}
+  '@fireline/runtime-darwin-arm64@git+https://git@github.com:smithery-ai/fireline.git#463620a5f666b9e97f8075adb789360e4eaecd9b':
+    resolution: {commit: 463620a5f666b9e97f8075adb789360e4eaecd9b, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
     cpu: [arm64]
     os: [darwin]
 
-  '@fireline/runtime@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz':
-    resolution: {integrity: sha512-m591AA/e+H43tL5nJnwfitnmTgzKjmxVuLmpOE0wq4ozr5efPPoFNiK+job8mwo28qvfbXmyKM3O/9tB1KpcrA==, tarball: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz}
+  '@fireline/runtime-darwin-x64@git+https://git@github.com:smithery-ai/fireline.git#05bbb82db5db37b6f6a20e050f2a1fce99b8da3a':
+    resolution: {commit: 05bbb82db5db37b6f6a20e050f2a1fce99b8da3a, repo: git@github.com:smithery-ai/fireline.git, type: git}
+    version: 0.0.1
+    cpu: [x64]
+    os: [darwin]
+
+  '@fireline/runtime-linux-x64@git+https://git@github.com:smithery-ai/fireline.git#b3a0fef072b3d2d86171bb7287422530958e09a2':
+    resolution: {commit: b3a0fef072b3d2d86171bb7287422530958e09a2, repo: git@github.com:smithery-ai/fireline.git, type: git}
+    version: 0.0.1
+    cpu: [x64]
+    os: [linux]
+
+  '@fireline/runtime@git+https://git@github.com:smithery-ai/fireline.git#e09c0e4bee4d5edb917d0f81972a74b4babcb020':
+    resolution: {commit: e09c0e4bee4d5edb917d0f81972a74b4babcb020, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
     hasBin: true
 
-  '@fireline/state@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz':
-    resolution: {integrity: sha512-0OygjSrxpCl779M4ft2Gga2FtUe9OlkpfODtAOZ1wGLhQJ8/hJGuPZX0XjbYcVVeiMXAYsMQ596Mi+lihU08sw==, tarball: file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz}
+  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f':
+    resolution: {commit: daac0bf8a6f388bb93a84f6ffa935bf013e5950f, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
 
   '@img/colour@1.1.0':
@@ -4204,7 +4213,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@fireline/client@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz(typescript@5.9.3)':
+  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2(typescript@5.9.3)':
     dependencies:
       '@durable-streams/client': 0.2.3
       '@durable-streams/state': 0.2.5(@tanstack/db@0.6.5(typescript@5.9.3))
@@ -4216,13 +4225,26 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@fireline/runtime-darwin-arm64@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz': {}
+  '@fireline/runtime-darwin-arm64@git+https://git@github.com:smithery-ai/fireline.git#463620a5f666b9e97f8075adb789360e4eaecd9b':
+    optional: true
 
-  '@fireline/runtime@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz':
+  '@fireline/runtime-darwin-x64@git+https://git@github.com:smithery-ai/fireline.git#05bbb82db5db37b6f6a20e050f2a1fce99b8da3a':
+    optional: true
+
+  '@fireline/runtime-linux-x64@git+https://git@github.com:smithery-ai/fireline.git#b3a0fef072b3d2d86171bb7287422530958e09a2':
+    optional: true
+
+  '@fireline/runtime@git+https://git@github.com:smithery-ai/fireline.git#e09c0e4bee4d5edb917d0f81972a74b4babcb020(zod@4.3.6)':
+    dependencies:
+      '@agentclientprotocol/sdk': 0.19.0(zod@4.3.6)
     optionalDependencies:
-      '@fireline/runtime-darwin-arm64': file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz
+      '@fireline/runtime-darwin-arm64': git+https://git@github.com:smithery-ai/fireline.git#463620a5f666b9e97f8075adb789360e4eaecd9b
+      '@fireline/runtime-darwin-x64': git+https://git@github.com:smithery-ai/fireline.git#05bbb82db5db37b6f6a20e050f2a1fce99b8da3a
+      '@fireline/runtime-linux-x64': git+https://git@github.com:smithery-ai/fireline.git#b3a0fef072b3d2d86171bb7287422530958e09a2
+    transitivePeerDependencies:
+      - zod
 
-  '@fireline/state@file:../../../../tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz(typescript@5.9.3)':
+  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f(typescript@5.9.3)':
     dependencies:
       '@agentclientprotocol/sdk': 0.19.0(zod@4.3.6)
       '@durable-streams/state': 0.2.5(@tanstack/db@0.6.5(typescript@5.9.3))

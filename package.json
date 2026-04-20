@@ -22,10 +22,9 @@
     "smoke:curl-shell-raw-http": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-curl-shell-raw-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- sh examples/07-curl-shell-raw-http/run.sh'"
   },
   "dependencies": {
-    "@fireline/client": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz",
-    "@fireline/runtime": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz",
-    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
-    "@fireline/state": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz"
+    "@fireline/client": "git+https://github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/runtime": "git+https://github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/state": "git+https://github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.1",

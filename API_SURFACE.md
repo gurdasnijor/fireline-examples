@@ -5,18 +5,16 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz`
-- `@fireline/runtime`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz`
-- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
-- `@fireline/state`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz`
+- `@fireline/client`: `git+https://github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/runtime`: `git+https://github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/state`: `git+https://github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
 
-These are local tarball refs produced from Fireline packages at Fireline main
-`bdb1ad02`, after #242 stream-native stop and #245 launch row normalization
-landed. They are package-shaped, but they are not registry-published refs.
+These are git artifact-channel refs produced from Fireline main
+`96489bb3b55124c2d313282e723a775d7fe8c9dd`. They are package-shaped, but they
+are not registry-published refs.
 
-The direct platform package ref is included because the local tarball install
-did not materialize the meta package's optional platform dependency reliably.
-This is discovery artifact friction, not intended public app configuration.
+The runtime meta artifact owns platform optional dependency resolution. This is
+discovery artifact friction, not intended public app configuration.
 
 ## Fireline Imports
 
