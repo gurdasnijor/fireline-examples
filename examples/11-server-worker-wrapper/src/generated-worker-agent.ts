@@ -21,7 +21,7 @@ export async function createWorkerAgentBundle(options: {
     ],
     provenance: {
       producer: 'fireline-examples-discovery',
-      source: 'examples/07-server-worker-wrapper/generated-worker-agent',
+      source: 'examples/11-server-worker-wrapper/generated-worker-agent',
       revision: options.revision,
     },
   })

@@ -67,7 +67,7 @@ pnpm --dir "$EX" exec fireline-v3-dev \
     APP_RUN_ID="fresh-daemon-run-001" \
     APP_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$EX" exec tsx \
-      "$EX/examples/07-server-worker-wrapper/src/run.ts"
+      "$EX/examples/11-server-worker-wrapper/src/run.ts"
 ```
 
 Prior-daemon reuse scenario:
@@ -97,7 +97,7 @@ env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7702/v1/stream" \
   APP_RUN_ID="reuse-daemon-run-001" \
   APP_ATTEMPT_ID="attempt-1" \
   pnpm --dir "$EX" exec tsx \
-    "$EX/examples/07-server-worker-wrapper/src/run.ts"
+    "$EX/examples/11-server-worker-wrapper/src/run.ts"
 ```
 
 Both runs should print JSON with `accepted: true`,

@@ -60,7 +60,7 @@ export function createDemoServerConfig(env: NodeJS.ProcessEnv): DemoServerConfig
 
 export function renderSummary(summary: AppLaunchSummary): string {
   return JSON.stringify({
-    example: '07-server-worker-wrapper',
+    example: '11-server-worker-wrapper',
     accepted: summary.accepted,
     tenantId: summary.tenantId,
     launchId: summary.launchId,

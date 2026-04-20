@@ -32,7 +32,7 @@ export interface AppStopRequest {
 
 export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
   const controlStreamUrl = resolveLaunchControlStreamUrl(config.env)
-  const requestedBy = config.requestedBy ?? 'examples/07-server-worker-wrapper'
+  const requestedBy = config.requestedBy ?? 'examples/11-server-worker-wrapper'
 
   return {
     controlStreamUrl,
@@ -61,7 +61,7 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
               name: 'server-worker-wrapper',
               provider: 'local',
               labels: {
-                example: '07-server-worker-wrapper',
+                example: '11-server-worker-wrapper',
                 tenantId: actor.tenantId,
                 documentId: request.intent.documentId,
               },
@@ -181,7 +181,7 @@ async function createDefinition(intent: AppLaunchIntent, clientRequestId: string
         APP_DOCUMENT_ID: intent.documentId,
       },
       labels: {
-        example: '07-server-worker-wrapper',
+        example: '11-server-worker-wrapper',
         boundary: 'server-worker',
         tenantId: intent.tenantId,
       },
