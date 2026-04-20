@@ -34,6 +34,9 @@ Current checkpoint:
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, appends launch/stop through durable streams, observes
   `collections.launches`, and attaches to ACP for a follow-up prompt.
+- `examples/07-server-worker-wrapper` is a server/Worker boundary pattern. The
+  app-facing layer has no Fireline imports; the server wrapper owns auth,
+  tenant checks, idempotency, launch/stop append, and launch observation.
 
 Setup:
 
@@ -41,6 +44,10 @@ Setup:
 pnpm install
 pnpm run check
 ```
+
+The package refs are immutable git artifact refs from Fireline's pre-npm
+artifact channel. They are package-shaped reviewer refs, not public npm
+releases.
 
 Run the baseline smoke from a scratch working directory so durable state does
 not fan out under this repo. The app-facing configuration is the full
@@ -141,4 +148,30 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     FLAMECAST_FOLLOW_UP_PROMPT="$FLAMECAST_FOLLOW_UP_PROMPT" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
       "$FIRELINE_EXAMPLES_ROOT/examples/06-flamecast-v3-shaped/src/run.ts"
+```
+
+Run the server/Worker wrapper pattern from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-13-state
+export FIRELINE_PORT=4601
+export FIRELINE_STREAMS_PORT=7701
+export FIRELINE_CONTROL_STREAM=fireline-server-wrapper-control
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    APP_AUTH_TOKEN="server-wrapper-demo-token" \
+    APP_TENANT_ID="tenant-alpha" \
+    APP_USER_ID="user-001" \
+    APP_RUN_ID="server-wrapper-run-001" \
+    APP_ATTEMPT_ID="attempt-1" \
+    pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
+      "$FIRELINE_EXAMPLES_ROOT/examples/07-server-worker-wrapper/src/run.ts"
 ```

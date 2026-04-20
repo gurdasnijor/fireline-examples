@@ -63,68 +63,24 @@ import Fireline repo internals, and does not import real Flamecast v3 modules.
 
 ## Reviewer Reproduce
 
-The 2026-04-19 evidence run used package-shaped Fireline artifacts from
-Fireline workflow run `24650112221` after PR #290 fixed pnpm local tarball
-closure. Use a scratch directory and keep generated state out of this repo.
-
-Prepare refreshed package-shaped artifacts:
+This branch now uses immutable git artifact refs in `package.json`, not local
+`/tmp` tarballs. Install from the package-shaped refs and run cheap checks:
 
 ```sh
-export FIRELINE_REPO=/Users/gnijor/gurdasnijor/fireline
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-export FIRELINE_E2E_ROOT=/tmp/fireline-mono-oet-29-3-3-e2e
-export FIRELINE_ARTIFACT_ROOT=/tmp/fireline-examples-artifacts
-rm -rf "$FIRELINE_E2E_ROOT" "$FIRELINE_ARTIFACT_ROOT"
-mkdir -p "$FIRELINE_E2E_ROOT/downloads" "$FIRELINE_ARTIFACT_ROOT"
-
-gh run download 24650112221 \
-  --repo smithery-ai/fireline \
-  --dir "$FIRELINE_E2E_ROOT/downloads" \
-  --name fireline-cli-main \
-  --name fireline-runtime-git-artifact-root-darwin-arm64 \
-  --name fireline-runtime-git-artifact-root-darwin-x64 \
-  --name fireline-runtime-git-artifact-root-linux-x64
-
-cp "$FIRELINE_E2E_ROOT/downloads/fireline-cli-main/fireline-client-0.0.1.tgz" \
-  "$FIRELINE_ARTIFACT_ROOT/"
-cp "$FIRELINE_E2E_ROOT/downloads/fireline-cli-main/fireline-state-0.0.1.tgz" \
-  "$FIRELINE_ARTIFACT_ROOT/"
-
-ARGS=(--out "$FIRELINE_E2E_ROOT/fireline-runtime-meta" --version "0.0.1")
-for dir in "$FIRELINE_E2E_ROOT"/downloads/fireline-runtime-git-artifact-root-*; do
-  id="${dir##*fireline-runtime-git-artifact-root-}"
-  chmod +x "$dir"/bin/*
-  git -C "$dir" init --initial-branch fireline-runtime-artifact
-  git -C "$dir" config user.name fireline-local-evidence
-  git -C "$dir" config user.email fireline-local-evidence@example.invalid
-  git -C "$dir" add .
-  git -C "$dir" commit -m "Stage @fireline/runtime platform artifact"
-  ARGS+=(--platform-ref "${id}=git+file://${dir}#$(git -C "$dir" rev-parse HEAD)")
-done
-node "$FIRELINE_REPO/scripts/stage-fireline-runtime-meta-git-artifact.mjs" "${ARGS[@]}"
-npm pack "$FIRELINE_E2E_ROOT/fireline-runtime-meta" --pack-destination "$FIRELINE_ARTIFACT_ROOT"
-npm pack "$FIRELINE_E2E_ROOT/downloads/fireline-runtime-git-artifact-root-darwin-arm64" \
-  --pack-destination "$FIRELINE_ARTIFACT_ROOT"
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" install --frozen-lockfile
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run check:surface
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsc --noEmit --pretty false
 ```
 
-Prepare a scratch copy of this examples branch. If the local lockfile still
-contains older checksums for the same `/tmp` tarball filenames, refresh only
-the scratch lockfile:
-
-```sh
-rm -rf /tmp/fireline-examples-mono-oet-29-3-3-e2e
-git -C "$FIRELINE_EXAMPLES_ROOT" worktree add --detach \
-  /tmp/fireline-examples-mono-oet-29-3-3-e2e \
-  be4/mono-oet.29.3.3-flamecast-shaped-consumer
-pnpm --dir /tmp/fireline-examples-mono-oet-29-3-3-e2e install --no-frozen-lockfile
-pnpm --dir /tmp/fireline-examples-mono-oet-29-3-3-e2e exec tsx scripts/check-surface.ts
-pnpm --dir /tmp/fireline-examples-mono-oet-29-3-3-e2e exec tsc --noEmit --pretty false
-```
+The original 2026-04-19 evidence used Fireline workflow run `24650112221` and
+manual tarball staging. That path is superseded by the stable pre-npm git
+artifact channel.
 
 Fresh-daemon scenario:
 
 ```sh
-export EX=/tmp/fireline-examples-mono-oet-29-3-3-e2e
+export EX=/Users/gnijor/gurdasnijor/fireline-examples
 export STATE=/tmp/fireline-mono-oet-29-3-3-e2e/fresh-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
@@ -147,7 +103,7 @@ pnpm --dir "$EX" exec fireline-v3-dev \
 Prior-daemon reuse scenario:
 
 ```sh
-export EX=/tmp/fireline-examples-mono-oet-29-3-3-e2e
+export EX=/Users/gnijor/gurdasnijor/fireline-examples
 export STATE=/tmp/fireline-mono-oet-29-3-3-e2e/reuse-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
@@ -162,7 +118,7 @@ pnpm --dir "$EX" exec fireline-v3-dev \
 In another shell:
 
 ```sh
-export EX=/tmp/fireline-examples-mono-oet-29-3-3-e2e
+export EX=/Users/gnijor/gurdasnijor/fireline-examples
 env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7692/v1/stream" \
   FIRELINE_CONTROL_STREAM="fireline-flamecast-shaped-reuse" \
   FLAMECAST_WORKSPACE_ID="workspace-characterization" \

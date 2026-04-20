@@ -1,8 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises'
 const root = new URL('..', import.meta.url)
-const allowedInternal = new Set([
-  '@fireline/client/internal/js-module-runner',
-])
 const targetExampleBans = [
   {
     pattern: /@fireline\/client\/launch-control/,
@@ -36,7 +33,7 @@ for await (const file of walk(root)) {
     }
   }
   for (const specifier of firelineSpecifiers(text)) {
-    if (specifier.includes('/internal/') && !allowedInternal.has(specifier)) {
+    if (specifier.includes('/internal/')) {
       violations.push(`${relative}: private Fireline subpath ${specifier}`)
     }
   }

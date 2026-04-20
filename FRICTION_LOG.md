@@ -11,32 +11,30 @@ a Fireline bead or be closed as an intentional boundary.
    and guard scripts now use `.ts` sources and `pnpm run typecheck`. Plain JS
    should only appear as generated output or inline agent bundle content.
 
-2. Local package refs are package-shaped but not publish-shaped.
+2. Git artifact refs are package-shaped but not public npm.
 
-   The spike can install tarballs for `@fireline/client`, `@fireline/runtime`,
-   and `@fireline/state`, but those tarballs have to be staged from the
-   Fireline source repo. This is acceptable for discovery, but a normal
-   external consumer needs immutable published package refs or documented git
-   artifact refs.
+   The spike now installs immutable git artifact refs for `@fireline/client`,
+   `@fireline/runtime`, and `@fireline/state`. This removes the old local
+   tarball choreography and pnpm integrity churn from refreshed `/tmp`
+   artifacts. It is still a pre-npm integration channel, so normal public
+   consumers still need the public package-name/release decision to land.
 
-   For the `mono-oet.29.3.1` smoke, the examples repo also pins the local
-   `@fireline/runtime-darwin-arm64` platform tarball directly because pnpm did
-   not materialize the local meta package's optional platform dependency
-   reliably. The binaries had to be packed with `npm pack`; `pnpm pack`
-   stripped executable bits from the local runtime platform tarball.
+   Historical note: earlier `mono-oet.29.3.1` smokes pinned local tarballs and
+   a direct `@fireline/runtime-darwin-arm64` platform tarball because the local
+   meta package's optional platform dependency did not materialize reliably.
 
 3. Runtime platform tarballs installed native binaries without executable bits.
 
    Historical blocker `mono-oet.29.4` is closed by Fireline PR #210. Checkpoint
    smokes no longer use `FIRELINE_BIN` or `FIRELINE_STREAMS_BIN` overrides.
 
-4. Inline JS local runtime launch still resolves an internal js-module runner subpath.
+4. Inline JS module runner internal resolution is retired.
 
-   Application code uses only public package subpaths. `fireline-v3-dev` still
-   resolves `@fireline/client/internal/js-module-runner` internally so the
-   native runtime can start inline JS module agents. That is better for
-   consumers, but the runtime/client internal dependency remains a surface risk
-   to track before canonizing examples.
+   Fireline PR #300 / `mono-oet.29.25.4` moved the JS module runner ownership
+   out of the private client subpath that earlier evidence logged. Current
+   examples do not import or configure Fireline internal package paths. The
+   surface checker now rejects private Fireline subpaths instead of allowing a
+   compatibility exception.
 
 5. Scratch state directory control is not obvious from the runtime command.
 
@@ -111,13 +109,20 @@ a Fireline bead or be closed as an intentional boundary.
    Those are acceptable discovery-repo shortcuts and should not drive Fireline
    API shape unless repeated by real consumers.
 
-13. Framework apps keep Fireline launch code on the client side for now.
+13. Framework apps need a server/Worker stream-append pattern.
 
    The Next and OpenNext/Cloudflare-shaped examples place Fireline launch code
    behind `"use client"` pages. That keeps current package-shaped imports out
    of Next server components and Cloudflare Worker server bundles. Real apps
    may need a Worker/server pattern for auth, idempotency, tenant policy, and
    secret handling around stream append.
+
+   `examples/07-server-worker-wrapper` now demonstrates the consumer-authored
+   pattern without changing Fireline: the server/Worker boundary validates a
+   bearer token, checks tenant/scope policy, creates the stable idempotency
+   key, appends launch/stop events, observes `collections.launches`, and
+   returns a minimal app-facing summary. It does not solve framework-specific
+   bundling constraints for every runtime, and it is not a public helper API.
 
 14. Next/Turbopack and NodeNext TypeScript disagree on import style.
 
@@ -159,20 +164,15 @@ a Fireline bead or be closed as an intentional boundary.
    boundary, but a real product integration likely wants a typed session handle
    or resume helper once public surface freeze permits it.
 
-18. Package-shaped evidence still needs artifact choreography.
+18. Package-shaped evidence now uses git artifact refs, but public npm is still gated.
 
-   The 2026-04-19 runnable evidence used Fireline workflow run `24650112221`
-   artifacts, then locally staged `@fireline/runtime` meta and platform
-   packages under `/tmp`. This stays package-shaped and external-consumer safe,
-   but it is too much choreography for a normal reviewer. A stable git artifact
-   ref or published internal package channel would make example validation much
-   simpler.
+   `mono-oet.28.30` added the stable pre-npm package artifact channel. This
+   branch pins immutable git artifact refs for `@fireline/client`,
+   `@fireline/state`, and `@fireline/runtime`, so reviewers no longer need to
+   download workflow artifacts or stage same-name tarballs under `/tmp`.
 
-   Non-happy-path observation: reusing the old `/tmp` tarball filenames with
-   new artifact bytes can trip pnpm's tarball integrity check from the scratch
-   lockfile. Refreshing only the scratch lockfile with `pnpm install
-   --no-frozen-lockfile` fixed the evidence run; the source branch lockfile was
-   not modified.
+   This is still not public npm. Public package naming and release semantics
+   remain gated on Fireline `mono-oet.21.1.5` and TL1/PO signoff.
 
 19. Fresh-daemon wrapper lifetime is not intuitive.
 
@@ -190,10 +190,24 @@ a Fireline bead or be closed as an intentional boundary.
    websocket reset/closed warnings during teardown. These did not fail the
    example, but they remain non-happy-path reviewer noise.
 
+21. Server/Worker wrapper is a pattern, not a hidden Fireline abstraction.
+
+   `examples/07-server-worker-wrapper` validates the desired placement for
+   auth, tenant policy, idempotency, launch append, launch observation, and
+   stop append. It still uses low-level Fireline primitives inside the wrapper:
+   `agentDefinition`, `launchSpec`, `newSessionRequest`, `appendLaunchRequest`,
+   `collections.launches`, and `appendLaunchStop`.
+
+   Non-happy-path observation: successful fresh-daemon and prior-daemon reuse
+   runs still print ACP websocket reset/closed warnings during teardown. The
+   example output is correct (`accepted: true`, `session_ready`, `stopped`),
+   but reviewer logs still contain runtime teardown noise.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
-  artifact refs are still needed for normal external consumers.
+  artifact refs are still needed for normal external consumers. This branch now
+  uses documented git artifact refs; public npm remains gated.
 - Missing Fireline/public support: local stream-native bootstrap still requires
   manual alignment between the configured control stream URL and the dev daemon
   stream watcher.
@@ -226,11 +240,12 @@ a Fireline bead or be closed as an intentional boundary.
   Next/Turbopack import resolution differs from the repo-level NodeNext
   typecheck.
 - Framework seam: OpenNext/Cloudflare builds require app-local package scripts
-  and generated adapter directories, and the current safe path keeps Fireline
-  launch calls in browser code.
-- Evidence seam: runnable examples currently require manual artifact staging
-  from Fireline workflow outputs until a stable package or git artifact channel
-  exists for external-consumer validation.
+  and generated adapter directories. The server/Worker wrapper example records
+  the intended auth/idempotency pattern separately from those framework build
+  seams.
+- Evidence seam: runnable examples now use stable git artifact refs instead of
+  manual artifact staging, but refs still need to be repinned deliberately when
+  Fireline changes.
 
 ## Follow-Up Bead Candidates
 

@@ -5,18 +5,14 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `file:/tmp/fireline-examples-artifacts/fireline-client-0.0.1.tgz`
-- `@fireline/runtime`: `file:/tmp/fireline-examples-artifacts/fireline-runtime-0.0.1.tgz`
-- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-examples-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
-- `@fireline/state`: `file:/tmp/fireline-examples-artifacts/fireline-state-0.0.1.tgz`
+- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/runtime`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
 
-These are local tarball refs produced from Fireline packages at Fireline main
-`bdb1ad02`, after #242 stream-native stop and #245 launch row normalization
-landed. They are package-shaped, but they are not registry-published refs.
-
-The direct platform package ref is included because the local tarball install
-did not materialize the meta package's optional platform dependency reliably.
-This is discovery artifact friction, not intended public app configuration.
+These are immutable git artifact refs from the pre-npm package artifact
+channel. They are package-shaped and reviewer-installable without local
+tarball staging. They are not registry-published refs and do not freeze public
+npm package names.
 
 ## Fireline Imports
 
@@ -67,15 +63,13 @@ stream and observes `@fireline/state` `collections.launches`.
   - `initOpenNextCloudflareForDev`
   - `defineCloudflareConfig`
 
-## Runtime-Required Internal Resolution
+## Retired Internal Resolution
 
-- `@fireline/client/internal/js-module-runner`
-
-The example does not import this from application code and the smoke does not
-set `FIRELINE_JS_MODULE_RUNNER_IMPORT`. `@fireline/runtime` still resolves this
-internal subpath from installed packages when launching inline JS module agents.
-This remains a friction point because a runtime package path depends on a
-private client subpath, even though external app code does not touch it.
+Before Fireline PR #300 / `mono-oet.29.25.4`, runtime inline JS launches
+resolved a private client subpath for the JS module runner. That dependency is
+retired. Current examples do not import or configure any Fireline internal
+subpath, and the surface checker treats private Fireline subpaths as
+violations.
 
 ## Commands And Binaries
 
@@ -84,6 +78,7 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run typecheck`
 - `pnpm run check:surface`
 - `pnpm run smoke:inline-js-local`
+- `pnpm run smoke:server-wrapper`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
 - `pnpm run build:tanstack-shaped`
@@ -94,6 +89,7 @@ private client subpath, even though external app code does not touch it.
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
+- `tsx examples/07-server-worker-wrapper/src/run.ts`
 - `vite` through the Vite example scripts
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
@@ -138,6 +134,19 @@ private client subpath, even though external app code does not touch it.
   `fireline.launch_request` and `fireline.launch_stop` envelopes.
 - `FLAMECAST_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt for
   `examples/06-flamecast-v3-shaped`.
+- `APP_AUTH_TOKEN`: example-only server/Worker bearer token expected by
+  `examples/07-server-worker-wrapper`. Defaults to `server-wrapper-demo-token`.
+- `APP_TENANT_ID`: example-only tenant coordinate. The server wrapper verifies
+  it matches the authenticated actor before appending to Fireline.
+- `APP_USER_ID`: example-only authenticated actor coordinate.
+- `APP_DOCUMENT_ID`: example-only product document coordinate used in stable
+  `clientRequestId` and launch labels.
+- `APP_RUN_ID`: example-only product run coordinate. Reuse it for retries of
+  the same run.
+- `APP_ATTEMPT_ID`: example-only product attempt coordinate. Reuse it for
+  retries of the same attempt; change it for a new attempt.
+- `APP_TITLE`: optional example-only title for the server wrapper launch.
+- `APP_PROMPT`: optional example-only initial prompt for the generated agent.
 
 ## Endpoints
 
@@ -210,6 +219,23 @@ client/server boundaries, and build constraints.
   observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
 
+`examples/07-server-worker-wrapper` exercises a server/Worker boundary:
+
+- `src/framework-boundary.ts` has no Fireline imports and owns app-facing auth,
+  actor, tenant, and launch intent types.
+- `src/server-worker-wrapper.ts` is the Fireline boundary. It validates a
+  bearer token, checks tenant/scope policy, derives a stable
+  `clientRequestId` / idempotency key, appends `fireline.launch_request`,
+  observes `@fireline/state` `collections.launches`, appends
+  `fireline.launch_stop`, and returns an app-facing summary.
+- `src/generated-worker-agent.ts` creates a generated multi-file inline bundle
+  with `worker-entry.mjs` and `tenant-policy.mjs`.
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`.
+
 ## Stream-Native Checkpoint
 
 After Fireline #228, #231, #233, #237, #242, and #245, examples 01-06 use the
@@ -223,9 +249,10 @@ stream-native path:
 - Append `fireline.launch_stop` with `appendLaunchStop` and observe the
   materialized launch row reach `stopped`.
 
-`examples/06-flamecast-v3-shaped` uses the same stream-native path with a
-larger generated harness shape. It is characterization evidence for product
-consumer boundaries, not a promise that `@fireline/client/spec` names are frozen.
+`examples/06-flamecast-v3-shaped` and `examples/07-server-worker-wrapper` use
+the same stream-native path with larger generated harness shapes. They are
+characterization evidence for product consumer boundaries, not a promise that
+`@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 

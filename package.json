@@ -18,13 +18,13 @@
     "dev:tanstack-shaped": "vite --config examples/03-tanstack-shaped-app/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "smoke:inline-js-local": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-examples-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; export FIRELINE_LAUNCH_CONTROL_STREAM_URL=${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-http://127.0.0.1:${STREAMS_PORT}/v1/stream/${CONTROL_STREAM}}; fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/01-inline-js-local/run.ts'",
-    "smoke:flamecast-shaped": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-flamecast-shaped-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/06-flamecast-v3-shaped/src/run.ts'"
+    "smoke:flamecast-shaped": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-flamecast-shaped-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/06-flamecast-v3-shaped/src/run.ts'",
+    "smoke:server-wrapper": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-server-wrapper-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/07-server-worker-wrapper/src/run.ts'"
   },
   "dependencies": {
-    "@fireline/client": "file:/tmp/fireline-examples-artifacts/fireline-client-0.0.1.tgz",
-    "@fireline/runtime": "file:/tmp/fireline-examples-artifacts/fireline-runtime-0.0.1.tgz",
-    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-examples-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
-    "@fireline/state": "file:/tmp/fireline-examples-artifacts/fireline-state-0.0.1.tgz"
+    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/runtime": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.1",
