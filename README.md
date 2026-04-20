@@ -47,7 +47,7 @@ Current checkpoint:
   Durable Streams HTTP consumers. They do not import Fireline packages or
   crates; they build `fireline.launch_request` / `fireline.launch_stop`
   envelopes and observe first-class `fireline.launch` rows over plain HTTP.
-- `examples/07-server-worker-wrapper` is a server/Worker boundary pattern. The
+- `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
   tenant checks, idempotency, launch/stop append, and launch observation.
 
@@ -248,5 +248,5 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     APP_RUN_ID="server-wrapper-run-001" \
     APP_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
-      "$FIRELINE_EXAMPLES_ROOT/examples/07-server-worker-wrapper/src/run.ts"
+      "$FIRELINE_EXAMPLES_ROOT/examples/11-server-worker-wrapper/src/run.ts"
 ```

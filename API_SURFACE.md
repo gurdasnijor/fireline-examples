@@ -95,7 +95,7 @@ violations.
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `sh examples/07-curl-shell-raw-http/run.sh`
-- `tsx examples/07-server-worker-wrapper/src/run.ts`
+- `tsx examples/11-server-worker-wrapper/src/run.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
@@ -174,7 +174,7 @@ violations.
 - `FLAMECAST_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt for
   `examples/06-flamecast-v3-shaped`.
 - `APP_AUTH_TOKEN`: example-only server/Worker bearer token expected by
-  `examples/07-server-worker-wrapper`. Defaults to `server-wrapper-demo-token`.
+  `examples/11-server-worker-wrapper`. Defaults to `server-wrapper-demo-token`.
 - `APP_TENANT_ID`: example-only tenant coordinate. The server wrapper verifies
   it matches the authenticated actor before appending to Fireline.
 - `APP_USER_ID`: example-only authenticated actor coordinate.
@@ -281,7 +281,7 @@ consumer shape:
 - The Worker deliberately avoids Next.js, OpenNext, Node-only Fireline
   imports, `/v1/launches`, and `@fireline/client/launch-control`.
 
-`examples/07-server-worker-wrapper` exercises a server/Worker boundary:
+`examples/11-server-worker-wrapper` exercises a server/Worker boundary:
 
 - `src/framework-boundary.ts` has no Fireline imports and owns app-facing auth,
   actor, tenant, and launch intent types.
@@ -322,7 +322,7 @@ stream-native path:
 - Append `fireline.launch_stop` with `appendLaunchStop` and observe the
   materialized launch row reach `stopped`.
 
-`examples/06-flamecast-v3-shaped` and `examples/07-server-worker-wrapper` use
+`examples/06-flamecast-v3-shaped` and `examples/11-server-worker-wrapper` use
 the same stream-native path with larger generated harness shapes. They are
 characterization evidence for product consumer boundaries, not a promise that
 `@fireline/client/spec` names are frozen.

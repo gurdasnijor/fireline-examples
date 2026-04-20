@@ -135,7 +135,7 @@ a Fireline bead or be closed as an intentional boundary.
    may need a Worker/server pattern for auth, idempotency, tenant policy, and
    secret handling around stream append.
 
-   `examples/07-server-worker-wrapper` now demonstrates the consumer-authored
+   `examples/11-server-worker-wrapper` now demonstrates the consumer-authored
    pattern without changing Fireline: the server/Worker boundary validates a
    bearer token, checks tenant/scope policy, creates the stable idempotency
    key, appends launch/stop events, observes `collections.launches`, and
@@ -210,7 +210,7 @@ a Fireline bead or be closed as an intentional boundary.
 
 21. Server/Worker wrapper is a pattern, not a hidden Fireline abstraction.
 
-   `examples/07-server-worker-wrapper` validates the desired placement for
+   `examples/11-server-worker-wrapper` validates the desired placement for
    auth, tenant policy, idempotency, launch append, launch observation, and
    stop append. It still uses low-level Fireline primitives inside the wrapper:
    `agentDefinition`, `launchSpec`, `newSessionRequest`, `appendLaunchRequest`,
