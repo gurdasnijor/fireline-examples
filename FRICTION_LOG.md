@@ -279,6 +279,24 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed warnings can appear after the example has already returned
    `ok: true`, `session_ready`, and `stopped`.
 
+26. Vercel Edge Runtime can use Worker-safe package subpaths, but still needs bundling and low-level stream composition.
+
+   `examples/13-vercel-edge-runtime` validates an Edge handler that avoids Node
+   built-ins and root `@fireline/client`, then runs locally in
+   `@edge-runtime/vm`. The handler uses documented package subpaths:
+   `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`.
+
+   This is useful for Vercel Edge-style handlers and other Web Runtime
+   consumers, but it still requires the app to derive the launch/control stream
+   URL, bundle the handler for the Edge runtime, choose a stable
+   `clientRequestId`, observe `collections.launches`, and append stop. It is
+   still discovery evidence, not a stable high-level SDK.
+
+   Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
+   still print the same ACP websocket reset/closed teardown warnings seen in
+   other inline JS module examples; TL1 tracks that separately under
+   `mono-oet.29.3.24`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git

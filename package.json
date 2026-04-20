@@ -12,6 +12,7 @@
     "build:next-open-cloudflare": "next build examples/05-next-open-cloudflare",
     "build:opennext-cloudflare": "cd examples/05-next-open-cloudflare && opennextjs-cloudflare build --skipWranglerConfigCheck --dangerouslyUseUnsupportedNextVersion",
     "build:tanstack-shaped": "vite build --config examples/03-tanstack-shaped-app/vite.config.ts",
+    "build:vercel-edge-runtime": "vite build --config examples/13-vercel-edge-runtime/vite.config.ts",
     "dev:cloudflare-worker-direct": "pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml",
     "dev:editable-agent-web": "node scripts/dev-editable-agent-web.mjs",
     "dev:next-basic": "next dev examples/04-next-basic -p 5174",
@@ -25,7 +26,8 @@
     "smoke:python-raw-http": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-python-raw-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- python3 examples/09-python-raw-http/run.py'",
     "smoke:rust-raw-http": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-rust-raw-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-/tmp/fireline-mono-oet-29-3-9-target} FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- cargo run --quiet --manifest-path examples/10-rust-raw-http/Cargo.toml'",
     "smoke:server-wrapper": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-server-wrapper-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/11-server-worker-wrapper/src/run.ts'",
-    "smoke:vercel-function-node": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-vercel-function-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/12-vercel-function-node/src/run-local.ts'"
+    "smoke:vercel-function-node": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-vercel-function-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/12-vercel-function-node/src/run-local.ts'",
+    "smoke:vercel-edge-runtime": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-vercel-edge-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- sh -c \"pnpm run build:vercel-edge-runtime >/dev/null && tsx examples/13-vercel-edge-runtime/src/run-local.ts\"'"
   },
   "dependencies": {
     "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
@@ -33,6 +35,7 @@
     "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
     "@opennextjs/cloudflare": "1.19.1",
     "@tanstack/react-query": "5.99.2",
     "@tanstack/react-router": "1.168.23",

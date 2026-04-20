@@ -63,6 +63,10 @@ Current checkpoint:
   It uses the root `@fireline/client` package surface inside a Node function,
   appends launch/stop through durable streams, and observes launch rows with
   `fireline.db(...)`.
+- `examples/13-vercel-edge-runtime` is a Vercel Edge Runtime shape. It bundles
+  an Edge handler that uses Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths, then runs
+  locally in `@edge-runtime/vm`.
 
 Setup:
 
@@ -204,6 +208,7 @@ pnpm run build:tanstack-shaped
 pnpm run build:next-basic
 pnpm run build:next-open-cloudflare
 pnpm run build:opennext-cloudflare
+pnpm run build:vercel-edge-runtime
 ```
 
 The OpenNext/Cloudflare build uses the local adapter shape only. It is not a
@@ -230,6 +235,28 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
       "$FIRELINE_EXAMPLES_ROOT/examples/12-vercel-function-node/src/run-local.ts"
+```
+
+Run the Vercel Edge Runtime shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-11-state
+export FIRELINE_PORT=4614
+export FIRELINE_STREAMS_PORT=7714
+export FIRELINE_CONTROL_STREAM=fireline-vercel-edge-control
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    VERCEL_EDGE_RUN_ID="vercel-edge-run-001" \
+    VERCEL_EDGE_ATTEMPT_ID="attempt-1" \
+    sh -c 'pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run build:vercel-edge-runtime >/dev/null && pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx "$FIRELINE_EXAMPLES_ROOT/examples/13-vercel-edge-runtime/src/run-local.ts"'
 ```
 
 Run the Flamecast-shaped characterization from scratch state:

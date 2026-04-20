@@ -67,6 +67,8 @@ root `fireline.db(...)` wrapper.
 - `@opennextjs/cloudflare`
   - `initOpenNextCloudflareForDev`
   - `defineCloudflareConfig`
+- `@edge-runtime/vm`
+  - `EdgeVM`
 
 ## Retired Internal Resolution
 
@@ -93,7 +95,9 @@ violations.
 - `pnpm run build:next-basic`
 - `pnpm run build:next-open-cloudflare`
 - `pnpm run build:opennext-cloudflare`
+- `pnpm run build:vercel-edge-runtime`
 - `pnpm run smoke:flamecast-shaped`
+- `pnpm run smoke:vercel-edge-runtime`
 - `pnpm run dev:cloudflare-worker-direct`
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml`
@@ -102,6 +106,7 @@ violations.
 - `sh examples/07-curl-shell-raw-http/run.sh`
 - `tsx examples/11-server-worker-wrapper/src/run.ts`
 - `tsx examples/12-vercel-function-node/src/run-local.ts`
+- `tsx examples/13-vercel-edge-runtime/src/run-local.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
@@ -135,12 +140,13 @@ violations.
   the launch/control stream URL when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Examples 06 and 08 append `/<FIRELINE_CONTROL_STREAM>` to
-  this base when the exact launch/control stream URL is not provided.
+  in `/v1/stream`. Examples 06, 08, and 11-13 append
+  `/<FIRELINE_CONTROL_STREAM>` to this base when the exact launch/control
+  stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Examples 06 and 08 also use it to derive the launch/control stream URL
-  when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
+  URL. Examples 06, 08, and 11-13 also use it to derive the launch/control
+  stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
 - `FIRELINE_STREAMS_PORT`: set in scratch smoke recipes to avoid reusing
@@ -201,6 +207,15 @@ violations.
   attempt.
 - `VERCEL_FUNCTION_PROMPT`: optional example-only initial prompt for the
   Vercel Function Node launch.
+- `VERCEL_EDGE_TENANT_ID`: example-only Vercel Edge Runtime tenant
+  coordinate.
+- `VERCEL_EDGE_RUN_ID`: example-only Vercel Edge Runtime run coordinate. Reuse
+  it for retries of the same run.
+- `VERCEL_EDGE_ATTEMPT_ID`: example-only Vercel Edge Runtime attempt
+  coordinate. Reuse it for retries of the same attempt; change it for a new
+  attempt.
+- `VERCEL_EDGE_PROMPT`: optional example-only initial prompt for the Vercel
+  Edge Runtime launch.
 
 ## Endpoints
 
@@ -330,6 +345,22 @@ shape:
   `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
   `FIRELINE_CONTROL_STREAM`.
 
+`examples/13-vercel-edge-runtime` exercises a Vercel Edge Runtime shape:
+
+- `src/edge.ts` is an Edge handler with `config.runtime = "edge"` and no Node
+  built-in imports.
+- The handler imports Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths directly.
+- `src/run-local.ts` loads the bundled handler into `@edge-runtime/vm` and
+  dispatches one `POST /api/fireline-launch` request for E2E validation.
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`.
+- The example deliberately avoids root `@fireline/client`, Node built-ins,
+  `/v1/launches`, and `@fireline/client/launch-control` in the Edge handler.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -354,11 +385,11 @@ stream-native path:
 - Append `fireline.launch_stop` with `appendLaunchStop` and observe the
   materialized launch row reach `stopped`.
 
-`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`, and
-`examples/12-vercel-function-node` use the same stream-native path with larger
-generated harness shapes. They are characterization evidence for product
-consumer boundaries, not a promise that `@fireline/client/spec` names are
-frozen.
+`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
+`examples/12-vercel-function-node`, and `examples/13-vercel-edge-runtime` use
+the same stream-native path with larger generated harness or serverless shapes.
+They are characterization evidence for product consumer boundaries, not a
+promise that `@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 

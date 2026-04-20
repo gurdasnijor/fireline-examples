@@ -31,12 +31,15 @@ for await (const file of walk(root)) {
     if (specifier.includes('flamecast-v3')) {
       violations.push(`${relative}: must not import real flamecast-v3 modules`)
     }
-    if (relative.startsWith('examples/08-cloudflare-worker-direct/')) {
+    if (
+      relative.startsWith('examples/08-cloudflare-worker-direct/') ||
+      relative === 'examples/13-vercel-edge-runtime/src/edge.ts'
+    ) {
       if (isNodeBuiltinSpecifier(specifier)) {
-        violations.push(`${relative}: direct Worker example must not import Node builtin ${specifier}`)
+        violations.push(`${relative}: Worker/Edge handler must not import Node builtin ${specifier}`)
       }
       if (specifier === 'next' || specifier.includes('@opennextjs/')) {
-        violations.push(`${relative}: direct Worker example must not import Next/OpenNext`)
+        violations.push(`${relative}: Worker/Edge handler must not import Next/OpenNext`)
       }
     }
   }
