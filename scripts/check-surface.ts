@@ -33,7 +33,8 @@ for await (const file of walk(root)) {
     }
     if (
       relative.startsWith('examples/08-cloudflare-worker-direct/') ||
-      relative === 'examples/13-vercel-edge-runtime/src/edge.ts'
+      relative === 'examples/13-vercel-edge-runtime/src/edge.ts' ||
+      relative === 'examples/16-deno/main.ts'
     ) {
       if (isNodeBuiltinSpecifier(specifier)) {
         violations.push(`${relative}: Worker/Edge handler must not import Node builtin ${specifier}`)

@@ -331,6 +331,19 @@ a Fireline bead or be closed as an intentional boundary.
    websocket reset/closed teardown warning; the Go example did not patch around
    it.
 
+29. Deno can consume package-shaped Fireline subpaths, but Node compatibility needs explicit permissions.
+
+   `examples/16-deno` validates Deno 2.x resolving documented package subpaths:
+   `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`.
+   Fresh-daemon and prior-daemon reuse E2E both passed with Deno running through
+   `--node-modules-dir=manual`.
+
+   The main Deno-specific friction is permission/configuration shape:
+   `--allow-net=127.0.0.1` is required for the local streams server, and
+   `--allow-env` must include the Fireline example variables plus `NODE_ENV`
+   because transitive Node-compat checks in the package stack read it. This is
+   acceptable discovery evidence, not a polished Deno SDK experience.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git

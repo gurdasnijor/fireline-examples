@@ -90,6 +90,8 @@ violations.
 - `pnpm run smoke:python-raw-http`
 - `pnpm run smoke:rust-raw-http`
 - `pnpm run smoke:go-raw-http`
+- `pnpm run check:deno`
+- `pnpm run smoke:deno`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
 - `pnpm run build:tanstack-shaped`
@@ -110,6 +112,7 @@ violations.
 - `tsx examples/12-vercel-function-node/src/run-local.ts`
 - `tsx examples/13-vercel-edge-runtime/src/run-local.ts`
 - `bun examples/14-bun/src/run.ts`
+- `deno run --node-modules-dir=manual examples/16-deno/main.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `go run examples/15-go-raw-http/main.go`
@@ -123,6 +126,7 @@ violations.
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
 - `bun`
+- `deno`
 
 ## Environment Variables
 
@@ -145,12 +149,12 @@ violations.
   the launch/control stream URL when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Examples 06, 08, and 11-14 append
+  in `/v1/stream`. Examples 06, 08, 11-14, and 16 append
   `/<FIRELINE_CONTROL_STREAM>` to this base when the exact launch/control
   stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Examples 06, 08, and 11-14 also use it to derive the launch/control
+  URL. Examples 06, 08, 11-14, and 16 also use it to derive the launch/control
   stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
@@ -173,6 +177,8 @@ violations.
 - `FIRELINE_GO_RAW_*`: example-only run, launch, client-request,
   state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
   overrides for `examples/15-go-raw-http`.
+- `DENO_EXAMPLE_*`: example-only tenant, run, attempt, and prompt overrides
+  for `examples/16-deno`.
 - `CARGO_TARGET_DIR`: reviewer-recipe scratch target directory for
   `examples/10-rust-raw-http`, set under `/tmp` so Cargo output does not land
   in the repo.
@@ -390,6 +396,19 @@ shape:
   `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
   `FIRELINE_CONTROL_STREAM`.
 
+`examples/16-deno` exercises a Deno package-consumer shape:
+
+- `main.ts` imports documented `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths.
+- It runs with Deno's Node/npm compatibility using `--node-modules-dir=manual`.
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`.
+- The Deno command requires `--allow-net=127.0.0.1` and an explicit
+  `--allow-env` list including Fireline example env vars and `NODE_ENV`.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -421,9 +440,9 @@ stream-native path:
   materialized launch row reach `stopped`.
 
 `examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
-`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`, and
-`examples/14-bun` use the same stream-native path with larger generated harness
-or runtime-specific shapes. They are characterization evidence for product
+`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
+`examples/14-bun`, and `examples/16-deno` use the same stream-native path with
+larger generated harness or runtime-specific shapes. They are characterization evidence for product
 consumer boundaries, not a promise that `@fireline/client/spec` names are
 frozen.
 

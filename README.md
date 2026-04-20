@@ -71,6 +71,9 @@ Current checkpoint:
 - `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
   `@fireline/client` package surface, appends launch/stop through durable
   streams, and observes launch rows with `fireline.db(...)`.
+- `examples/16-deno` is a Deno package-consumer shape. It uses documented
+  `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`
+  package subpaths through Deno's Node/npm compatibility layer.
 
 Setup:
 
@@ -306,6 +309,32 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_EXAMPLE_OUTPUT_ROOT" \
     go run "$FIRELINE_EXAMPLES_ROOT/examples/15-go-raw-http/main.go"
+```
+
+Run the Deno package-consumer shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-14-state
+export FIRELINE_PORT=4616
+export FIRELINE_STREAMS_PORT=7716
+export FIRELINE_CONTROL_STREAM=fireline-deno-control
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    DENO_EXAMPLE_RUN_ID="deno-run-001" \
+    DENO_EXAMPLE_ATTEMPT_ID="attempt-1" \
+    pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec deno run \
+      --node-modules-dir=manual \
+      --allow-net=127.0.0.1 \
+      --allow-env=FIRELINE_LAUNCH_CONTROL_STREAM_URL,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
+      "$FIRELINE_EXAMPLES_ROOT/examples/16-deno/main.ts"
 ```
 
 Run the Flamecast-shaped characterization from scratch state:
