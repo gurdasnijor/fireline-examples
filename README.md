@@ -14,6 +14,15 @@ Rules for this repo:
 - Keep examples deliberately small until the consumption interface is stable.
 - File Fireline code changes as separate beads; do not patch Fireline here.
 
+Integration policy:
+
+- `main` is the reviewer and PO testing base. Once an examples bead is accepted,
+  integrate it into `main` rather than leaving it only on a per-bead branch.
+- Per-bead branches and worktrees are scratch space for implementation and
+  evidence collection. They are not the durable handoff surface.
+- Keep runnable examples on package-shaped Fireline refs. Do not switch this
+  repo to Fireline source-tree imports to make local development easier.
+
 Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
