@@ -23,8 +23,9 @@ This is discovery artifact friction, not intended public app configuration.
 - `@fireline/client/spec`
   - `inlineBundleArtifact`
   - `jsModuleAgentForm`
-  - `conductorSpec`
-  - `createLaunchRequest`
+  - `agentDefinition`
+  - `launchSpec`
+  - `newSessionRequest`
   - `textPrompt`
 - `@fireline/client/events`
   - `appendLaunchRequest`
@@ -104,13 +105,16 @@ private client subpath, even though external app code does not touch it.
 ## Environment Variables
 
 - `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: read by examples 01-03 and passed into
-  the Next-shaped examples as `controlStreamUrl`. This is the app-facing full
-  durable launch/control stream append target.
+  the Next-shaped examples as `controlStreamUrl`. Example 06 accepts it as the
+  highest-precedence exact launch/control stream append target.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
   examples 02-03.
+- `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams base URL used by
+  example 06 when the exact launch/control stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. It is not app configuration.
+  URL. Example 06 also uses it to derive the launch/control stream URL when
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
 - `FIRELINE_STREAMS_PORT`: set in scratch smoke recipes to avoid reusing
@@ -122,6 +126,10 @@ private client subpath, even though external app code does not touch it.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
 - `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
   through the Flamecast-shaped adapter into the generated runtime shim.
+- `FLAMECAST_RUN_ID`: example-only product run coordinate. Reuse it for retries
+  of the same run.
+- `FLAMECAST_ATTEMPT_ID`: example-only product attempt coordinate. Reuse it for
+  retries of the same attempt; change it for a new attempt.
 - `FLAMECAST_TITLE`: optional example-only composition title.
 - `FLAMECAST_SCENE_COUNT`: optional example-only scene count.
 - `FLAMECAST_TONE`: optional `brief` or `detailed` example-only tone.
@@ -179,16 +187,23 @@ client/server boundaries, and build constraints.
 
 - `src/framework-boundary.ts` has no Fireline imports and owns product intent
   and summary types.
-- `src/fireline-adapter.ts` is the Fireline boundary. It imports
-  `@fireline/client/spec`, `@fireline/client/acp-browser`, and
-  `@fireline/state` types, and uses the shared stream helper that appends
-  launch/stop events and observes `collections.launches`.
+- `src/fireline-adapter.ts` is the Fireline boundary. It teaches the current
+  `@fireline/client/spec` vocabulary: `agentDefinition(...)`,
+  `launchSpec(...)`, and `newSessionRequest(...)`. It also imports
+  `@fireline/client/acp-browser` and `@fireline/state` types, and uses the
+  shared stream helper that appends launch/stop events and observes
+  `collections.launches`.
 - `src/generated-harness.ts` produces a multi-file inline bundle with
   `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
-- The runnable smoke appends `fireline.launch_request`, observes the launch row,
-  attaches to `LaunchRow.runtime.acp.url`, sends one follow-up prompt to
-  `LaunchRow.startSession.acpSessionId`, appends `fireline.launch_stop`, and
+- The runnable smoke derives the launch/control stream URL from
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`, `FIRELINE_DURABLE_STREAMS_URL`, or
+  `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`; builds a stable
+  `clientRequestId` / `idempotencyKey` from `FLAMECAST_WORKSPACE_ID`,
+  `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; appends
+  `fireline.launch_request`; observes the launch row; attaches to
+  `LaunchRow.runtime.acp.url`; sends one follow-up prompt to
+  `LaunchRow.startSession.acpSessionId`; appends `fireline.launch_stop`; and
   observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
 

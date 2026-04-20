@@ -142,8 +142,8 @@ a Fireline bead or be closed as an intentional boundary.
    generated multi-file harness bundle, Fireline adapter, stream append,
    launch-row observation, ACP follow-up, and stream-native stop. The shape is
    useful as characterization evidence, but it still requires product code to
-   know about `conductorSpec`, `jsModuleAgentForm`, `inlineBundleArtifact`,
-   `createLaunchRequest`, `appendLaunchRequest`, `collections.launches`,
+   know about `agentDefinition`, `jsModuleAgentForm`, `inlineBundleArtifact`,
+   `launchSpec`, `newSessionRequest`, `appendLaunchRequest`, `collections.launches`,
    `connectBrowserAcp`, and `appendLaunchStop`.
 
    This should not become canonical public sample code before the managed-agent

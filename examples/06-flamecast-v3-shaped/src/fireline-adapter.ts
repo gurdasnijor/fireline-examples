@@ -1,9 +1,10 @@
 import { connectBrowserAcp } from '@fireline/client/acp-browser'
 import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch.js'
 import {
-  conductorSpec,
-  createLaunchRequest,
+  agentDefinition,
   jsModuleAgentForm,
+  launchSpec,
+  newSessionRequest,
   textPrompt,
 } from '@fireline/client/spec'
 import type { LaunchRow } from '@fireline/state'
@@ -13,14 +14,14 @@ import { createGeneratedHarnessBundle } from './generated-harness.js'
 export async function runFlamecastCharacterization(
   intent: FlamecastRunIntent,
 ): Promise<FlamecastRunSummary> {
-  const clientRequestId = `flamecast-shaped-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  const clientRequestId = stableClientRequestId(intent)
   const launch = await appendAndObserveLaunch({
     controlStreamUrl: intent.controlStreamUrl,
     idempotencyKey: clientRequestId,
     requestedBy: intent.requestedBy,
     timeoutMs: 60_000,
-    request: createLaunchRequest(
-      await createConductor(intent, clientRequestId),
+    request: launchSpec(
+      await createDefinition(intent, clientRequestId),
       {
         clientRequestId,
         runtime: {
@@ -33,12 +34,12 @@ export async function runFlamecastCharacterization(
           },
         },
         startSession: {
-          stateStream: clientRequestId,
+          stateStream: sessionStateStream(intent),
           create: true,
-          newSession: {
+          newSession: newSessionRequest({
             cwd: '/',
             mcpServers: [],
-          },
+          }),
           prompt: textPrompt('prepare flamecast composition runtime'),
         },
         wait: {
@@ -104,12 +105,12 @@ export async function runFlamecastCharacterization(
   }
 }
 
-async function createConductor(intent: FlamecastRunIntent, clientRequestId: string) {
+async function createDefinition(intent: FlamecastRunIntent, clientRequestId: string) {
   const artifact = await createGeneratedHarnessBundle({
     revision: clientRequestId,
     composition: intent.composition,
   })
-  return conductorSpec({
+  return agentDefinition({
     name: 'flamecast-v3-shaped',
     agent: jsModuleAgentForm({ artifact }),
     sandbox: {
@@ -131,6 +132,31 @@ async function createConductor(intent: FlamecastRunIntent, clientRequestId: stri
       chain: [],
     },
   })
+}
+
+function stableClientRequestId(intent: FlamecastRunIntent): string {
+  return [
+    'launch',
+    'flamecast-shaped',
+    safeIdPart(intent.workspaceId),
+    safeIdPart(intent.runId),
+    safeIdPart(intent.attemptId),
+  ].join(':')
+}
+
+function sessionStateStream(intent: FlamecastRunIntent): string {
+  return [
+    'flamecast-shaped',
+    safeIdPart(intent.workspaceId),
+    safeIdPart(intent.runId),
+    safeIdPart(intent.attemptId),
+    'session',
+  ].join('-')
+}
+
+function safeIdPart(value: string): string {
+  const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
+  return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
 }
 
 async function attachAndMaybePrompt(options: {

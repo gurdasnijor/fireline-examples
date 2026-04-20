@@ -1,10 +1,11 @@
 import {
-  conductorSpec,
-  createLaunchRequest,
+  agentDefinition,
   inlineBundleArtifact,
   jsModuleAgentForm,
+  launchSpec,
+  newSessionRequest,
   textPrompt,
-  type LaunchConductorSpec,
+  type AgentDefinition,
   type MiddlewareChain,
   type SandboxSpec,
 } from '@fireline/client/spec'
@@ -38,7 +39,7 @@ export interface EditableLaunchResult {
 export async function createEditableLaunch(options: EditableLaunchOptions): Promise<EditableLaunchResult> {
   const clientRequestId = `editable-agent-web-${Date.now()}-${Math.random().toString(16).slice(2)}`
   const spec = await editableSpec(options, clientRequestId)
-  const request = createLaunchRequest(spec, {
+  const request = launchSpec(spec, {
     clientRequestId,
     runtime: {
       name: 'editable-agent-web',
@@ -51,10 +52,10 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     startSession: {
       stateStream: clientRequestId,
       create: true,
-      newSession: {
+      newSession: newSessionRequest({
         cwd: '/',
         mcpServers: [],
-      },
+      }),
       prompt: textPrompt(options.initialPrompt),
     },
     wait: {
@@ -91,7 +92,7 @@ export async function stopEditableLaunch(options: {
 async function editableSpec(
   options: EditableLaunchOptions,
   clientRequestId: string,
-): Promise<LaunchConductorSpec<'editable-agent-web'>> {
+): Promise<AgentDefinition<'editable-agent-web'>> {
   const artifact = await inlineBundleArtifact({
     entrypoint: 'agent.mjs',
     files: [{
@@ -115,7 +116,7 @@ async function editableSpec(
       fsBackend: options.filesystemPlacement,
     },
   }
-  return conductorSpec({
+  return agentDefinition({
     name: 'editable-agent-web',
     agent: jsModuleAgentForm({ artifact }),
     sandbox,

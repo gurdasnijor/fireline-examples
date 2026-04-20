@@ -1,8 +1,9 @@
 import {
-  conductorSpec,
-  createLaunchRequest,
+  agentDefinition,
   inlineBundleArtifact,
   jsModuleAgentForm,
+  launchSpec,
+  newSessionRequest,
   textPrompt,
 } from '@fireline/client/spec'
 import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch'
@@ -31,7 +32,7 @@ export async function runInlineLaunch(options: {
       revision: clientRequestId,
     },
   })
-  const spec = conductorSpec({
+  const spec = agentDefinition({
     name: options.example,
     agent: jsModuleAgentForm({ artifact }),
     sandbox: {
@@ -43,7 +44,7 @@ export async function runInlineLaunch(options: {
       },
     },
   })
-  const request = createLaunchRequest(spec, {
+  const request = launchSpec(spec, {
     clientRequestId,
     runtime: {
       name: options.example,
@@ -52,10 +53,10 @@ export async function runInlineLaunch(options: {
     startSession: {
       create: true,
       stateStream: clientRequestId,
-      newSession: {
+      newSession: newSessionRequest({
         cwd: '/',
         mcpServers: [],
-      },
+      }),
       prompt: textPrompt(options.prompt),
     },
     wait: {

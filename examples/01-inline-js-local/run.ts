@@ -1,8 +1,9 @@
 import {
-  conductorSpec,
-  createLaunchRequest,
+  agentDefinition,
   inlineBundleArtifact,
   jsModuleAgentForm,
+  launchSpec,
+  newSessionRequest,
   textPrompt,
   type SandboxSpec,
 } from '@fireline/client/spec'
@@ -103,7 +104,7 @@ async function runCase(entry: MatrixCase) {
     },
   })
 
-  const spec = conductorSpec({
+  const spec = agentDefinition({
     name: `inline-js-local-${entry.name}`,
     agent: jsModuleAgentForm({ artifact }),
     sandbox: {
@@ -125,7 +126,7 @@ async function runCase(entry: MatrixCase) {
     },
   })
 
-  const request = createLaunchRequest(spec, {
+  const request = launchSpec(spec, {
     clientRequestId,
     runtime: {
       name: `inline-js-local-${entry.name}`,
@@ -138,10 +139,10 @@ async function runCase(entry: MatrixCase) {
     startSession: {
       stateStream,
       create: true,
-      newSession: {
+      newSession: newSessionRequest({
         cwd: process.cwd(),
         mcpServers: [],
-      },
+      }),
       prompt: textPrompt(`ping from external fireline-examples case ${entry.name}`),
     },
     wait: {

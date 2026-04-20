@@ -23,8 +23,9 @@ export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.3-state
 export FIRELINE_PORT=4486
 export FIRELINE_STREAMS_PORT=7586
 export FIRELINE_CONTROL_STREAM=fireline-flamecast-shaped-control
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
 export FLAMECAST_WORKSPACE_ID=workspace-characterization
+export FLAMECAST_RUN_ID=run-001
+export FLAMECAST_ATTEMPT_ID=attempt-1
 export FLAMECAST_FOLLOW_UP_PROMPT="complete the generated Flamecast harness run"
 mkdir -p "$FIRELINE_STATE_DIR"
 cd "$FIRELINE_STATE_DIR"
@@ -33,12 +34,25 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_LAUNCH_CONTROL_STREAM_URL="$FIRELINE_LAUNCH_CONTROL_STREAM_URL" \
+  env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     FLAMECAST_WORKSPACE_ID="$FLAMECAST_WORKSPACE_ID" \
+    FLAMECAST_RUN_ID="$FLAMECAST_RUN_ID" \
+    FLAMECAST_ATTEMPT_ID="$FLAMECAST_ATTEMPT_ID" \
     FLAMECAST_FOLLOW_UP_PROMPT="$FLAMECAST_FOLLOW_UP_PROMPT" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
       "$FIRELINE_EXAMPLES_ROOT/examples/06-flamecast-v3-shaped/src/run.ts"
 ```
+
+The adapter accepts `FIRELINE_LAUNCH_CONTROL_STREAM_URL` when the application
+already has the exact launch/control stream URL. Otherwise it derives the URL
+from `FIRELINE_DURABLE_STREAMS_URL` or from `FIRELINE_STREAMS_PORT` plus
+`FIRELINE_CONTROL_STREAM`.
+
+`FLAMECAST_RUN_ID` and `FLAMECAST_ATTEMPT_ID` are product coordinates. The
+example builds `clientRequestId` and `idempotencyKey` from them, so retries of
+the same attempt should reuse the same values. Start a new attempt by changing
+`FLAMECAST_ATTEMPT_ID`.
 
 Expected output is a JSON summary with launch id, runtime ACP URL, ACP session
 id, follow-up status, and stop status. The example does not call the legacy HTTP
