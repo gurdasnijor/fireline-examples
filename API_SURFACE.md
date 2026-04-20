@@ -220,6 +220,8 @@ consumer shape:
 - `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
   `FIRELINE_STREAMS_PORT` so the Worker derives a usable launch/control stream
   URL when `fireline-v3-dev` is running with the matching `--state-stream`.
+- Custom scratch ports or stream names must be passed with Wrangler `--var`
+  flags; shell environment variables alone do not override local `[vars]`.
 - `POST /launch` appends `fireline.launch_request` and reads
   `collections.launches`.
 - `POST /stop` appends `fireline.launch_stop` and reads the stopped launch row.

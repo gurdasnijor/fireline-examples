@@ -35,7 +35,20 @@ export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_P
 
 For custom ports or stream names, pass `FIRELINE_STREAMS_PORT`,
 `FIRELINE_CONTROL_STREAM`, `FIRELINE_DURABLE_STREAMS_URL`, or the exact
-`FIRELINE_LAUNCH_CONTROL_STREAM_URL` through Wrangler vars.
+`FIRELINE_LAUNCH_CONTROL_STREAM_URL` through Wrangler `--var` flags:
+
+```sh
+pnpm dlx wrangler@4.83.0 dev \
+  --config examples/08-cloudflare-worker-direct/wrangler.toml \
+  --port 8787 \
+  --var FIRELINE_STREAMS_PORT:8581 \
+  --var FIRELINE_CONTROL_STREAM:fireline-worker-direct-control \
+  --var FIRELINE_DURABLE_STREAMS_URL:http://127.0.0.1:8581/v1/stream \
+  --var FIRELINE_LAUNCH_CONTROL_STREAM_URL:http://127.0.0.1:8581/v1/stream/fireline-worker-direct-control
+```
+
+Shell environment variables alone do not override Wrangler `[vars]` in local
+dev.
 
 Exercise launch and stop in one request:
 
@@ -62,3 +75,13 @@ The Worker appends `fireline.launch_request`, reads
 reads the stopped launch row. It does not call the legacy launch HTTP route,
 import the old launch-control client subpath, or import Fireline source
 internals.
+
+Retroactive quality-bar evidence for `mono-oet.29.3.21.3`:
+
+- Fresh scratch daemon on `FIRELINE_PORT=5544` and `FIRELINE_STREAMS_PORT=8581`
+  plus Wrangler on `8787` returned a `POST /demo` launch
+  `28271295-98cf-4f19-9f2d-bfd388a20034`, session
+  `jsmod-bc841e4d-57bb-4a18-82b6-f9215a937323`, and stopped row.
+- Prior-daemon reuse with the same daemon still bound and a restarted Wrangler
+  on `8788` returned launch `3035b753-411a-4b54-a230-6e9bc0035cad`, session
+  `jsmod-37f20356-e4bd-4471-9732-976366d1defb`, and stopped row.

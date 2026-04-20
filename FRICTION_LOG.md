@@ -170,6 +170,15 @@ a Fireline bead or be closed as an intentional boundary.
    polling observation, and stop append sequence. This is useful discovery
    evidence, not a canonical Worker SDK shape.
 
+   `mono-oet.29.3.21.3` retro smoke passed both quality-bar scenarios:
+   fresh scratch daemon on `5544`/`8581` with Wrangler on `8787`, and
+   prior-daemon reuse with the same daemon still bound and Wrangler restarted on
+   `8788`. Both `POST /demo` calls returned launch rows with ACP session
+   coordinates and stopped rows. Non-happy-path note: Wrangler local dev used
+   `wrangler.toml` `[vars]` over shell environment variables, so scratch ports
+   needed explicit `--var FIRELINE_STREAMS_PORT:...` and
+   `--var FIRELINE_LAUNCH_CONTROL_STREAM_URL:...` flags.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -177,7 +186,7 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: local stream-native bootstrap still requires
   manual alignment between the configured control stream URL and the dev daemon
   stream watcher. The direct Worker example derives local defaults, but custom
-  deployment still needs explicit configuration.
+  Wrangler dev ports need explicit `--var` configuration.
 - Missing Fireline/public support: stream-native stop now works through
   `appendLaunchStop`, but app authors still need to compose stop append,
   observation, and ACP cleanup directly.

@@ -142,11 +142,20 @@ curl -sS -X POST http://127.0.0.1:8787/demo \
 
 The Worker derives the local launch/control stream URL from the default
 `FIRELINE_STREAMS_PORT` and `FIRELINE_CONTROL_STREAM`. For custom ports or
-stream names, use the same one-line derivation:
+stream names, pass explicit Wrangler vars:
 
 ```sh
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-worker-direct-control}"
+pnpm dlx wrangler@4.83.0 dev \
+  --config examples/08-cloudflare-worker-direct/wrangler.toml \
+  --port 8787 \
+  --var FIRELINE_STREAMS_PORT:8581 \
+  --var FIRELINE_CONTROL_STREAM:fireline-worker-direct-control \
+  --var FIRELINE_DURABLE_STREAMS_URL:http://127.0.0.1:8581/v1/stream \
+  --var FIRELINE_LAUNCH_CONTROL_STREAM_URL:http://127.0.0.1:8581/v1/stream/fireline-worker-direct-control
 ```
+
+Shell environment variables alone do not override Wrangler `[vars]`; use
+`--var` for scratch ports or non-default stream names.
 
 Run the Flamecast-shaped characterization from scratch state:
 
