@@ -43,7 +43,7 @@ This is discovery artifact friction, not intended public app configuration.
   - `connectBrowserAcp`
   - `BrowserAcpConnection`
 
-Examples 01-05 do not import Fireline root exports, `@fireline/client/launch-control`,
+Examples 01-06 do not import Fireline root exports, `@fireline/client/launch-control`,
 runtime internals, or private package source. The target launch path appends
 `fireline.launch_request` and `fireline.launch_stop` to the configured control
 stream and observes `@fireline/state` `collections.launches`.
@@ -89,8 +89,10 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run build:next-basic`
 - `pnpm run build:next-open-cloudflare`
 - `pnpm run build:opennext-cloudflare`
+- `pnpm run smoke:flamecast-shaped`
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `tsx examples/01-inline-js-local/run.ts`
+- `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `vite` through the Vite example scripts
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
@@ -118,6 +120,15 @@ private client subpath, even though external app code does not touch it.
   smoke recipe so generated output does not land under the repo.
 - `FIRELINE_STATE_DIR`: scratch-directory convention for this spike.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
+- `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
+  through the Flamecast-shaped adapter into the generated runtime shim.
+- `FLAMECAST_TITLE`: optional example-only composition title.
+- `FLAMECAST_SCENE_COUNT`: optional example-only scene count.
+- `FLAMECAST_TONE`: optional `brief` or `detailed` example-only tone.
+- `FLAMECAST_REQUESTED_BY`: optional `requestedBy` override for the
+  `fireline.launch_request` and `fireline.launch_stop` envelopes.
+- `FLAMECAST_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt for
+  `examples/06-flamecast-v3-shaped`.
 
 ## Endpoints
 
@@ -164,9 +175,26 @@ middleware options remain disabled.
 than the editable chat path. They exist to validate framework import graphs,
 client/server boundaries, and build constraints.
 
+`examples/06-flamecast-v3-shaped` exercises a black-box product-consumer shape:
+
+- `src/framework-boundary.ts` has no Fireline imports and owns product intent
+  and summary types.
+- `src/fireline-adapter.ts` is the Fireline boundary. It imports
+  `@fireline/client/spec`, `@fireline/client/acp-browser`, and
+  `@fireline/state` types, and uses the shared stream helper that appends
+  launch/stop events and observes `collections.launches`.
+- `src/generated-harness.ts` produces a multi-file inline bundle with
+  `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
+  `framework-boundary.mjs`.
+- The runnable smoke appends `fireline.launch_request`, observes the launch row,
+  attaches to `LaunchRow.runtime.acp.url`, sends one follow-up prompt to
+  `LaunchRow.startSession.acpSessionId`, appends `fireline.launch_stop`, and
+  observes the stopped row.
+- The example deliberately does not import real Flamecast v3 modules.
+
 ## Stream-Native Checkpoint
 
-After Fireline #228, #231, #233, #237, #242, and #245, examples 01-05 use the
+After Fireline #228, #231, #233, #237, #242, and #245, examples 01-06 use the
 stream-native path:
 
 - Build a `CreateLaunchRequest` with `@fireline/client/spec`.
@@ -176,6 +204,10 @@ stream-native path:
   `LaunchRow.runtime.acp.url` and `LaunchRow.startSession.acpSessionId` exist.
 - Append `fireline.launch_stop` with `appendLaunchStop` and observe the
   materialized launch row reach `stopped`.
+
+`examples/06-flamecast-v3-shaped` uses the same stream-native path with a
+larger generated harness shape. It is characterization evidence for product
+consumer boundaries, not a promise that `@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 

@@ -29,6 +29,11 @@ Current checkpoint:
   `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
   examples. They keep Fireline calls package-shaped and client-side while
   recording framework seams instead of canonizing product examples.
+- `examples/06-flamecast-v3-shaped` is a black-box product-consumer
+  characterization. It is not real Flamecast v3 code. It keeps a framework
+  boundary separate from the Fireline adapter, generates a multi-file inline
+  harness bundle, appends launch/stop through durable streams, observes
+  `collections.launches`, and attaches to ACP for a follow-up prompt.
 
 Setup:
 
@@ -108,3 +113,28 @@ pnpm run build:opennext-cloudflare
 
 The OpenNext/Cloudflare build uses the local adapter shape only. It is not a
 deployment recipe.
+
+Run the Flamecast-shaped characterization from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.3-state
+export FIRELINE_PORT=4486
+export FIRELINE_STREAMS_PORT=7586
+export FIRELINE_CONTROL_STREAM=fireline-flamecast-shaped-control
+export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
+export FLAMECAST_WORKSPACE_ID=workspace-characterization
+export FLAMECAST_FOLLOW_UP_PROMPT="complete the generated Flamecast harness run"
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_LAUNCH_CONTROL_STREAM_URL="$FIRELINE_LAUNCH_CONTROL_STREAM_URL" \
+    FLAMECAST_WORKSPACE_ID="$FLAMECAST_WORKSPACE_ID" \
+    FLAMECAST_FOLLOW_UP_PROMPT="$FLAMECAST_FOLLOW_UP_PROMPT" \
+    pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
+      "$FIRELINE_EXAMPLES_ROOT/examples/06-flamecast-v3-shaped/src/run.ts"
+```

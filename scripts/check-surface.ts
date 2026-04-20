@@ -31,6 +31,9 @@ for await (const file of walk(root)) {
     if (/packages\/[^'"\s]+\/src/.test(specifier)) {
       violations.push(`${relative}: must not import Fireline package src paths`)
     }
+    if (specifier.includes('flamecast-v3')) {
+      violations.push(`${relative}: must not import real flamecast-v3 modules`)
+    }
   }
   for (const specifier of firelineSpecifiers(text)) {
     if (specifier.includes('/internal/') && !allowedInternal.has(specifier)) {

@@ -136,6 +136,29 @@ a Fireline bead or be closed as an intentional boundary.
    `.open-next/` and `.wrangler/`, which are ignored. This is framework
    scaffolding roughness, not Fireline API surface.
 
+16. Flamecast-shaped consumers still assemble too many low-level pieces.
+
+   `examples/06-flamecast-v3-shaped` keeps a realistic framework boundary,
+   generated multi-file harness bundle, Fireline adapter, stream append,
+   launch-row observation, ACP follow-up, and stream-native stop. The shape is
+   useful as characterization evidence, but it still requires product code to
+   know about `conductorSpec`, `jsModuleAgentForm`, `inlineBundleArtifact`,
+   `createLaunchRequest`, `appendLaunchRequest`, `collections.launches`,
+   `connectBrowserAcp`, and `appendLaunchStop`.
+
+   This should not become canonical public sample code before the managed-agent
+   API freeze gates land. Follow-up bead candidate: a v3 product-consumer helper
+   or documented adapter recipe after `mono-oet.21.1.5` and related public
+   surface decisions are closed.
+
+17. ACP follow-up attachment is coordinate-heavy.
+
+   The Flamecast-shaped example must read `LaunchRow.runtime.acp.url` and
+   `LaunchRow.startSession.acpSessionId`, then call
+   `connectBrowserAcp(...).connection.prompt(...)`. That is a precise substrate
+   boundary, but a real product integration likely wants a typed session handle
+   or resume helper once public surface freeze permits it.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -152,6 +175,9 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: launching an editable inline agent and
   attaching a chat session crosses many low-level surfaces. This should not
   become a local examples helper before `mono-oet.29.14` lands.
+- Missing Fireline/public support: Flamecast-v3-shaped consumers need a stable
+  generated-harness adapter story. The current example proves the substrate
+  path without freezing package names or helper names.
 - Already fixed Fireline gap: direct local launch-control CORS was enabled by
   PR #220, but target examples now bypass `/v1/launches` entirely.
 - Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule
