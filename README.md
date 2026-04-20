@@ -34,6 +34,12 @@ Current checkpoint:
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, appends launch/stop through durable streams, observes
   `collections.launches`, and attaches to ACP for a follow-up prompt.
+- `examples/09-python-raw-http` is a Python stdlib raw HTTP consumer. It
+  appends `fireline.launch_request`, observes first-class `fireline.launch`
+  rows with raw `GET`, and appends `fireline.launch_stop`.
+- `examples/10-rust-raw-http` is a Rust raw HTTP consumer. It treats Fireline
+  as an external HTTP service through `reqwest` and `serde_json`; it imports no
+  Fireline Rust crates and does not call retired launch-control routes.
 
 Setup:
 

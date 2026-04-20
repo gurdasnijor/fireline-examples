@@ -188,6 +188,26 @@ a Fireline bead or be closed as an intentional boundary.
    reviewer commands. The runtime also logs ACP reset warnings during stop even
    though the durable launch row reaches `stopped`.
 
+20. Rust raw Durable Streams HTTP is possible without Fireline crates, but still
+    duplicates envelope machinery.
+
+   `examples/10-rust-raw-http` treats Fireline as an external HTTP service with
+   `reqwest` and `serde_json`: it appends `fireline.launch_request`, observes
+   first-class `fireline.launch` rows backing `collections.launches`, and
+   appends `fireline.launch_stop`. The example has to reimplement the same
+   inline JS bundle hashing, integrity, raw envelope shape, stream URL
+   derivation, and polling behavior as the Python raw HTTP example.
+
+   This is useful as T3 raw-surface evidence, but a normal Rust app should not
+   hand-author this much JSON once canonical fixtures, generated examples, or a
+   deliberately public Rust client story exist.
+
+   Runnable evidence also inherits the same local dev-wrapper behavior as the
+   Python raw HTTP example: reviewer commands must keep `CARGO_TARGET_DIR` under
+   `/tmp`, redirect daemon output to a log, and explicitly clean the selected
+   control stream/ports after the child command. The runtime logs ACP reset
+   warnings during stop even though the durable launch row reaches `stopped`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -211,6 +231,10 @@ a Fireline bead or be closed as an intentional boundary.
   JSON fixture or generated sample for the inline JS module artifact shape. The
   Python example carries a local builder so it can avoid `@fireline/client`, but
   that is intentionally discovery code rather than a public Python SDK.
+- Missing Fireline/public support: Rust raw HTTP consumers need the same
+  canonical JSON fixture or generated sample. The Rust example intentionally
+  avoids Fireline crates, so it carries local JSON construction and polling
+  logic rather than implying a public Rust SDK.
 - Missing Fireline/process support: local package artifacts used by examples
   need reproducible lockfile/install behavior. Current local tarball refreshes
   can require `--no-frozen-lockfile` and produce uncommittable `/tmp` artifact
