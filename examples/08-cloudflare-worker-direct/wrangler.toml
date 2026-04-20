@@ -1,0 +1,8 @@
+name = "fireline-examples-worker-direct"
+main = "src/worker.ts"
+compatibility_date = "2026-04-19"
+compatibility_flags = ["global_fetch_strictly_public"]
+
+[vars]
+FIRELINE_CONTROL_STREAM = "fireline-worker-direct-control"
+FIRELINE_STREAMS_PORT = "7474"

@@ -44,7 +44,7 @@ This is discovery artifact friction, not intended public app configuration.
   - `connectBrowserAcp`
   - `BrowserAcpConnection`
 
-Examples 01-06 do not import Fireline root exports, `@fireline/client/launch-control`,
+Examples 01-08 do not import Fireline root exports, `@fireline/client/launch-control`,
 runtime internals, or private package source. The target launch path appends
 `fireline.launch_request` and `fireline.launch_stop` to the configured control
 stream and observes `@fireline/state` `collections.launches`.
@@ -91,7 +91,9 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run build:next-open-cloudflare`
 - `pnpm run build:opennext-cloudflare`
 - `pnpm run smoke:flamecast-shaped`
+- `pnpm run dev:cloudflare-worker-direct`
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
+- `pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `vite` through the Vite example scripts
@@ -105,16 +107,16 @@ private client subpath, even though external app code does not touch it.
 ## Environment Variables
 
 - `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: read by examples 01-03 and passed into
-  the Next-shaped examples as `controlStreamUrl`. Example 06 accepts it as the
-  highest-precedence exact launch/control stream append target.
+  the Next-shaped examples as `controlStreamUrl`. Examples 06 and 08 accept it as
+  the highest-precedence exact launch/control stream append target.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
   examples 02-03.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this base
-  when the exact launch/control stream URL is not provided.
+  in `/v1/stream`. Examples 06 and 08 append `/<FIRELINE_CONTROL_STREAM>` to this
+  base when the exact launch/control stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Example 06 also uses it to derive the launch/control stream URL when
+  URL. Examples 06 and 08 also use it to derive the launch/control stream URL when
   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
@@ -210,12 +212,28 @@ client/server boundaries, and build constraints.
   observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
 
+`examples/08-cloudflare-worker-direct` exercises a direct Cloudflare Worker
+consumer shape:
+
+- `src/worker.ts` imports Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths directly.
+- `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
+  `FIRELINE_STREAMS_PORT` so the Worker derives a usable launch/control stream
+  URL when `fireline-v3-dev` is running with the matching `--state-stream`.
+- `POST /launch` appends `fireline.launch_request` and reads
+  `collections.launches`.
+- `POST /stop` appends `fireline.launch_stop` and reads the stopped launch row.
+- `POST /demo` runs launch and stop in one request for local discovery.
+- The Worker deliberately avoids Next.js, OpenNext, Node-only Fireline
+  imports, `/v1/launches`, and `@fireline/client/launch-control`.
+
 ## Stream-Native Checkpoint
 
-After Fireline #228, #231, #233, #237, #242, and #245, examples 01-06 use the
+After Fireline #228, #231, #233, #237, #242, and #245, examples 01-08 use the
 stream-native path:
 
-- Build a `CreateLaunchRequest` with `@fireline/client/spec`.
+- Build a launch request with `@fireline/client/spec` using
+  `agentDefinition(...)`, `launchSpec(...)`, and `newSessionRequest(...)`.
 - Append `fireline.launch_request` with `appendLaunchRequest`.
 - Materialize launch rows with `createFirelineDB(...).collections.launches`.
 - Use `@fireline/client/acp-browser` for browser ACP attachment once

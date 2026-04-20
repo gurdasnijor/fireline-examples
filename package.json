@@ -13,6 +13,7 @@
     "build:opennext-cloudflare": "cd examples/05-next-open-cloudflare && opennextjs-cloudflare build --skipWranglerConfigCheck --dangerouslyUseUnsupportedNextVersion",
     "build:tanstack-shaped": "vite build --config examples/03-tanstack-shaped-app/vite.config.ts",
     "dev:editable-agent-web": "vite --config examples/02-editable-agent-web/vite.config.ts",
+    "dev:cloudflare-worker-direct": "pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml",
     "dev:next-basic": "next dev examples/04-next-basic -p 5174",
     "dev:next-open-cloudflare": "next dev examples/05-next-open-cloudflare -p 5175",
     "dev:tanstack-shaped": "vite --config examples/03-tanstack-shaped-app/vite.config.ts",

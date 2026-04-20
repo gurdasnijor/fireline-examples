@@ -34,6 +34,14 @@ for await (const file of walk(root)) {
     if (specifier.includes('flamecast-v3')) {
       violations.push(`${relative}: must not import real flamecast-v3 modules`)
     }
+    if (relative.startsWith('examples/08-cloudflare-worker-direct/')) {
+      if (isNodeBuiltinSpecifier(specifier)) {
+        violations.push(`${relative}: direct Worker example must not import Node builtin ${specifier}`)
+      }
+      if (specifier === 'next' || specifier.includes('@opennextjs/')) {
+        violations.push(`${relative}: direct Worker example must not import Next/OpenNext`)
+      }
+    }
   }
   for (const specifier of firelineSpecifiers(text)) {
     if (specifier.includes('/internal/') && !allowedInternal.has(specifier)) {
@@ -100,4 +108,26 @@ function* firelineSpecifiers(text: string): Generator<string> {
   while ((match = pattern.exec(text)) !== null) {
     yield match[1]
   }
+}
+
+function isNodeBuiltinSpecifier(specifier: string): boolean {
+  const bare = specifier.replace(/^node:/, '')
+  return [
+    'assert',
+    'buffer',
+    'child_process',
+    'crypto',
+    'fs',
+    'http',
+    'https',
+    'net',
+    'os',
+    'path',
+    'process',
+    'stream',
+    'tls',
+    'url',
+    'util',
+    'zlib',
+  ].includes(bare)
 }

@@ -34,6 +34,10 @@ Current checkpoint:
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, appends launch/stop through durable streams, observes
   `collections.launches`, and attaches to ACP for a follow-up prompt.
+- `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
+  discovery example. It uses Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` imports without Next.js or
+  OpenNext.
 
 Setup:
 
@@ -113,6 +117,36 @@ pnpm run build:opennext-cloudflare
 
 The OpenNext/Cloudflare build uses the local adapter shape only. It is not a
 deployment recipe.
+
+Run the direct Cloudflare Worker example with local Fireline defaults:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-worker-direct-state
+export FIRELINE_CONTROL_STREAM=fireline-worker-direct-control
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM"
+```
+
+In another shell:
+
+```sh
+pnpm run dev:cloudflare-worker-direct
+curl -sS -X POST http://127.0.0.1:8787/demo \
+  -H 'content-type: application/json' \
+  --data '{"prompt":"run the direct Worker example"}'
+```
+
+The Worker derives the local launch/control stream URL from the default
+`FIRELINE_STREAMS_PORT` and `FIRELINE_CONTROL_STREAM`. For custom ports or
+stream names, use the same one-line derivation:
+
+```sh
+export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-worker-direct-control}"
+```
 
 Run the Flamecast-shaped characterization from scratch state:
 

@@ -59,9 +59,11 @@ a Fireline bead or be closed as an intentional boundary.
    The examples require the app-facing `FIRELINE_LAUNCH_CONTROL_STREAM_URL` and
    the local `fireline-v3-dev --state-stream <control-stream>` process to point
    at the same durable stream. This is intentionally explicit in the discovery
-   repo, but a normal external consumer should not have to assemble that
-   alignment by hand. Follow-up bead candidate: endpoint/bootstrap discovery
-   for stream-native local apps.
+   repo. `examples/08-cloudflare-worker-direct` reduces the opaque-config
+   problem by deriving the URL from `FIRELINE_STREAMS_PORT` and
+   `FIRELINE_CONTROL_STREAM` defaults, but a normal external consumer should
+   not have to assemble that alignment by hand. Follow-up bead candidate:
+   endpoint/bootstrap discovery for stream-native local apps.
 
 8. Stream-native stop is now usable, but still low-level.
 
@@ -159,13 +161,23 @@ a Fireline bead or be closed as an intentional boundary.
    boundary, but a real product integration likely wants a typed session handle
    or resume helper once public surface freeze permits it.
 
+18. Direct Cloudflare Worker usage is package-shaped but still low-level.
+
+   `examples/08-cloudflare-worker-direct` proves the direct Worker shape can be
+   expressed with `@fireline/client/spec`, `@fireline/client/events`, and
+   `@fireline/state` without Next.js, OpenNext, launch-control HTTP, or
+   Fireline source internals. It still exposes the raw launch spec, append,
+   polling observation, and stop append sequence. This is useful discovery
+   evidence, not a canonical Worker SDK shape.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
   artifact refs are still needed for normal external consumers.
 - Missing Fireline/public support: local stream-native bootstrap still requires
   manual alignment between the configured control stream URL and the dev daemon
-  stream watcher.
+  stream watcher. The direct Worker example derives local defaults, but custom
+  deployment still needs explicit configuration.
 - Missing Fireline/public support: stream-native stop now works through
   `appendLaunchStop`, but app authors still need to compose stop append,
   observation, and ACP cleanup directly.
@@ -197,6 +209,10 @@ a Fireline bead or be closed as an intentional boundary.
 - Framework seam: OpenNext/Cloudflare builds require app-local package scripts
   and generated adapter directories, and the current safe path keeps Fireline
   launch calls in browser code.
+- Worker seam: `examples/08-cloudflare-worker-direct` is direct Worker source,
+  but local validation for this bead stayed static-only. A future CI or
+  workstation check should run Wrangler bundling to prove no Node-only
+  dependency enters the Worker graph.
 
 ## Follow-Up Bead Candidates
 
@@ -210,5 +226,6 @@ a Fireline bead or be closed as an intentional boundary.
   (`mono-oet.29.3.2`).
 - Server/Worker stream append pattern for framework apps that need auth,
   idempotency, tenant policy, or secrets.
+- Wrangler bundle verification for the direct Cloudflare Worker import graph.
 - Idiomatic managed-agent launch/session helper after the lower-level
   materialized launch model and API freeze gates permit it.
