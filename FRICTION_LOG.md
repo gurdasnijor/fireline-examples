@@ -159,6 +159,35 @@ a Fireline bead or be closed as an intentional boundary.
    boundary, but a real product integration likely wants a typed session handle
    or resume helper once public surface freeze permits it.
 
+18. Python raw Durable Streams HTTP is possible with stdlib only, but verbose.
+
+   `examples/09-python-raw-http` proves a non-TypeScript consumer can append
+   `fireline.launch_request`, observe first-class `fireline.launch` rows backing
+   `collections.launches`, and append `fireline.launch_stop` with Python stdlib
+   `urllib.request`. The cost is that the example must spell out inline JS
+   module artifact content, hashes, integrity, launch/stop envelopes, stream URL
+   derivation, and polling logic.
+
+   This is useful as T2 raw-surface evidence, but normal Python app code should
+   not have to own this much Fireline envelope machinery once higher-level
+   managed-agent helpers or canonical fixture generation are ready.
+
+19. Runnable evidence exposed local artifact and dev-wrapper rough edges.
+
+   A frozen `pnpm install` failed because the local Fireline tarball artifacts
+   under `/tmp/fireline-examples-artifacts` no longer matched the
+   lockfile integrity values. `pnpm install --no-frozen-lockfile` installed the
+   local runtime for E2E evidence, but it also produced lockfile churn with
+   machine-local `/tmp` git artifact coordinates, so that lockfile delta is not
+   part of this example handoff.
+
+   When the fresh-daemon smoke was piped through `tee`, orphaned local daemon
+   children kept the pipe open after the Python launch reached `stopped`.
+   Redirecting output to a log and explicitly cleaning up the selected
+   `FIRELINE_CONTROL_STREAM` / port coordinates produced deterministic
+   reviewer commands. The runtime also logs ACP reset warnings during stop even
+   though the durable launch row reaches `stopped`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -178,6 +207,17 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: Flamecast-v3-shaped consumers need a stable
   generated-harness adapter story. The current example proves the substrate
   path without freezing package names or helper names.
+- Missing Fireline/public support: Python raw HTTP consumers need one canonical
+  JSON fixture or generated sample for the inline JS module artifact shape. The
+  Python example carries a local builder so it can avoid `@fireline/client`, but
+  that is intentionally discovery code rather than a public Python SDK.
+- Missing Fireline/process support: local package artifacts used by examples
+  need reproducible lockfile/install behavior. Current local tarball refreshes
+  can require `--no-frozen-lockfile` and produce uncommittable `/tmp` artifact
+  refs.
+- Missing Fireline/process support: `fireline-v3-dev` evidence commands need a
+  cleaner non-interactive shutdown story when stdout/stderr are piped for logs.
+  The recipe currently uses log redirection plus explicit cleanup.
 - Already fixed Fireline gap: direct local launch-control CORS was enabled by
   PR #220, but target examples now bypass `/v1/launches` entirely.
 - Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule
@@ -212,3 +252,9 @@ a Fireline bead or be closed as an intentional boundary.
   idempotency, tenant policy, or secrets.
 - Idiomatic managed-agent launch/session helper after the lower-level
   materialized launch model and API freeze gates permit it.
+- Canonical raw HTTP fixture coverage for Python launch request, launch stop,
+  and first-class launch row observation without relying on `@fireline/client`.
+- Reproducible external example install artifacts that do not require local
+  lockfile integrity refreshes.
+- Non-interactive `fireline-v3-dev` smoke wrapper cleanup that exits cleanly
+  after the child command while preserving useful logs.
