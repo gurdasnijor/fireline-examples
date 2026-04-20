@@ -73,7 +73,7 @@ Prepare refreshed package-shaped artifacts:
 export FIRELINE_REPO=/Users/gnijor/gurdasnijor/fireline
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
 export FIRELINE_E2E_ROOT=/tmp/fireline-mono-oet-29-3-3-e2e
-export FIRELINE_ARTIFACT_ROOT=/tmp/fireline-mono-oet.29.3.1-artifacts
+export FIRELINE_ARTIFACT_ROOT=/tmp/fireline-examples-artifacts
 rm -rf "$FIRELINE_E2E_ROOT" "$FIRELINE_ARTIFACT_ROOT"
 mkdir -p "$FIRELINE_E2E_ROOT/downloads" "$FIRELINE_ARTIFACT_ROOT"
 

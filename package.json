@@ -21,10 +21,10 @@
     "smoke:flamecast-shaped": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-flamecast-shaped-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/06-flamecast-v3-shaped/src/run.ts'"
   },
   "dependencies": {
-    "@fireline/client": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz",
-    "@fireline/runtime": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz",
-    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
-    "@fireline/state": "file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz"
+    "@fireline/client": "file:/tmp/fireline-examples-artifacts/fireline-client-0.0.1.tgz",
+    "@fireline/runtime": "file:/tmp/fireline-examples-artifacts/fireline-runtime-0.0.1.tgz",
+    "@fireline/runtime-darwin-arm64": "file:/tmp/fireline-examples-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz",
+    "@fireline/state": "file:/tmp/fireline-examples-artifacts/fireline-state-0.0.1.tgz"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.1",

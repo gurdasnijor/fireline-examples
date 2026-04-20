@@ -5,10 +5,10 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-client-0.0.1.tgz`
-- `@fireline/runtime`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-0.0.1.tgz`
-- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
-- `@fireline/state`: `file:/tmp/fireline-mono-oet.29.3.1-artifacts/fireline-state-0.0.1.tgz`
+- `@fireline/client`: `file:/tmp/fireline-examples-artifacts/fireline-client-0.0.1.tgz`
+- `@fireline/runtime`: `file:/tmp/fireline-examples-artifacts/fireline-runtime-0.0.1.tgz`
+- `@fireline/runtime-darwin-arm64`: `file:/tmp/fireline-examples-artifacts/fireline-runtime-darwin-arm64-0.0.1.tgz`
+- `@fireline/state`: `file:/tmp/fireline-examples-artifacts/fireline-state-0.0.1.tgz`
 
 These are local tarball refs produced from Fireline packages at Fireline main
 `bdb1ad02`, after #242 stream-native stop and #245 launch row normalization
