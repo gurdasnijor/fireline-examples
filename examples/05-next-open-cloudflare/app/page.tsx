@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { runInlineLaunch } from './run-inline-launch'
 
 export default function Page() {
-  const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
+  const [controlStreamUrl, setControlStreamUrl] = useState('')
   const [prompt, setPrompt] = useState('Hello from OpenNext on Cloudflare shape.')
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState('No launch yet.')
@@ -13,7 +13,7 @@ export default function Page() {
     setBusy(true)
     try {
       const result = await runInlineLaunch({
-        launchUrl,
+        controlStreamUrl,
         prompt,
         example: '05-next-open-cloudflare',
       })
@@ -35,8 +35,12 @@ export default function Page() {
       </p>
       <section className="controls">
         <label>
-          Launch endpoint
-          <input value={launchUrl} onChange={(event) => setLaunchUrl(event.target.value)} />
+          Launch/control stream URL
+          <input
+            value={controlStreamUrl}
+            onChange={(event) => setControlStreamUrl(event.target.value)}
+            placeholder="http://127.0.0.1:7474/v1/stream/fireline-examples-control"
+          />
         </label>
         <label>
           Prompt

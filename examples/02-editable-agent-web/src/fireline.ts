@@ -8,15 +8,16 @@ import {
   type MiddlewareChain,
   type SandboxSpec,
 } from '@fireline/client/spec'
-import { FirelineLaunchControlClient, type LaunchEnvelope } from '@fireline/client/launch-control'
 import { budget, contextInjection, trace } from '@fireline/client/middleware'
+import type { FirelineDB, LaunchRow } from '@fireline/state'
+import { appendAndObserveLaunch } from '../../shared/stream-launch.js'
 
 export type BrainPlacement = 'inline-js-local'
 export type FilesystemPlacement = 'local' | 'streamFs'
 export type MiddlewareChoice = 'trace' | 'contextInjection' | 'budget'
 
 export interface EditableLaunchOptions {
-  readonly launchUrl: string
+  readonly controlStreamUrl: string
   readonly agentCode: string
   readonly initialPrompt: string
   readonly brainPlacement: BrainPlacement
@@ -25,16 +26,13 @@ export interface EditableLaunchOptions {
 }
 
 export interface EditableLaunchResult {
-  readonly client: FirelineLaunchControlClient
-  readonly created: LaunchEnvelope
-  readonly result: LaunchEnvelope
+  readonly envelope: Awaited<ReturnType<typeof appendAndObserveLaunch>>['envelope']
+  readonly row: LaunchRow
+  readonly db: FirelineDB
 }
 
 export async function createEditableLaunch(options: EditableLaunchOptions): Promise<EditableLaunchResult> {
   const clientRequestId = `editable-agent-web-${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const client = new FirelineLaunchControlClient({
-    launchUrl: options.launchUrl,
-  })
   const spec = await editableSpec(options, clientRequestId)
   const request = createLaunchRequest(spec, {
     clientRequestId,
@@ -61,14 +59,14 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     },
   })
 
-  const created = await client.create(request, {
+  const result = await appendAndObserveLaunch({
+    controlStreamUrl: options.controlStreamUrl,
+    request,
     idempotencyKey: clientRequestId,
-  })
-  const result = created.result ? created : await client.awaitLaunchResult({
-    launch: created,
+    requestedBy: 'examples/02-editable-agent-web',
     timeoutMs: 30_000,
   })
-  return { client, created, result }
+  return result
 }
 
 async function editableSpec(

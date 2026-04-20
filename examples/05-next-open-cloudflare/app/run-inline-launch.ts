@@ -5,17 +5,14 @@ import {
   jsModuleAgentForm,
   textPrompt,
 } from '@fireline/client/spec'
-import { FirelineLaunchControlClient } from '@fireline/client/launch-control'
+import { appendAndObserveLaunch } from '../../shared/stream-launch'
 
 export async function runInlineLaunch(options: {
-  readonly launchUrl: string
+  readonly controlStreamUrl: string
   readonly prompt: string
   readonly example: string
 }) {
   const clientRequestId = `${options.example}-${Date.now()}`
-  const client = new FirelineLaunchControlClient({
-    launchUrl: options.launchUrl,
-  })
   const artifact = await inlineBundleArtifact({
     entrypoint: 'agent.mjs',
     files: [{
@@ -46,7 +43,7 @@ export async function runInlineLaunch(options: {
       },
     },
   })
-  const created = await client.create(createLaunchRequest(spec, {
+  const request = createLaunchRequest(spec, {
     clientRequestId,
     runtime: {
       name: options.example,
@@ -65,20 +62,24 @@ export async function runInlineLaunch(options: {
       until: 'session',
       timeoutMs: 30_000,
     },
-  }), {
-    idempotencyKey: clientRequestId,
   })
-  const result = created.result ? created : await client.awaitLaunchResult({
-    launch: created,
+  const result = await appendAndObserveLaunch({
+    controlStreamUrl: options.controlStreamUrl,
+    request,
+    idempotencyKey: clientRequestId,
+    requestedBy: `examples/${options.example}`,
     timeoutMs: 30_000,
   })
-  const stopped = await client.stop({ launch: result })
+  result.db.close()
   return {
-    launchId: result.launchId,
-    status: result.status,
-    waitCoordinates: result.waitCoordinates,
-    runtime: result.runtime,
-    session: result.startSession,
-    stopped: stopped.status,
+    launchId: result.row.launchId,
+    status: result.row.status,
+    controlStreamUrl: options.controlStreamUrl,
+    envelope: {
+      type: result.envelope.type,
+      key: result.envelope.key,
+    },
+    runtime: result.row.runtime,
+    session: result.row.startSession,
   }
 }

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { connectBrowserAcp, type BrowserAcpSession } from './acp-browser.js'
+import { connectBrowserAcp, type BrowserAcpConnection } from '@fireline/client/acp-browser'
 import {
   createEditableLaunch,
   type BrainPlacement,
@@ -23,7 +23,9 @@ interface LogEntry {
 }
 
 export function App() {
-  const [launchUrl, setLaunchUrl] = useState('http://127.0.0.1:4464/v1/launches')
+  const [controlStreamUrl, setControlStreamUrl] = useState(
+    import.meta.env.VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL ?? ''
+  )
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
   const [filesystemPlacement, setFilesystemPlacement] = useState<FilesystemPlacement>('local')
   const [middleware, setMiddleware] = useState<readonly MiddlewareChoice[]>(['trace'])
@@ -34,17 +36,21 @@ export function App() {
   const [status, setStatus] = useState('Idle')
   const [logs, setLogs] = useState<readonly LogEntry[]>([])
   const [busy, setBusy] = useState(false)
-  const acp = useRef<BrowserAcpSession | undefined>(undefined)
+  const acp = useRef<BrowserAcpConnection | undefined>(undefined)
 
-  const launch = result?.result
+  const launch = result?.row
   const acpSessionId = launch?.startSession?.acpSessionId
   const canChat = Boolean(acp.current && acpSessionId && !busy)
-  const canStop = Boolean(launch && !busy)
+  const canClose = Boolean(result && !busy)
   const coordinates = useMemo(() => launch ? JSON.stringify({
     launchId: launch.launchId,
+    clientRequestId: launch.clientRequestId,
     status: launch.status,
-    waitCoordinates: launch.waitCoordinates,
-    launchState: launch.launchState,
+    controlStreamUrl,
+    envelope: result && {
+      type: result.envelope.type,
+      key: result.envelope.key,
+    },
     runtime: launch.runtime && {
       runtimeId: launch.runtime.runtimeId,
       acpUrl: launch.runtime.acp.url,
@@ -55,12 +61,12 @@ export function App() {
 
   async function run() {
     await withBusy(async () => {
-      closeAcp()
+      await closeAcp()
       setResult(undefined)
       setLogs([])
       addLog('launch', 'Creating launch and waiting for session coordinates.')
       const next = await createEditableLaunch({
-        launchUrl,
+        controlStreamUrl,
         agentCode,
         initialPrompt,
         brainPlacement,
@@ -68,11 +74,12 @@ export function App() {
         middleware,
       })
       setResult(next)
-      addLog('launch', `Launch ${next.result.launchId} reached ${next.result.status}.`)
-      if (next.result.runtime?.acp.url) {
+      addLog('launch', `Launch ${next.row.launchId} reached ${next.row.status}.`)
+      if (next.row.runtime?.acp.url) {
         acp.current = await connectBrowserAcp({
-          url: next.result.runtime.acp.url,
-          onUpdate(notification) {
+          url: next.row.runtime.acp.url,
+          clientName: 'fireline-examples-editable-agent-web',
+          onSessionUpdate(notification) {
             addLog('session/update', summarizeUpdate(notification))
           },
         })
@@ -87,19 +94,22 @@ export function App() {
     if (!acp.current || !acpSessionId) return
     await withBusy(async () => {
       addLog('user', chatPrompt)
-      const response = await acp.current!.prompt(acpSessionId, chatPrompt)
+      const response = await acp.current!.connection.prompt({
+        sessionId: acpSessionId,
+        prompt: [{ type: 'text', text: chatPrompt }],
+      })
       addLog('prompt/result', `stopReason=${response.stopReason}`)
     }, 'Sending prompt')
   }
 
-  async function stop() {
+  async function closeLaunchView() {
     if (!result) return
     await withBusy(async () => {
-      closeAcp()
-      const stopped = await result.client.stop({ launch: result.result })
-      addLog('stop', `Launch ${stopped.launchId} returned ${stopped.status}.`)
-      setResult({ ...result, result: stopped })
-    }, 'Stopping')
+      await closeAcp()
+      result.db.close()
+      setResult(undefined)
+      addLog('close', 'Closed local launch observation and ACP connection.')
+    }, 'Closing')
   }
 
   async function withBusy(work: () => Promise<void>, label: string) {
@@ -125,8 +135,8 @@ export function App() {
     }])
   }
 
-  function closeAcp() {
-    acp.current?.close()
+  async function closeAcp() {
+    await acp.current?.close()
     acp.current = undefined
   }
 
@@ -143,8 +153,12 @@ export function App() {
 
         <div className="control-grid">
           <label>
-            Launch endpoint
-            <input value={launchUrl} onChange={(event) => setLaunchUrl(event.target.value)} />
+            Launch/control stream URL
+            <input
+              value={controlStreamUrl}
+              onChange={(event) => setControlStreamUrl(event.target.value)}
+              placeholder="http://127.0.0.1:7474/v1/stream/fireline-examples-control"
+            />
           </label>
           <label>
             Brain placement
@@ -192,7 +206,7 @@ export function App() {
             <input value={chatPrompt} onChange={(event) => setChatPrompt(event.target.value)} />
           </label>
           <button type="button" onClick={sendPrompt} disabled={!canChat}>Send</button>
-          <button type="button" onClick={stop} disabled={!canStop}>Stop</button>
+          <button type="button" onClick={closeLaunchView} disabled={!canClose}>Close ACP</button>
         </div>
       </section>
 

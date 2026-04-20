@@ -6,7 +6,6 @@ import {
   textPrompt,
   type SandboxSpec,
 } from '@fireline/client/spec'
-import { FirelineLaunchControlClient } from '@fireline/client/launch-control'
 import {
   budget,
   contextInjection,
@@ -14,11 +13,9 @@ import {
 } from '@fireline/client/middleware'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { appendAndObserveLaunch } from '../shared/stream-launch.js'
 
-const launchUrl = requiredEnv('FIRELINE_LAUNCH_URL')
-const client = new FirelineLaunchControlClient({
-  launchUrl,
-})
+const controlStreamUrl = requiredEnv('FIRELINE_LAUNCH_CONTROL_STREAM_URL')
 const outputRoot = process.env.FIRELINE_EXAMPLE_OUTPUT_ROOT ??
   join(process.cwd(), 'inline-js-local-output')
 const runId = Date.now()
@@ -153,52 +150,48 @@ async function runCase(entry: MatrixCase) {
     },
   })
 
-  const created = await client.create(request, {
+  const launch = await appendAndObserveLaunch({
+    controlStreamUrl,
+    request,
     idempotencyKey: clientRequestId,
-  })
-  const result = created.result ? created : await client.awaitLaunchResult({
-    launch: created,
+    requestedBy: 'examples/01-inline-js-local',
     timeoutMs: 30_000,
   })
 
   const fileContents = await readFile(outputFile, 'utf8')
-  const stopped = await client.stop({ launch: result })
+  launch.db.close()
 
   return {
     case: entry.name,
     fsBackend: entry.fsBackend,
     middlewareKinds: entry.middleware.map((middleware) => middleware.kind),
-    launchId: result.launchId,
-    clientRequestId: result.clientRequestId,
-    status: result.status,
-    result: result.result ?? false,
-    partial: result.partial ?? false,
-    waitCoordinates: result.waitCoordinates,
-    launchState: result.launchState,
-    runtime: result.runtime
+    launchId: launch.row.launchId,
+    clientRequestId: launch.row.clientRequestId,
+    status: launch.row.status,
+    controlStreamUrl,
+    envelope: {
+      type: launch.envelope.type,
+      key: launch.envelope.key,
+    },
+    runtime: launch.row.runtime
       ? {
-          runtimeId: result.runtime.runtimeId,
-          name: result.runtime.name,
-          provider: result.runtime.provider,
-          status: result.runtime.status,
-          acpUrl: result.runtime.acp.url,
-          state: result.runtime.state,
+          runtimeId: launch.row.runtime.runtimeId,
+          name: launch.row.runtime.name,
+          provider: launch.row.runtime.provider,
+          status: launch.row.runtime.status,
+          acpUrl: launch.row.runtime.acp.url,
+          state: launch.row.runtime.state,
         }
       : undefined,
-    session: result.startSession
+    session: launch.row.startSession
       ? {
-          acpSessionId: result.startSession.acpSessionId,
+          acpSessionId: launch.row.startSession.acpSessionId,
           requestedStateStream: stateStream,
         }
       : undefined,
     localFs: {
       outputFile,
       contents: fileContents,
-    },
-    stopped: {
-      launchId: stopped.launchId,
-      status: stopped.status,
-      waitCoordinates: stopped.waitCoordinates,
     },
   }
 }
@@ -231,7 +224,7 @@ export default async function handle(ctx) {
 function requiredEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(`${name} is required. Run through fireline-v3-dev.`)
+    throw new Error(`${name} is required. Configure the durable launch/control stream URL.`)
   }
   return value
 }
