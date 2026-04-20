@@ -230,7 +230,25 @@ a Fireline bead or be closed as an intentional boundary.
    build the `fireline.launch_request` and `fireline.launch_stop` envelopes,
    poll/read stream rows, and filter `fireline.launch` records themselves.
 
-23. Editable-agent-web naive dev previously did not own daemon startup.
+23. Direct Cloudflare Worker usage is package-shaped but still low-level.
+
+   `examples/08-cloudflare-worker-direct` proves the direct Worker shape can be
+   expressed with `@fireline/client/spec`, `@fireline/client/events`, and
+   `@fireline/state` without Next.js, OpenNext, launch-control HTTP, or
+   Fireline source internals. It still exposes the raw launch spec, append,
+   polling observation, and stop append sequence. This is useful discovery
+   evidence, not a canonical Worker SDK shape.
+
+   `mono-oet.29.3.21.3` retro smoke passed both quality-bar scenarios:
+   fresh scratch daemon on `5544`/`8581` with Wrangler on `8787`, and
+   prior-daemon reuse with the same daemon still bound and Wrangler restarted on
+   `8788`. Both `POST /demo` calls returned launch rows with ACP session
+   coordinates and stopped rows. Non-happy-path note: Wrangler local dev used
+   `wrangler.toml` `[vars]` over shell environment variables, so scratch ports
+   needed explicit `--var FIRELINE_STREAMS_PORT:...` and
+   `--var FIRELINE_LAUNCH_CONTROL_STREAM_URL:...` flags.
+
+24. Editable-agent-web naive dev previously did not own daemon startup.
 
    `mono-oet.29.3.25` reproduced the zero-opaque-config gap: a user could run
    `pnpm run dev:editable-agent-web` with no pre-started daemon and no Vite

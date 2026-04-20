@@ -38,6 +38,11 @@ Current checkpoint:
   consumer. It builds the launch/stop envelopes locally, appends them with
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
   packages.
+- `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
+  consumer using the Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths. It uses
+  explicit `pnpm dlx wrangler@4.83.0` commands and documents the Wrangler
+  `--var` behavior required for custom scratch ports.
 - `examples/09-python-raw-http` and `examples/10-rust-raw-http` are raw
   Durable Streams HTTP consumers. They do not import Fireline packages or
   crates; they build `fireline.launch_request` / `fireline.launch_stop`

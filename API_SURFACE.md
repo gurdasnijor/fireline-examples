@@ -89,7 +89,9 @@ violations.
 - `pnpm run build:next-open-cloudflare`
 - `pnpm run build:opennext-cloudflare`
 - `pnpm run smoke:flamecast-shaped`
+- `pnpm run dev:cloudflare-worker-direct`
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
+- `pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `sh examples/07-curl-shell-raw-http/run.sh`
@@ -127,12 +129,12 @@ violations.
   the launch/control stream URL when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this base
-  when the exact launch/control stream URL is not provided.
+  in `/v1/stream`. Examples 06 and 08 append `/<FIRELINE_CONTROL_STREAM>` to
+  this base when the exact launch/control stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Example 06 also uses it to derive the launch/control stream URL when
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
+  URL. Examples 06 and 08 also use it to derive the launch/control stream URL
+  when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
 - `FIRELINE_STREAMS_PORT`: set in scratch smoke recipes to avoid reusing
@@ -261,6 +263,23 @@ surface with shell, curl, and small local envelope helpers. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
 Fireline package imports, appends them with raw HTTP `POST`, and observes
 first-class `fireline.launch` rows with raw HTTP `GET`.
+
+`examples/08-cloudflare-worker-direct` exercises a direct Cloudflare Worker
+consumer shape:
+
+- `src/worker.ts` imports Worker-safe `@fireline/client/spec`,
+  `@fireline/client/events`, and `@fireline/state` package subpaths directly.
+- `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
+  `FIRELINE_STREAMS_PORT` so the Worker derives a usable launch/control stream
+  URL when `fireline-v3-dev` is running with the matching `--state-stream`.
+- Custom scratch ports or stream names must be passed with Wrangler `--var`
+  flags; shell environment variables alone do not override local `[vars]`.
+- `POST /launch` appends `fireline.launch_request` and reads
+  `collections.launches`.
+- `POST /stop` appends `fireline.launch_stop` and reads the stopped launch row.
+- `POST /demo` runs launch and stop in one request for local discovery.
+- The Worker deliberately avoids Next.js, OpenNext, Node-only Fireline
+  imports, `/v1/launches`, and `@fireline/client/launch-control`.
 
 `examples/07-server-worker-wrapper` exercises a server/Worker boundary:
 
