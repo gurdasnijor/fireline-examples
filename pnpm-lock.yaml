@@ -12,14 +12,14 @@ importers:
         specifier: 0.19.0
         version: 0.19.0(zod@4.3.6)
       '@fireline/client':
-        specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
-        version: git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2(typescript@5.9.3)
+        specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9
+        version: git+https://git@github.com:smithery-ai/fireline.git#493446576a617cea40224eba7120e68e7a7b6adb(typescript@5.9.3)
       '@fireline/runtime':
         specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
         version: git+https://git@github.com:smithery-ai/fireline.git#e09c0e4bee4d5edb917d0f81972a74b4babcb020(zod@4.3.6)
       '@fireline/state':
-        specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd
-        version: git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f(typescript@5.9.3)
+        specifier: git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9
+        version: git+https://git@github.com:smithery-ai/fireline.git#d71bee83ab3a931bb1e8cf427a29220fe547e77d(typescript@5.9.3)
     devDependencies:
       '@edge-runtime/vm':
         specifier: 5.0.0
@@ -995,8 +995,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2':
-    resolution: {commit: fb3d505380b92a82bfefe59ebb38ae123aa196a2, repo: git@github.com:smithery-ai/fireline.git, type: git}
+  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#493446576a617cea40224eba7120e68e7a7b6adb':
+    resolution: {commit: 493446576a617cea40224eba7120e68e7a7b6adb, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
     bundledDependencies:
       - '@agentclientprotocol/sdk'
@@ -1025,8 +1025,8 @@ packages:
     version: 0.0.1
     hasBin: true
 
-  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f':
-    resolution: {commit: daac0bf8a6f388bb93a84f6ffa935bf013e5950f, repo: git@github.com:smithery-ai/fireline.git, type: git}
+  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#d71bee83ab3a931bb1e8cf427a29220fe547e77d':
+    resolution: {commit: d71bee83ab3a931bb1e8cf427a29220fe547e77d, repo: git@github.com:smithery-ai/fireline.git, type: git}
     version: 0.0.1
 
   '@img/colour@1.1.0':
@@ -4288,7 +4288,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#fb3d505380b92a82bfefe59ebb38ae123aa196a2(typescript@5.9.3)':
+  '@fireline/client@git+https://git@github.com:smithery-ai/fireline.git#493446576a617cea40224eba7120e68e7a7b6adb(typescript@5.9.3)':
     dependencies:
       '@durable-streams/client': 0.2.3
       '@durable-streams/state': 0.2.5(@tanstack/db@0.6.5(typescript@5.9.3))
@@ -4319,7 +4319,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#daac0bf8a6f388bb93a84f6ffa935bf013e5950f(typescript@5.9.3)':
+  '@fireline/state@git+https://git@github.com:smithery-ai/fireline.git#d71bee83ab3a931bb1e8cf427a29220fe547e77d(typescript@5.9.3)':
     dependencies:
       '@agentclientprotocol/sdk': 0.19.0(zod@4.3.6)
       '@durable-streams/state': 0.2.5(@tanstack/db@0.6.5(typescript@5.9.3))

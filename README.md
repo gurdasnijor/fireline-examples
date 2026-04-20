@@ -26,9 +26,11 @@ Integration policy:
 Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
-  JS local matrix by appending `fireline.launch_request` events through
-  `@fireline/client/events`, observing `@fireline/state` launches, and
-  stopping each launch with `fireline.launch_stop`.
+  JS local matrix through `@fireline/client/managed-agent` lifecycle helpers.
+  Request construction still uses `@fireline/client/spec` as temporary Tier 3
+  gap evidence until mono-oet.29.3.32.4 lands fresh artifacts for
+  `createManagedAgentLaunchRequest`, `inlineJsBundleAgent`, and
+  `jsModuleAgent`.
 - `examples/02-editable-agent-web` is a TypeScript/TSX app-shaped discovery
   example. It lets a user edit inline agent code, append a launch request,
   inspect launch/session/runtime coordinates from `collections.launches`, send
@@ -36,13 +38,18 @@ Current checkpoint:
   launch with `appendLaunchStop`.
 - `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
   `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
-  examples. They keep Fireline calls package-shaped and client-side while
-  recording framework seams instead of canonizing product examples.
+  examples. They keep Fireline calls package-shaped and use
+  `@fireline/client/managed-agent` for launch/wait/stop while recording
+  framework seams instead of canonizing product examples. Request construction
+  still uses `@fireline/client/spec` pending the mono-oet.29.3.32.4
+  managed-agent request helpers.
 - `examples/06-flamecast-v3-shaped` is a black-box product-consumer
   characterization. It is not real Flamecast v3 code. It keeps a framework
   boundary separate from the Fireline adapter, generates a multi-file inline
-  harness bundle, appends launch/stop through durable streams, observes
-  `collections.launches`, and attaches to ACP for a follow-up prompt.
+  harness bundle, and uses `@fireline/client/managed-agent` for
+  launch/wait/ACP follow-up/stop. Request construction still uses
+  `@fireline/client/spec` pending the mono-oet.29.3.32.4 managed-agent
+  request helpers.
 - `examples/07-curl-shell-raw-http` is a shell/curl raw Durable Streams HTTP
   consumer. It builds the launch/stop envelopes locally, appends them with
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
@@ -174,9 +181,9 @@ FIRELINE_PORT=5537 FIRELINE_STREAMS_PORT=8574 \
 pnpm run dev:editable-agent-web --port 5192
 ```
 
-The app appends to the configured launch/control stream and observes the
-`@fireline/state` launches collection. It stops through `appendLaunchStop`. It
-does not call `/v1/launches` or use `@fireline/client/launch-control`.
+The app appends to the configured launch/control stream and observes launch
+rows through package-shaped Fireline helpers. It does not call `/v1/launches`
+or use `@fireline/client/launch-control`.
 
 Reviewer reproduce: fresh daemon runnable path:
 

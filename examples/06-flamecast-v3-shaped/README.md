@@ -9,8 +9,8 @@ The example has three boundaries:
 - `src/framework-boundary.ts`: product-facing intent and summary types. This
   file has no Fireline imports.
 - `src/fireline-adapter.ts`: the only layer that imports Fireline packages,
-  appends `fireline.launch_request`, observes `collections.launches`, attaches
-  to ACP, and appends `fireline.launch_stop`.
+  builds the launch request, and uses `@fireline/client/managed-agent` for
+  launch, session-ready wait, ACP follow-up, and stop.
 - `src/generated-harness.ts`: simulates a generated multi-file harness bundle
   with `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
@@ -60,6 +60,11 @@ Expected output is a JSON summary with launch id, runtime ACP URL, ACP session
 id, follow-up status, and stop status. The example does not call the legacy HTTP
 launch endpoint, does not import the legacy launch-control subpath, does not
 import Fireline repo internals, and does not import real Flamecast v3 modules.
+It still uses `@fireline/client/spec` to build the request; that is temporary
+Tier 3 gap evidence for mono-oet.29.3.32.4, not a final ergonomic example
+contract. The accepted replacement shape is `createManagedAgentLaunchRequest`,
+`acpStdioAgent`, `inlineJsBundleAgent`, and `jsModuleAgent` from
+`@fireline/client/managed-agent`.
 
 ## Reviewer Reproduce
 
@@ -132,7 +137,7 @@ env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7692/v1/stream" \
 Both scenarios should print JSON with `launchStatus: "session_ready"`,
 `session.followUpSent: true`, and `stopStatus: "stopped"`.
 
-Validated 2026-04-19 evidence:
+Historical pre-managed-agent evidence from 2026-04-19:
 
 - Fresh daemon: launch `fbc579d1-1ccf-4823-beeb-4bdfaf169604`,
   `clientRequestId`
@@ -144,3 +149,8 @@ Validated 2026-04-19 evidence:
   `launch:flamecast-shaped:workspace-characterization:reuse-daemon-run-001:attempt-1`,
   ACP session `jsmod-d1f806d4-5818-47b0-9044-bb3293e59e02`,
   `session.followUpSent: true`, `stopStatus: "stopped"`.
+
+Managed-agent cutover evidence for this example is intentionally not final
+until mono-oet.29.3.32.4 lands fresh artifacts with the accepted request
+helpers or TL1 approves a temporary exception for direct
+`@fireline/client/spec` usage.

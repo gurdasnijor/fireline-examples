@@ -1,5 +1,4 @@
-import { connectBrowserAcp } from '@fireline/client/acp-browser'
-import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch.js'
+import { createManagedAgentClient } from '@fireline/client/managed-agent'
 import {
   agentDefinition,
   jsModuleAgentForm,
@@ -7,7 +6,7 @@ import {
   newSessionRequest,
   textPrompt,
 } from '@fireline/client/spec'
-import type { LaunchRow } from '@fireline/state'
+import type { ManagedAgentLaunchHandle } from '@fireline/client/managed-agent'
 import type { FlamecastRunIntent, FlamecastRunSummary } from './framework-boundary.js'
 import { createGeneratedHarnessBundle } from './generated-harness.js'
 
@@ -15,12 +14,15 @@ export async function runFlamecastCharacterization(
   intent: FlamecastRunIntent,
 ): Promise<FlamecastRunSummary> {
   const clientRequestId = stableClientRequestId(intent)
-  const launch = await appendAndObserveLaunch({
-    controlStreamUrl: intent.controlStreamUrl,
-    idempotencyKey: clientRequestId,
+  const client = createManagedAgentClient({
+    launchControlStreamUrl: intent.controlStreamUrl,
     requestedBy: intent.requestedBy,
-    timeoutMs: 60_000,
-    request: launchSpec(
+    defaults: {
+      stopReason: 'flamecast-shaped characterization complete',
+    },
+  })
+  const handle = await client.launch(
+    launchSpec(
       await createDefinition(intent, clientRequestId),
       {
         clientRequestId,
@@ -48,18 +50,24 @@ export async function runFlamecastCharacterization(
         },
       },
     ),
-  })
+    {
+      idempotencyKey: clientRequestId,
+      wait: false,
+    },
+  )
+
+  const row = await handle.waitUntil('session_ready', { timeoutMs: 60_000 })
 
   const events = [
-    `appended ${launch.envelope.type}`,
-    `observed collections.launches row ${launch.row.launchId}`,
+    `appended ${handle.requestEnvelope?.type}`,
+    `observed managed-agent launch row ${row.launchId}`,
   ]
   try {
     let followUpSent = false
     let followUpError: unknown
     try {
       followUpSent = await attachAndMaybePrompt({
-        row: launch.row,
+        handle,
         clientName: 'flamecast-v3-shaped-consumer',
         followUpPrompt: intent.followUpPrompt ?? 'complete the flamecast characterization run',
         events,
@@ -68,40 +76,38 @@ export async function runFlamecastCharacterization(
       followUpError = error
       events.push(`ACP follow-up failed: ${error instanceof Error ? error.message : String(error)}`)
     }
-    const stop = await appendAndObserveLaunchStop({
-      controlStreamUrl: intent.controlStreamUrl,
-      launchId: launch.row.launchId,
+    const stop = await handle.stop({
       clientRequestId,
-      requestedBy: intent.requestedBy,
       reason: 'flamecast-shaped characterization complete',
-      timeoutMs: 60_000,
+      wait: { until: 'terminal', timeoutMs: 60_000 },
     })
     events.push(`appended ${stop.envelope.type}`)
-    events.push(`observed stop row ${stop.row.status}`)
+    events.push(`observed stop row ${stop.row?.status}`)
     if (followUpError) throw followUpError
 
     return {
-      launchId: launch.row.launchId,
-      clientRequestId: launch.row.clientRequestId,
-      launchStatus: launch.row.status,
-      runtime: launch.row.runtime
+      launchId: row.launchId,
+      clientRequestId: row.clientRequestId,
+      launchStatus: row.status,
+      runtime: row.runtime
         ? {
-            runtimeId: launch.row.runtime.runtimeId,
-            acpUrl: launch.row.runtime.acp.url,
-            stateUrl: launch.row.runtime.state.url,
+            runtimeId: row.runtime.runtimeId,
+            acpUrl: row.runtime.acp.url,
+            stateUrl: row.runtime.state.url,
           }
         : undefined,
-      session: launch.row.startSession
+      session: row.startSession
         ? {
-            acpSessionId: launch.row.startSession.acpSessionId,
+            acpSessionId: row.startSession.acpSessionId,
             followUpSent,
           }
         : undefined,
-      stopStatus: stop.row.status,
+      stopStatus: stop.row?.status ?? 'unknown',
       events,
     }
   } finally {
-    launch.db.close()
+    handle.close()
+    client.close()
   }
 }
 
@@ -160,21 +166,20 @@ function safeIdPart(value: string): string {
 }
 
 async function attachAndMaybePrompt(options: {
-  readonly row: LaunchRow
+  readonly handle: ManagedAgentLaunchHandle
   readonly clientName: string
   readonly followUpPrompt: string
   readonly events: string[]
 }): Promise<boolean> {
-  const acpUrl = options.row.runtime?.acp.url
-  const sessionId = options.row.startSession?.acpSessionId
-  if (!acpUrl || !sessionId) {
+  const sessionId = options.handle.current()?.startSession?.acpSessionId
+  if (!sessionId) {
     options.events.push('skipped ACP follow-up because launch row lacked coordinates')
     return false
   }
 
-  const acp = await connectBrowserAcp({
-    url: acpUrl,
+  const acp = await options.handle.connectBrowserAcp({
     clientName: options.clientName,
+    wait: { until: 'session_ready', timeoutMs: 60_000 },
     onSessionUpdate(notification) {
       options.events.push(`acp update ${JSON.stringify(notification).slice(0, 160)}`)
     },

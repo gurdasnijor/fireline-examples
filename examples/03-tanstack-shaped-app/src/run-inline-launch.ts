@@ -6,7 +6,7 @@ import {
   newSessionRequest,
   textPrompt,
 } from '@fireline/client/spec'
-import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch.js'
+import { launchAndStopManagedAgent } from '../../shared/managed-agent-launch.js'
 
 export async function runInlineLaunch(options: {
   readonly controlStreamUrl: string
@@ -64,35 +64,27 @@ export async function runInlineLaunch(options: {
       timeoutMs: 60_000,
     },
   })
-  const result = await appendAndObserveLaunch({
+  const result = await launchAndStopManagedAgent({
     controlStreamUrl: options.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
     requestedBy: `examples/${options.example}`,
+    stopReason: `${options.example} smoke complete`,
     timeoutMs: 60_000,
   })
-  const stopped = await appendAndObserveLaunchStop({
-    controlStreamUrl: options.controlStreamUrl,
-    launchId: result.row.launchId,
-    clientRequestId,
-    requestedBy: `examples/${options.example}`,
-    reason: `${options.example} smoke complete`,
-    timeoutMs: 60_000,
-  })
-  result.db.close()
   return {
     launchId: result.row.launchId,
     status: result.row.status,
     controlStreamUrl: options.controlStreamUrl,
     envelope: {
-      type: result.envelope.type,
-      key: result.envelope.key,
+      type: result.envelope?.type,
+      key: result.envelope?.key,
     },
     stop: {
-      status: stopped.row.status,
+      status: result.stop.row?.status,
       envelope: {
-        type: stopped.envelope.type,
-        key: stopped.envelope.key,
+        type: result.stop.envelope.type,
+        key: result.stop.envelope.key,
       },
     },
     runtime: result.row.runtime,

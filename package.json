@@ -36,9 +36,9 @@
     "smoke:bun": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-bun-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- bun examples/14-bun/src/run.ts'"
   },
   "dependencies": {
-    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9",
     "@fireline/runtime": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
-    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
+    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9",
     "@agentclientprotocol/sdk": "0.19.0"
   },
   "devDependencies": {

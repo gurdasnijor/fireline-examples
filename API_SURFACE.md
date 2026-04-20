@@ -5,9 +5,9 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9`
 - `@fireline/runtime`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
-- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9`
 - `@agentclientprotocol/sdk`: `0.19.0` for the local ACP stdio agent used by
   `examples/17-acp-registry-chat`.
 
@@ -25,6 +25,10 @@ npm package names.
   - `launchSpec`
   - `newSessionRequest`
   - `textPrompt`
+- `@fireline/client/managed-agent`
+  - `createManagedAgentClient`
+  - `ManagedAgentLaunchHandle`
+  - `ManagedAgentHeaderProvider`
 - `@fireline/client/events`
   - `appendLaunchRequest`
   - `appendLaunchStop`
@@ -48,10 +52,15 @@ npm package names.
   - `fireline.db`
 
 Examples do not import `@fireline/client/launch-control`, runtime internals,
-or private package source. The target launch path appends
-`fireline.launch_request` and `fireline.launch_stop` to the configured control
-stream and observes launch rows through `@fireline/state` collections or the
-root `fireline.db(...)` wrapper.
+or private package source. Normal ergonomic examples in the mono-oet.29.3.32.2
+cutover slice use `@fireline/client/managed-agent` for launch/wait/ACP
+follow-up/stop. They still construct launch requests with
+`@fireline/client/spec`; that is temporary Tier 3 gap evidence for the
+canonical mono-oet.29.3.32.4 managed-agent builder blocker owned by TL1/BE2,
+not a final public API recommendation. TL1 accepted the intended replacement
+shape as `createManagedAgentLaunchRequest`, `acpStdioAgent`,
+`inlineJsBundleAgent`, and `jsModuleAgent` from
+`@fireline/client/managed-agent`.
 
 ## Framework Imports
 
@@ -267,9 +276,13 @@ violations.
 
 ## Endpoints
 
-- `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` is passed to `DurableStream` by
-  `@fireline/client/events`; `appendLaunchRequest` appends the
-  `fireline.launch_request` envelope and `appendLaunchStop` appends the
+- `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` is passed to
+  `@fireline/client/managed-agent` by examples 01, 03, 04, 05, and 06. The
+  helper owns launch append, launch observation, ACP attachment, and stop
+  append for those examples.
+- Lower-level examples pass `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` to
+  `DurableStream` by `@fireline/client/events`; `appendLaunchRequest` appends
+  the `fireline.launch_request` envelope and `appendLaunchStop` appends the
   `fireline.launch_stop` envelope through that package.
 - `GET ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` and the stream subscription
   endpoints used internally by `@fireline/state` observe
@@ -306,20 +319,22 @@ filesystem placements through a browser UI. Unsupported placement and
 middleware options remain disabled.
 
 `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
-`examples/05-next-open-cloudflare` run a smaller launch observation path rather
-than the editable chat path. They exist to validate framework import graphs,
-client/server boundaries, and build constraints.
+`examples/05-next-open-cloudflare` run a smaller managed-agent lifecycle path
+rather than the editable chat path. They exist to validate framework import
+graphs, client/server boundaries, and build constraints while the remaining
+request-builder ergonomics are tracked under mono-oet.29.3.32.4.
 
 `examples/06-flamecast-v3-shaped` exercises a black-box product-consumer shape:
 
 - `src/framework-boundary.ts` has no Fireline imports and owns product intent
   and summary types.
-- `src/fireline-adapter.ts` is the Fireline boundary. It teaches the current
-  `@fireline/client/spec` vocabulary: `agentDefinition(...)`,
-  `launchSpec(...)`, and `newSessionRequest(...)`. It also imports
-  `@fireline/client/acp-browser` and `@fireline/state` types, and uses the
-  shared stream helper that appends launch/stop events and observes
-  `collections.launches`.
+- `src/fireline-adapter.ts` is the Fireline boundary. It uses
+  `@fireline/client/managed-agent` for launch, session-ready wait, ACP
+  follow-up, and stop. It still teaches the current `@fireline/client/spec`
+  vocabulary for request construction: `agentDefinition(...)`,
+  `launchSpec(...)`, and `newSessionRequest(...)`. That remaining spec-builder
+  usage is temporary Tier 3 gap evidence until mono-oet.29.3.32.4 publishes
+  fresh artifacts with the accepted managed-agent request helpers.
 - `src/generated-harness.ts` produces a multi-file inline bundle with
   `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
@@ -329,11 +344,10 @@ client/server boundaries, and build constraints.
   `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
   `FIRELINE_CONTROL_STREAM`; builds a stable
   `clientRequestId` / `idempotencyKey` from `FLAMECAST_WORKSPACE_ID`,
-  `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; appends
-  `fireline.launch_request`; observes the launch row; attaches to
-  `LaunchRow.runtime.acp.url`; sends one follow-up prompt to
-  `LaunchRow.startSession.acpSessionId`; appends `fireline.launch_stop`; and
-  observes the stopped row.
+  `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; launches through
+  `@fireline/client/managed-agent`; waits for `session_ready`; attaches through
+  the managed-agent handle; sends one follow-up prompt; stops through the same
+  handle; and observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
 
 `examples/07-curl-shell-raw-http` exercises the T1 raw Durable Streams HTTP
@@ -481,37 +495,49 @@ uses the same envelope shape and launch-row observation path as the Python and
 Rust examples, keeping Fireline as an HTTP service boundary and avoiding any
 Fireline Go SDK or source imports.
 
-## Stream-Native Checkpoint
+## Managed-Agent Cutover Checkpoint
 
-After Fireline #228, #231, #233, #237, #242, and #245, examples 01-06 use the
-stream-native path:
+After Fireline #228, #231, #233, #237, #242, #245, and the
+mono-oet.29.3.32 helper lane, examples 01, 03, 04, 05, and 06 are being moved
+from direct stream-native lifecycle composition to `@fireline/client/managed-agent`:
 
 - Build a `CreateLaunchRequest` with `@fireline/client/spec`.
-- Append `fireline.launch_request` with `appendLaunchRequest`.
-- Materialize launch rows with `createFirelineDB(...).collections.launches`.
-- Use `@fireline/client/acp-browser` for browser ACP attachment once
-  `LaunchRow.runtime.acp.url` and `LaunchRow.startSession.acpSessionId` exist.
-- Append `fireline.launch_stop` with `appendLaunchStop` and observe the
-  materialized launch row reach `stopped`.
+- Launch with `createManagedAgentClient(...).launch(...)`.
+- Wait with the returned managed-agent handle.
+- Use `handle.connectBrowserAcp(...)` for browser ACP attachment once the
+  managed-agent launch row reaches `session_ready`.
+- Stop with `handle.stop(...)` and observe the managed-agent launch row reach
+  a terminal state.
 
-`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
-`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
-`examples/14-bun`, `examples/16-deno`, `examples/17-acp-registry-chat`, and
-`examples/18-middleware-stack` use the same stream-native path with larger
-generated harness, runtime-specific, registry-resolution, or middleware-stack
-shapes. They are characterization evidence for product consumer boundaries,
-not a promise that `@fireline/client/spec` names are frozen.
+The first bullet is the remaining blocker for final ergonomic examples:
+`@fireline/client/spec` request construction is temporary Tier 3 gap evidence
+until mono-oet.29.3.32.4 lands fresh artifacts with
+`createManagedAgentLaunchRequest`, `acpStdioAgent`, `inlineJsBundleAgent`, and
+`jsModuleAgent`, or TL1 explicitly approves a temporary exception. Raw and
+deliberately lower-level examples continue to use stream-native or raw HTTP
+primitives when that is the point of the example.
+
+`examples/11-server-worker-wrapper`, `examples/12-vercel-function-node`,
+`examples/13-vercel-edge-runtime`, `examples/14-bun`, `examples/16-deno`,
+`examples/17-acp-registry-chat`, and `examples/18-middleware-stack` still use
+stream-native paths with larger generated harness, runtime-specific,
+registry-resolution, or middleware-stack shapes. They are characterization
+evidence for consumer boundaries, not a promise that
+`@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 
 - Launch rows now use bare launch ids only in observed target rows. The old
   `launch:<id>` compatibility matcher was removed from the examples.
-- Stream-native stop is validated in examples 01 and 02 and wired into the
-  framework launch helpers.
+- Stream-native stop was validated in examples 01 and 02 before the
+  managed-agent cutover. Example 01 now reaches stop through
+  `ManagedAgentLaunchHandle.stop(...)`; example 02 remains the editable
+  lower-level browser path.
 
-Current `@fireline/state` observation rough edge: live subscriptions still log
+Current `@fireline/state` observation rough edge: lower-level examples that
+observe `collections.launches` directly can still log
 `Cannot read properties of undefined (reading 'Symbol(liveQueryInternal)')`
-while processing runtime instance rows. The examples use fresh
-`createFirelineDB(...).preload()` snapshots against `collections.launches` while
-waiting for launch/stop rows, and keep this logged as substrate friction rather
-than hiding it as canonical app shape.
+while processing runtime instance rows. The managed-agent examples avoid
+teaching direct state observation, while stream-native characterization
+examples keep any workaround logged as substrate friction rather than hiding it
+as canonical app shape.
