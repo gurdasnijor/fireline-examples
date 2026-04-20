@@ -34,6 +34,10 @@ Current checkpoint:
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, appends launch/stop through durable streams, observes
   `collections.launches`, and attaches to ACP for a follow-up prompt.
+- `examples/07-curl-shell-raw-http` is a shell/curl raw Durable Streams HTTP
+  consumer. It builds the launch/stop envelopes locally, appends them with
+  `curl`, and observes backing `fireline.launch` rows without Fireline helper
+  packages.
 - `examples/09-python-raw-http` and `examples/10-rust-raw-http` are raw
   Durable Streams HTTP consumers. They do not import Fireline packages or
   crates; they build `fireline.launch_request` / `fireline.launch_stop`

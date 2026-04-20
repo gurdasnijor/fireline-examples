@@ -223,12 +223,12 @@ a Fireline bead or be closed as an intentional boundary.
 
 22. Raw HTTP examples are clear but intentionally low-level.
 
-   `examples/09-python-raw-http` and `examples/10-rust-raw-http` prove that
-   non-TypeScript consumers can use Fireline through the Durable Streams wire
-   contract without helper packages. They also make the trade-off visible:
-   consumers must build the `fireline.launch_request` and
-   `fireline.launch_stop` envelopes, poll/read stream rows, and filter
-   `fireline.launch` records themselves.
+   `examples/07-curl-shell-raw-http`, `examples/09-python-raw-http`, and
+   `examples/10-rust-raw-http` prove that shell, Python, and Rust consumers can
+   use Fireline through the Durable Streams wire contract without helper
+   packages or crates. They also make the trade-off visible: consumers must
+   build the `fireline.launch_request` and `fireline.launch_stop` envelopes,
+   poll/read stream rows, and filter `fireline.launch` records themselves.
 
 23. Editable-agent-web naive dev previously did not own daemon startup.
 

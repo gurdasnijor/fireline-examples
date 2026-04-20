@@ -79,6 +79,7 @@ violations.
 - `pnpm run check:surface`
 - `pnpm run smoke:inline-js-local`
 - `pnpm run smoke:server-wrapper`
+- `pnpm run smoke:curl-shell-raw-http`
 - `pnpm run smoke:python-raw-http`
 - `pnpm run smoke:rust-raw-http`
 - `pnpm run dev:editable-agent-web`
@@ -91,6 +92,7 @@ violations.
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
+- `sh examples/07-curl-shell-raw-http/run.sh`
 - `tsx examples/07-server-worker-wrapper/src/run.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
@@ -140,6 +142,9 @@ violations.
   smoke recipe so generated output does not land under the repo.
 - `FIRELINE_STATE_DIR`: scratch-directory convention for this spike.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
+- `FIRELINE_RAW_HTTP_*`: example-only run, launch, client-request,
+  state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
+  overrides for `examples/07-curl-shell-raw-http`.
 - `FIRELINE_PYTHON_RAW_*`: example-only run, launch, client-request,
   state-stream, requested-by, prompt, timeout, stop-id, and stop-reason
   overrides for `examples/09-python-raw-http`.
@@ -250,6 +255,12 @@ client/server boundaries, and build constraints.
   `LaunchRow.startSession.acpSessionId`; appends `fireline.launch_stop`; and
   observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
+
+`examples/07-curl-shell-raw-http` exercises the T1 raw Durable Streams HTTP
+surface with shell, curl, and small local envelope helpers. It builds
+`fireline.launch_request` and `fireline.launch_stop` envelopes without
+Fireline package imports, appends them with raw HTTP `POST`, and observes
+first-class `fireline.launch` rows with raw HTTP `GET`.
 
 `examples/07-server-worker-wrapper` exercises a server/Worker boundary:
 
