@@ -94,7 +94,8 @@ private client subpath, even though external app code does not touch it.
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
-- `vite` through the Vite example scripts
+- `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
+- `vite` through the private Vite child script
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
 - `opennextjs-cloudflare build` through `pnpm run build:opennext-cloudflare`
@@ -111,10 +112,12 @@ private client subpath, even though external app code does not touch it.
   `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL` when Vite is run as a
   `fireline-v3-dev` child.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
-  examples 02-03. Example 02 defaults to
-  `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when this is not
-  set, and exposes mismatch recovery guidance when a reused daemon does not
-  watch that stream.
+  examples 02-03. Example 02's public dev command starts through
+  `fireline-v3-dev`, so this value should normally be injected from
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`. The private Vite child script still
+  defaults to `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when
+  this is not set, and exposes mismatch recovery guidance when a reused daemon
+  does not watch that stream.
 - `VITE_FIRELINE_STREAMS_PORT`: optional example 02 Vite seed for deriving the
   launch/control stream URL when the local streams server is not on `7474`.
 - `VITE_FIRELINE_CONTROL_STREAM`: optional example 02 Vite seed for deriving
@@ -136,6 +139,10 @@ private client subpath, even though external app code does not touch it.
   smoke recipe so generated output does not land under the repo.
 - `FIRELINE_STATE_DIR`: scratch-directory convention for this spike.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
+- `FIRELINE_V3_DEV`: example-only dev-script override for local evidence runs
+  that need to point at a checked-out `fireline-v3-dev` wrapper before package
+  artifacts are refreshed. Normal consumers use the package-provided
+  `fireline-v3-dev` binary.
 - `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
   through the Flamecast-shaped adapter into the generated runtime shim.
 - `FLAMECAST_RUN_ID`: example-only product run coordinate. Reuse it for retries

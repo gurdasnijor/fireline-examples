@@ -12,12 +12,13 @@
     "build:next-open-cloudflare": "next build examples/05-next-open-cloudflare",
     "build:opennext-cloudflare": "cd examples/05-next-open-cloudflare && opennextjs-cloudflare build --skipWranglerConfigCheck --dangerouslyUseUnsupportedNextVersion",
     "build:tanstack-shaped": "vite build --config examples/03-tanstack-shaped-app/vite.config.ts",
-    "dev:editable-agent-web": "VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL=\"${VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL:-${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-}}\" VITE_FIRELINE_STREAMS_PORT=\"${VITE_FIRELINE_STREAMS_PORT:-${FIRELINE_STREAMS_PORT:-}}\" VITE_FIRELINE_CONTROL_STREAM=\"${VITE_FIRELINE_CONTROL_STREAM:-${FIRELINE_CONTROL_STREAM:-}}\" vite --config examples/02-editable-agent-web/vite.config.ts",
+    "dev:editable-agent-web": "node scripts/dev-editable-agent-web.mjs",
     "dev:next-basic": "next dev examples/04-next-basic -p 5174",
     "dev:next-open-cloudflare": "next dev examples/05-next-open-cloudflare -p 5175",
     "dev:tanstack-shaped": "vite --config examples/03-tanstack-shaped-app/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "smoke:inline-js-local": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-examples-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; export FIRELINE_LAUNCH_CONTROL_STREAM_URL=${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-http://127.0.0.1:${STREAMS_PORT}/v1/stream/${CONTROL_STREAM}}; fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/01-inline-js-local/run.ts'",
+    "dev:editable-agent-web:vite": "VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL=\"${VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL:-${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-}}\" VITE_FIRELINE_STREAMS_PORT=\"${VITE_FIRELINE_STREAMS_PORT:-${FIRELINE_STREAMS_PORT:-}}\" VITE_FIRELINE_CONTROL_STREAM=\"${VITE_FIRELINE_CONTROL_STREAM:-${FIRELINE_CONTROL_STREAM:-${FIRELINE_DAEMON_STATE_STREAM:-}}}\" vite --config examples/02-editable-agent-web/vite.config.ts",
     "smoke:flamecast-shaped": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-flamecast-shaped-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/06-flamecast-v3-shaped/src/run.ts'"
   },
   "dependencies": {
