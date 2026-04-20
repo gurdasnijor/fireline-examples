@@ -2,12 +2,15 @@
 
 This example validates the package-shaped middleware builder surface from
 outside the Fireline source tree. It builds a normal stream-native launch with
-`trace(...)`, `contextInjection(...)`, and `budget(...)`, observes
-`collections.launches`, then appends `fireline.launch_stop`.
+`trace(...)`, `contextInjection(...)`, and `budget(...)`, then launches and
+stops through `@fireline/client/managed-agent`.
 
 It deliberately does not use `memory()`, approval gates, webhook/Telegram
-subscribers, managed-agent helpers, retired HTTP launch helpers, or Fireline
+subscribers, retired HTTP launch helpers, or Fireline
 internals.
+
+The launch path uses managed-agent request and inline bundle builders. The
+middleware builders remain the focused surface under test.
 
 ## Run
 

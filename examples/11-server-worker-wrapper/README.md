@@ -3,8 +3,8 @@
 This example shows a framework server or Worker owning the Fireline boundary.
 The application sends a small app-facing request to the wrapper; the wrapper
 validates auth, creates a stable idempotency key, appends
-`fireline.launch_request`, observes `@fireline/state` `collections.launches`,
-and appends `fireline.launch_stop`.
+`fireline.launch_request`, observes launch state, and appends
+`fireline.launch_stop` through `@fireline/client/managed-agent`.
 
 It is not a new Fireline API. It is consumer-authored adapter code for apps
 that need tenant policy, secrets, or idempotency to stay server-side.
@@ -29,12 +29,15 @@ attempt should reuse both values; a new attempt should change
 `APP_ATTEMPT_ID`. The wrapper uses these coordinates to build a stable
 `clientRequestId` / idempotency key.
 
+The wrapper uses managed-agent request and inline bundle builders instead of
+Tier 3 spec/events/state subpaths for normal lifecycle flow.
+
 ## Reviewer Reproduce
 
 This branch uses package-shaped git artifact refs, not local `/tmp` tarballs:
 
-- `@fireline/client`: `fireline-client-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
-- `@fireline/state`: `fireline-state-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+- `@fireline/client`: `fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
+- `@fireline/state`: `fireline-state-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
 - `@fireline/runtime`: `fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
 
 Install and run cheap checks:

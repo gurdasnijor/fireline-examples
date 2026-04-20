@@ -1,18 +1,13 @@
 import {
-  appendLaunchRequest,
-  appendLaunchStop,
-  type LaunchRequestEnvelope,
-  type LaunchStopEnvelope,
-} from '@fireline/client/events'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
-import { createFirelineDB, type LaunchRow } from '@fireline/state'
+  launchManagedAgent,
+  observeManagedAgent,
+  stopManagedAgent,
+  type ManagedAgentLaunchRow,
+} from '../../shared/managed-agent-launch.js'
 
 interface Env {
   readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
@@ -88,8 +83,21 @@ export default {
 async function launchFromWorker(env: Env, body: LaunchBody) {
   const config = deriveConfig(env)
   const clientRequestId = `launch:worker-direct:${crypto.randomUUID()}`
-  const definition = await createWorkerDirectDefinition(clientRequestId)
-  const request = launchSpec(definition, {
+  const request = createManagedAgentLaunchRequest({
+    name: 'cloudflare-worker-direct',
+    agent: await createWorkerDirectAgent(clientRequestId),
+    sandbox: {
+      provider: 'local',
+      fsBackend: 'streamFs',
+      labels: {
+        example: '08-cloudflare-worker-direct',
+        runtime: 'cloudflare-worker',
+      },
+    },
+    middleware: {
+      kind: 'middleware',
+      chain: [],
+    },
     clientRequestId,
     runtime: {
       name: 'cloudflare-worker-direct',
@@ -102,58 +110,55 @@ async function launchFromWorker(env: Env, body: LaunchBody) {
     startSession: {
       stateStream: clientRequestId.replace(/:/g, '-'),
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(body.prompt ?? 'Run the direct Cloudflare Worker example.'),
+      cwd: '/',
+      mcpServers: [],
+      prompt: body.prompt ?? 'Run the direct Cloudflare Worker example.',
     },
     wait: {
       until: 'session',
       timeoutMs: 60_000,
     },
   })
-  const envelope = await appendLaunchRequest({
-    streamUrl: config.controlStreamUrl,
+  const launch = await launchManagedAgent({
+    controlStreamUrl: config.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
     requestedBy: body.requestedBy ?? requestedBy,
-  })
-  const row = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: envelope.value.launchId,
+    fetch,
     timeoutMs: 60_000,
-    predicate: (candidate) =>
-      candidate.status === 'failed' || Boolean(candidate.runtime && candidate.startSession),
   })
-  if (row.status === 'failed') throw new Error(row.error?.message ?? `Launch ${row.launchId} failed`)
-  return summarizeLaunch({ config, envelope, row })
+  try {
+    return summarizeLaunch({ config, handle: launch.handle, row: launch.row })
+  } finally {
+    launch.handle.close()
+  }
 }
 
 async function stopFromWorker(env: Env, body: StopBody) {
   if (!body.launchId) throw new Error('POST /stop requires launchId')
   const config = deriveConfig(env)
-  const envelope = await appendLaunchStop({
-    streamUrl: config.controlStreamUrl,
+  const handle = observeManagedAgent({
+    controlStreamUrl: config.controlStreamUrl,
     launchId: body.launchId,
-    clientRequestId: body.clientRequestId,
-    reason: body.reason ?? 'direct Worker stop requested',
     requestedBy: body.requestedBy ?? requestedBy,
+    fetch,
   })
-  const row = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: body.launchId,
-    timeoutMs: 60_000,
-    predicate: (candidate) => candidate.status === 'stopped' || candidate.status === 'failed',
-  })
-  if (row.status === 'failed') {
-    throw new Error(row.error?.message ?? `Launch ${row.launchId} failed while stopping`)
+  try {
+    const stop = await stopManagedAgent({
+      handle,
+      clientRequestId: body.clientRequestId,
+      reason: body.reason ?? 'direct Worker stop requested',
+      requestedBy: body.requestedBy ?? requestedBy,
+      timeoutMs: 60_000,
+    })
+    return summarizeStop({ config, stopId: stop.stopId, row: stop.row })
+  } finally {
+    handle.close()
   }
-  return summarizeStop({ config, envelope, row })
 }
 
-async function createWorkerDirectDefinition(revision: string) {
-  const artifact = await inlineBundleArtifact({
+async function createWorkerDirectAgent(revision: string) {
+  return await inlineJsBundleAgent({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -171,77 +176,6 @@ async function createWorkerDirectDefinition(revision: string) {
       revision,
     },
   })
-  return agentDefinition({
-    name: 'cloudflare-worker-direct',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      labels: {
-        example: '08-cloudflare-worker-direct',
-        runtime: 'cloudflare-worker',
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
-}
-
-async function waitForLaunchRow(options: {
-  readonly stateStreamUrl: string
-  readonly launchId: string
-  readonly timeoutMs: number
-  readonly predicate: (row: LaunchRow) => boolean
-}): Promise<LaunchRow> {
-  const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
-  try {
-    await db.preload()
-    const existing = findMatchingLaunch(db, options.launchId, options.predicate)
-    if (existing) return existing
-
-    return await new Promise((resolve, reject) => {
-      let settled = false
-      const timeout = setTimeout(() => {
-        cleanup()
-        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
-      }, options.timeoutMs)
-      let subscription: { unsubscribe(): void } | undefined
-      let unsubscribeAfterAssign = false
-      const cleanup = () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        if (subscription) {
-          subscription.unsubscribe()
-        } else {
-          unsubscribeAfterAssign = true
-        }
-      }
-      subscription = db.collections.launches.subscribe((rows) => {
-        const row = rows.find((candidate) =>
-          candidate.launchId === options.launchId && options.predicate(candidate)
-        )
-        if (!row) return
-        cleanup()
-        resolve(row)
-      })
-      if (unsubscribeAfterAssign) subscription.unsubscribe()
-    })
-  } finally {
-    db.close()
-  }
-}
-
-function findMatchingLaunch(
-  db: ReturnType<typeof createFirelineDB>,
-  launchId: string,
-  predicate: (row: LaunchRow) => boolean,
-): LaunchRow | undefined {
-  return db.collections.launches.toArray.find((row) =>
-    row.launchId === launchId && predicate(row)
-  )
 }
 
 function deriveConfig(env: Env) {
@@ -271,14 +205,14 @@ async function readStopBody(request: Request): Promise<StopBody> {
 
 function summarizeLaunch(options: {
   readonly config: ReturnType<typeof deriveConfig>
-  readonly envelope: LaunchRequestEnvelope<string>
-  readonly row: LaunchRow
+  readonly handle: Awaited<ReturnType<typeof launchManagedAgent>>['handle']
+  readonly row: ManagedAgentLaunchRow
 }) {
   return {
     controlStreamUrl: options.config.controlStreamUrl,
     envelope: {
-      type: options.envelope.type,
-      key: options.envelope.key,
+      type: options.handle.requestEnvelope?.type,
+      key: options.handle.requestEnvelope?.key,
     },
     row: summarizeRow(options.row),
   }
@@ -286,20 +220,17 @@ function summarizeLaunch(options: {
 
 function summarizeStop(options: {
   readonly config: ReturnType<typeof deriveConfig>
-  readonly envelope: LaunchStopEnvelope
-  readonly row: LaunchRow
+  readonly stopId: string
+  readonly row: ManagedAgentLaunchRow
 }) {
   return {
     controlStreamUrl: options.config.controlStreamUrl,
-    envelope: {
-      type: options.envelope.type,
-      key: options.envelope.key,
-    },
+    stopId: options.stopId,
     row: summarizeRow(options.row),
   }
 }
 
-function summarizeRow(row: LaunchRow) {
+function summarizeRow(row: ManagedAgentLaunchRow) {
   return {
     launchId: row.launchId,
     clientRequestId: row.clientRequestId,

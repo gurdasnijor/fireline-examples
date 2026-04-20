@@ -13,7 +13,10 @@ It intentionally uses a local fixture catalog row whose distribution is
 - no launcher env metadata;
 - no retired launch-control client subpath;
 - no retired HTTP launch endpoint;
-- no managed-agent helper cutover.
+- no hand-rolled lifecycle flow outside managed-agent.
+
+The launch path uses managed-agent request builders. `acpRegistry(...)` remains
+the registry-resolution surface for the local fixture row.
 
 The fixture row starts `examples/17-acp-registry-chat/registry-agent.mjs`, a
 small ACP stdio agent that replies to prompts. The registry resolver still

@@ -1,18 +1,12 @@
 import {
-  appendLaunchRequest,
-  appendLaunchStop,
-  type LaunchRequestEnvelope,
-  type LaunchStopEnvelope,
-} from '@fireline/client/events'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
-import { createFirelineDB, type LaunchRow } from '@fireline/state'
+  launchManagedAgent,
+  stopManagedAgent,
+  type ManagedAgentLaunchRow,
+} from '../../shared/managed-agent-launch.js'
 
 export const config = { runtime: 'edge' }
 
@@ -92,8 +86,21 @@ export async function runVercelEdgeLaunch(options: {
   const launchInput = normalizeLaunchInput(options.env, options.body ?? {})
   const derived = deriveConfig(options.env)
   const clientRequestId = stableClientRequestId(launchInput)
-  const definition = await createDefinition(clientRequestId, launchInput)
-  const request = launchSpec(definition, {
+  const request = createManagedAgentLaunchRequest({
+    name: 'vercel-edge-runtime',
+    agent: await createAgent(clientRequestId, launchInput),
+    sandbox: {
+      provider: 'local',
+      fsBackend: 'streamFs',
+      labels: {
+        example: '13-vercel-edge-runtime',
+        runtime: 'vercel-edge',
+      },
+    },
+    middleware: {
+      kind: 'middleware',
+      chain: [],
+    },
     clientRequestId,
     runtime: {
       name: 'vercel-edge-runtime',
@@ -107,65 +114,45 @@ export async function runVercelEdgeLaunch(options: {
     startSession: {
       stateStream: sessionStateStream(launchInput),
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(launchInput.prompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: launchInput.prompt,
     },
     wait: {
       until: 'session',
       timeoutMs: 60_000,
     },
   })
-  const launch = await appendLaunchRequest({
-    streamUrl: derived.controlStreamUrl,
+  const launch = await launchManagedAgent({
+    controlStreamUrl: derived.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
     requestedBy: derived.requestedBy,
-  })
-  const launchRow = await waitForLaunchRow({
-    stateStreamUrl: derived.controlStreamUrl,
-    launchId: launch.value.launchId,
+    fetch: globalThis.fetch,
     timeoutMs: 60_000,
-    predicate: (row) =>
-      row.status === 'failed' || Boolean(row.runtime && row.startSession),
   })
-  if (launchRow.status === 'failed') {
-    throw new Error(launchRow.error?.message ?? `Launch ${launchRow.launchId} failed`)
-  }
-  const stop = await appendLaunchStop({
-    streamUrl: derived.controlStreamUrl,
-    launchId: launchRow.launchId,
+  const stop = await stopManagedAgent({
+    handle: launch.handle,
     clientRequestId,
     requestedBy: derived.requestedBy,
     reason: 'Vercel Edge Runtime example complete',
-  })
-  const stoppedRow = await waitForLaunchRow({
-    stateStreamUrl: derived.controlStreamUrl,
-    launchId: launchRow.launchId,
     timeoutMs: 60_000,
-    predicate: (row) => row.status === 'stopped' || row.status === 'failed',
-  })
-  if (stoppedRow.status === 'failed') {
-    throw new Error(stoppedRow.error?.message ?? `Launch ${stoppedRow.launchId} failed while stopping`)
-  }
+  }).finally(() => launch.handle.close())
 
   return summarizeRun({
     config: derived,
     input: launchInput,
-    launch,
-    launchRow,
+    launchEnvelopeKey: launch.handle.requestEnvelope?.key,
+    launchRow: launch.row,
     stop,
-    stoppedRow,
   })
 }
 
-async function createDefinition(
+async function createAgent(
   revision: string,
   input: ReturnType<typeof normalizeLaunchInput>,
 ) {
-  const artifact = await inlineBundleArtifact({
+  return await inlineJsBundleAgent({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -184,76 +171,6 @@ async function createDefinition(
       revision,
     },
   })
-  return agentDefinition({
-    name: 'vercel-edge-runtime',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      labels: {
-        example: '13-vercel-edge-runtime',
-        runtime: 'vercel-edge',
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
-}
-
-async function waitForLaunchRow(options: {
-  readonly stateStreamUrl: string
-  readonly launchId: string
-  readonly timeoutMs: number
-  readonly predicate: (row: LaunchRow) => boolean
-}): Promise<LaunchRow> {
-  const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
-  try {
-    await db.preload()
-    const existing = findLaunchRow(db, options.launchId, options.predicate)
-    if (existing) return existing
-    return await new Promise((resolve, reject) => {
-      let settled = false
-      const timeout = setTimeout(() => {
-        cleanup()
-        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
-      }, options.timeoutMs)
-      let subscription: { unsubscribe(): void } | undefined
-      let unsubscribeAfterAssign = false
-      const cleanup = () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        if (subscription) {
-          subscription.unsubscribe()
-        } else {
-          unsubscribeAfterAssign = true
-        }
-      }
-      subscription = db.collections.launches.subscribe((rows) => {
-        const row = rows.find((candidate) =>
-          candidate.launchId === options.launchId && options.predicate(candidate)
-        )
-        if (!row) return
-        cleanup()
-        resolve(row)
-      })
-      if (unsubscribeAfterAssign) subscription.unsubscribe()
-    })
-  } finally {
-    db.close()
-  }
-}
-
-function findLaunchRow(
-  db: ReturnType<typeof createFirelineDB>,
-  launchId: string,
-  predicate: (row: LaunchRow) => boolean,
-): LaunchRow | undefined {
-  return db.collections.launches.toArray.find((row) =>
-    row.launchId === launchId && predicate(row)
-  )
 }
 
 async function readJsonBody(request: Request): Promise<LaunchBody> {
@@ -264,10 +181,9 @@ async function readJsonBody(request: Request): Promise<LaunchBody> {
 function summarizeRun(options: {
   readonly config: LaunchConfig
   readonly input: ReturnType<typeof normalizeLaunchInput>
-  readonly launch: LaunchRequestEnvelope<string>
-  readonly launchRow: LaunchRow
-  readonly stop: LaunchStopEnvelope
-  readonly stoppedRow: LaunchRow
+  readonly launchEnvelopeKey?: string
+  readonly launchRow: ManagedAgentLaunchRow
+  readonly stop: Awaited<ReturnType<typeof stopManagedAgent>>
 }) {
   return {
     ok: true,
@@ -278,7 +194,7 @@ function summarizeRun(options: {
     tenantId: options.input.tenantId,
     launchId: options.launchRow.launchId,
     clientRequestId: options.launchRow.clientRequestId,
-    launchEnvelopeKey: options.launch.key,
+    launchEnvelopeKey: options.launchEnvelopeKey,
     launchStatus: options.launchRow.status,
     runtime: options.launchRow.runtime
       ? {
@@ -291,8 +207,8 @@ function summarizeRun(options: {
           acpSessionId: options.launchRow.startSession.acpSessionId,
         }
       : undefined,
-    stopId: options.stop.value.stopId,
-    stopStatus: options.stoppedRow.status,
+    stopId: options.stop.stopId,
+    stopStatus: options.stop.row.status,
   }
 }
 

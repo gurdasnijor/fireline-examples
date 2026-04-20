@@ -207,9 +207,9 @@ a Fireline bead or be closed as an intentional boundary.
 
    `examples/11-server-worker-wrapper` validates the desired placement for
    auth, tenant policy, idempotency, launch append, launch observation, and
-   stop append. It still uses low-level Fireline primitives inside the wrapper:
-   `agentDefinition`, `launchSpec`, `newSessionRequest`, `appendLaunchRequest`,
-   `collections.launches`, and `appendLaunchStop`.
+   stop. The wrapper now uses `@fireline/client/managed-agent` for request
+   construction and lifecycle flow instead of Tier 3 spec/events/state
+   composition.
 
    Non-happy-path observation: successful fresh-daemon and prior-daemon reuse
    runs still print ACP websocket reset/closed warnings during teardown. The
@@ -226,14 +226,12 @@ a Fireline bead or be closed as an intentional boundary.
    `fireline.launch_request` and `fireline.launch_stop` envelopes, poll/read
    stream rows, and filter `fireline.launch` records themselves.
 
-23. Direct Cloudflare Worker usage is package-shaped but still low-level.
+23. Direct Cloudflare Worker usage is package-shaped and moving to managed-agent.
 
    `examples/08-cloudflare-worker-direct` proves the direct Worker shape can be
-   expressed with `@fireline/client/spec`, `@fireline/client/events`, and
-   `@fireline/state` without Next.js, OpenNext, launch-control HTTP, or
-   Fireline source internals. It still exposes the raw launch spec, append,
-   polling observation, and stop append sequence. This is useful discovery
-   evidence, not a canonical Worker SDK shape.
+   expressed without Next.js, OpenNext, launch-control HTTP, or Fireline source
+   internals. The cutover uses `@fireline/client/managed-agent` for request
+   construction, launch, observation, and stop.
 
    `mono-oet.29.3.21.3` retro smoke passed both quality-bar scenarios:
    fresh scratch daemon on `5544`/`8581` with Wrangler on `8787`, and
@@ -257,54 +255,50 @@ a Fireline bead or be closed as an intentional boundary.
    processing `fireline.runtime_instance`; TL1 tracks that under
    `mono-oet.29.3.24`.
 
-25. Vercel Functions Node can use the root client surface, but still composes low-level pieces.
+25. Vercel Functions Node can use managed-agent.
 
    `examples/12-vercel-function-node` validates the Node serverless case that
-   is allowed to import the full root `@fireline/client` package. The handler
-   uses `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, while still
-   building launch data through `@fireline/client/spec` and appending stop
-   through `@fireline/client/events`.
+   can run Fireline package refs in a Node function. The WIP handler uses
+   `@fireline/client/managed-agent` for request construction and lifecycle
+   flow.
 
    This is useful for Vercel Functions and other Node serverless handlers, but
-   it does not remove the need to derive the launch/control stream URL, choose
-   a stable `clientRequestId`, observe `collections.launches`, and append stop.
-   It is still a discovery example, not a stable high-level SDK.
+   it is still a discovery example, not a stable high-level SDK.
 
    Fresh-daemon and prior-daemon reuse E2E both passed. The same teardown noise
    seen in other inline JS module examples remains visible: ACP websocket
    reset/closed warnings can appear after the example has already returned
    `ok: true`, `session_ready`, and `stopped`.
 
-26. Vercel Edge Runtime can use Worker-safe package subpaths, but still needs bundling and low-level stream composition.
+26. Vercel Edge Runtime can use managed-agent, but still needs bundling.
 
    `examples/13-vercel-edge-runtime` validates an Edge handler that avoids Node
    built-ins and root `@fireline/client`, then runs locally in
-   `@edge-runtime/vm`. The handler uses documented package subpaths:
-   `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`.
+   `@edge-runtime/vm`. The WIP handler uses Worker-safe
+   `@fireline/client/managed-agent` for request construction and lifecycle
+   flow.
 
    This is useful for Vercel Edge-style handlers and other Web Runtime
    consumers, but it still requires the app to derive the launch/control stream
-   URL, bundle the handler for the Edge runtime, choose a stable
-   `clientRequestId`, observe `collections.launches`, and append stop. It is
-   still discovery evidence, not a stable high-level SDK.
+   URL, bundle the handler for the Edge runtime, and choose a stable
+   `clientRequestId`. It is still discovery evidence, not a stable high-level
+   SDK.
 
    Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
    still print the same ACP websocket reset/closed teardown warnings seen in
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
 
-27. Bun can resolve and run the package-shaped root client surface, but the launch flow remains low-level.
+27. Bun can resolve and run the package-shaped managed-agent surface.
 
-   `examples/14-bun` validates a Bun process that imports root
-   `@fireline/client`, builds launch data with `@fireline/client/spec`,
-   appends stop through `@fireline/client/events`, and observes launch rows
-   through `fireline.db(...)`.
+   `examples/14-bun` validates a Bun process that imports package-shaped
+   Fireline refs and uses `@fireline/client/managed-agent` for request
+   construction and lifecycle flow.
 
    This proves the current git artifact package refs are usable from Bun
    without Fireline source imports, but it still requires the app to derive the
-   launch/control stream URL, choose a stable `clientRequestId`, observe
-   `collections.launches`, and append stop directly. It is still discovery
-   evidence, not a stable high-level SDK.
+   launch/control stream URL and choose a stable `clientRequestId`. It is
+   still discovery evidence, not a stable high-level SDK.
 
    Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
    still print the same ACP websocket reset/closed teardown warnings seen in
@@ -326,12 +320,12 @@ a Fireline bead or be closed as an intentional boundary.
    websocket reset/closed teardown warning; the Go example did not patch around
    it.
 
-29. Deno can consume package-shaped Fireline subpaths, but Node compatibility needs explicit permissions.
+29. Deno can consume package-shaped managed-agent helpers, but Node compatibility needs explicit permissions.
 
-   `examples/16-deno` validates Deno 2.x resolving documented package subpaths:
-   `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`.
-   Fresh-daemon and prior-daemon reuse E2E both passed with Deno running through
-   `--node-modules-dir=manual`.
+   `examples/16-deno` validates Deno 2.x resolving
+   `@fireline/client/managed-agent` through the repo package install.
+   Fresh-daemon and prior-daemon reuse E2E both passed with Deno running
+   through `--node-modules-dir=manual`.
 
    The main Deno-specific friction is permission/configuration shape:
    `--allow-net=127.0.0.1` is required for the local streams server, and
@@ -360,9 +354,9 @@ a Fireline bead or be closed as an intentional boundary.
    `examples/18-middleware-stack` validates the current external-consumer
    middleware path with `trace(...)`, `contextInjection(...)`, and `budget(...)`
    from `@fireline/client/middleware`. The example keeps the launch normal:
-   build `agentDefinition(...)`, append `fireline.launch_request`, observe
-   `collections.launches`, append `fireline.launch_stop`, and observe
-   `stopped`.
+   build with `createManagedAgentLaunchRequest(...)` and
+   `inlineJsBundleAgent(...)`, launch through managed-agent, stop through
+   managed-agent, and observe `stopped`.
 
    This slice intentionally does not use `memory()` because the host-side
    MCP/proxy backing is not part of this examples bead. It also avoids approval
@@ -402,6 +396,19 @@ a Fireline bead or be closed as an intentional boundary.
    `mono-oet.29.3.24`; interrupting the long-lived prior-daemon process also
    prints expected stream-read shutdown noise.
 
+   `mono-oet.29.3.32.3` cut examples 08, 11, 12, 13, 14, 16, 17, and 18 to
+   `@fireline/client/managed-agent` for request construction, launch
+   observation, ACP attachment where applicable, and stop. The target example
+   code no longer imports `@fireline/client/spec`, `@fireline/client/events`,
+   `@fireline/state`, or `@fireline/client/acp-browser` for normal lifecycle
+   flow. Lower-level shared stream helpers remain for raw/protocol examples.
+
+   Fresh-daemon and prior-daemon reuse E2E passed for Worker, Edge,
+   Server/Worker wrapper, Vercel Node Function, Bun, Deno, ACP registry chat,
+   and middleware stack. Several TS/Edge runner processes printed the expected
+   stopped JSON and then stayed alive; the evidence commands used bounded
+   watchers and killed scratch process trees after `stopStatus: "stopped"`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -417,6 +424,9 @@ a Fireline bead or be closed as an intentional boundary.
   construction, stop append, observation, and ACP attachment for normal
   examples. Remaining work is PM browser QA against the fresh package
   artifacts.
+- Already fixed Fireline gap: managed-agent request and agent builders landed
+  in `mono-oet.29.3.32.4`, so normal app examples can avoid direct Tier 3
+  spec-builder imports for lifecycle flow.
 - Missing Fireline/state cleanup: live `collections.launches` observation
   should deliver runtime/result/stop updates without fresh-DB preload snapshots.
   Tracked by `mono-oet.29.3.2`.
@@ -470,3 +480,6 @@ a Fireline bead or be closed as an intentional boundary.
 - Server/Worker stream append pattern for framework apps that need auth,
   idempotency, tenant policy, or secrets.
 - PM browser QA for the managed-agent cutover examples after fresh/reuse E2E.
+- Keep normal app examples on `@fireline/client/managed-agent`; use Tier 3
+  spec/events/state imports only in raw/protocol or lower-level discovery
+  examples.

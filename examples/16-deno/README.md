@@ -4,10 +4,10 @@ Discovery-only Deno example. It validates that Deno can resolve Fireline's
 package-shaped TypeScript surfaces from the repo `node_modules` install:
 
 1. derive the launch/control stream URL from deployment environment;
-2. build a launch spec with `@fireline/client/spec`;
-3. append `fireline.launch_request` with `@fireline/client/events`;
-4. observe `collections.launches` with `@fireline/state`;
-5. append `fireline.launch_stop`;
+2. build a launch request with managed-agent builders;
+3. launch through `@fireline/client/managed-agent`;
+4. observe launch state through the managed-agent launch handle;
+5. stop through the managed-agent launch handle;
 6. print a compact JSON result.
 
 This is not a public Deno SDK. It is an external consumer shape for Deno's
@@ -17,7 +17,11 @@ or the retired launch-control client subpath.
 
 ## Files
 
-- `main.ts`: Deno script using documented Fireline package subpaths only.
+- `main.ts`: Deno script using `@fireline/client/managed-agent` and
+  managed-agent builders.
+
+The script uses managed-agent request and inline bundle builders instead of
+Tier 3 spec/events/state subpaths for normal lifecycle flow.
 
 ## Reviewer Reproduce
 

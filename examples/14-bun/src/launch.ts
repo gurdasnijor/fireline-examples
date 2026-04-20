@@ -1,14 +1,11 @@
-import fireline from '@fireline/client'
-import { appendLaunchStop } from '@fireline/client/events'
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
-import type { LaunchRow } from '@fireline/state'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
+import {
+  launchManagedAgent,
+  stopManagedAgent,
+} from '../../shared/managed-agent-launch.js'
 
 interface BunExampleEnv {
   readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
@@ -76,8 +73,21 @@ export async function runBunLaunch(options: {
   const config = deriveConfig(options.env)
   const launchInput = normalizeLaunchInput(options.env, options.body ?? {})
   const clientRequestId = stableClientRequestId(launchInput)
-  const definition = await createDefinition(clientRequestId, launchInput)
-  const request = launchSpec(definition, {
+  const request = createManagedAgentLaunchRequest({
+    name: 'bun',
+    agent: await createAgent(clientRequestId, launchInput),
+    sandbox: {
+      provider: 'local',
+      fsBackend: 'streamFs',
+      labels: {
+        example: '14-bun',
+        runtime: 'bun',
+      },
+    },
+    middleware: {
+      kind: 'middleware',
+      chain: [],
+    },
     clientRequestId,
     runtime: {
       name: 'bun',
@@ -91,11 +101,9 @@ export async function runBunLaunch(options: {
     startSession: {
       stateStream: sessionStateStream(launchInput),
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(launchInput.prompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: launchInput.prompt,
     },
     wait: {
       until: 'session',
@@ -103,60 +111,42 @@ export async function runBunLaunch(options: {
     },
   })
 
-  const launch = await fireline.appendLaunchRequest({
-    streamUrl: config.controlStreamUrl,
+  const launch = await launchManagedAgent({
+    controlStreamUrl: config.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
     requestedBy: config.requestedBy,
-  })
-  const launchRow = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: launch.value.launchId,
     timeoutMs: 60_000,
-    predicate: (row) =>
-      row.status === 'failed' || Boolean(row.runtime && row.startSession),
   })
-  if (launchRow.status === 'failed') {
-    throw new Error(launchRow.error?.message ?? `Launch ${launchRow.launchId} failed`)
-  }
 
-  const stop = await appendLaunchStop({
-    streamUrl: config.controlStreamUrl,
-    launchId: launchRow.launchId,
+  const stop = await stopManagedAgent({
+    handle: launch.handle,
     clientRequestId,
     requestedBy: config.requestedBy,
     reason: 'Bun example complete',
-  })
-  const stoppedRow = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: launchRow.launchId,
     timeoutMs: 60_000,
-    predicate: (row) => row.status === 'stopped' || row.status === 'failed',
-  })
-  if (stoppedRow.status === 'failed') {
-    throw new Error(stoppedRow.error?.message ?? `Launch ${stoppedRow.launchId} failed while stopping`)
-  }
+  }).finally(() => launch.handle.close())
 
   return {
     ok: true,
     example: '14-bun',
     controlStream: config.controlStream,
-    launchId: launchRow.launchId,
-    clientRequestId: launchRow.clientRequestId,
-    launchStatus: launchRow.status,
-    runtime: launchRow.runtime
+    launchId: launch.row.launchId,
+    clientRequestId: launch.row.clientRequestId,
+    launchStatus: launch.row.status,
+    runtime: launch.row.runtime
       ? {
-          runtimeId: launchRow.runtime.runtimeId,
-          acpUrl: launchRow.runtime.acp.url,
+          runtimeId: launch.row.runtime.runtimeId,
+          acpUrl: launch.row.runtime.acp.url,
         }
       : undefined,
-    session: launchRow.startSession
+    session: launch.row.startSession
       ? {
-          acpSessionId: launchRow.startSession.acpSessionId,
+          acpSessionId: launch.row.startSession.acpSessionId,
         }
       : undefined,
-    stopId: stop.value.stopId,
-    stopStatus: stoppedRow.status,
+    stopId: stop.stopId,
+    stopStatus: stop.row.status,
   }
 }
 
@@ -188,11 +178,11 @@ function normalizeLaunchInput(env: BunExampleEnv, body: LaunchBody) {
   }
 }
 
-async function createDefinition(
+async function createAgent(
   revision: string,
   input: ReturnType<typeof normalizeLaunchInput>,
 ) {
-  const artifact = await inlineBundleArtifact({
+  return await inlineJsBundleAgent({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -211,75 +201,6 @@ async function createDefinition(
       revision,
     },
   })
-  return agentDefinition({
-    name: 'bun',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      labels: {
-        example: '14-bun',
-        runtime: 'bun',
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
-}
-
-async function waitForLaunchRow(options: {
-  readonly stateStreamUrl: string
-  readonly launchId: string
-  readonly timeoutMs: number
-  readonly predicate: (row: LaunchRow) => boolean
-}): Promise<LaunchRow> {
-  const db = await fireline.db({ stateStreamUrl: options.stateStreamUrl })
-  try {
-    const existing = findLaunchRow(db, options.launchId, options.predicate)
-    if (existing) return existing
-    return await new Promise((resolve, reject) => {
-      let settled = false
-      const timeout = setTimeout(() => {
-        cleanup()
-        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
-      }, options.timeoutMs)
-      let subscription: { unsubscribe(): void } | undefined
-      let unsubscribeAfterAssign = false
-      const cleanup = () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        if (subscription) {
-          subscription.unsubscribe()
-        } else {
-          unsubscribeAfterAssign = true
-        }
-      }
-      subscription = db.collections.launches.subscribe((rows) => {
-        const row = rows.find((candidate) =>
-          candidate.launchId === options.launchId && options.predicate(candidate)
-        )
-        if (!row) return
-        cleanup()
-        resolve(row)
-      })
-      if (unsubscribeAfterAssign) subscription.unsubscribe()
-    })
-  } finally {
-    db.close()
-  }
-}
-
-function findLaunchRow(
-  db: Awaited<ReturnType<typeof fireline.db>>,
-  launchId: string,
-  predicate: (row: LaunchRow) => boolean,
-): LaunchRow | undefined {
-  return db.collections.launches.toArray.find((row) =>
-    row.launchId === launchId && predicate(row)
-  )
 }
 
 function stableClientRequestId(input: ReturnType<typeof normalizeLaunchInput>): string {

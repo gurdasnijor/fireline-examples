@@ -1,17 +1,16 @@
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
 import {
   budget,
   contextInjection,
   trace,
 } from '@fireline/client/middleware'
-import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch.js'
+import {
+  launchManagedAgent,
+  stopManagedAgent,
+} from '../../shared/managed-agent-launch.js'
 
 interface MiddlewareStackEnv {
   readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
@@ -56,7 +55,7 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     budget({ tokens: 10_000 }),
   ] as const
 
-  const artifact = await inlineBundleArtifact({
+  const agent = await inlineJsBundleAgent({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -70,9 +69,9 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     },
   })
 
-  const request = launchSpec(agentDefinition({
+  const request = createManagedAgentLaunchRequest({
     name: 'middleware-stack',
-    agent: jsModuleAgentForm({ artifact }),
+    agent,
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -85,7 +84,6 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
       kind: 'middleware',
       chain: middlewareChain,
     },
-  }), {
     clientRequestId,
     runtime: {
       name: exampleId,
@@ -98,11 +96,9 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     startSession: {
       stateStream: sessionStateStream(input),
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(input.prompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: input.prompt,
     },
     wait: {
       until: 'session',
@@ -110,7 +106,7 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     },
   })
 
-  const launch = await appendAndObserveLaunch({
+  const launch = await launchManagedAgent({
     controlStreamUrl: config.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
@@ -118,15 +114,13 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     timeoutMs: 60_000,
   })
 
-  const stopped = await appendAndObserveLaunchStop({
-    controlStreamUrl: config.controlStreamUrl,
-    launchId: launch.row.launchId,
+  const stopped = await stopManagedAgent({
+    handle: launch.handle,
     clientRequestId,
     requestedBy,
     reason: 'Middleware stack example complete',
     timeoutMs: 60_000,
-  })
-  launch.db.close()
+  }).finally(() => launch.handle.close())
 
   return {
     ok: true,
@@ -151,7 +145,7 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
         }
       : undefined,
     stop: {
-      stopId: stopped.envelope.value.stopId,
+      stopId: stopped.stopId,
       stopStatus: stopped.row.status,
     },
   }

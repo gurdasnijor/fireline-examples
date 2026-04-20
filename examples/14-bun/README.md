@@ -4,10 +4,10 @@ Discovery-only Bun example. It models a Bun process that owns the Fireline call
 path for one request:
 
 1. derive the launch/control stream URL from environment;
-2. build a launch spec with `@fireline/client/spec`;
-3. append `fireline.launch_request` through the root `@fireline/client` surface;
-4. observe `collections.launches` through `fireline.db(...)`;
-5. append `fireline.launch_stop`;
+2. build a launch request with managed-agent builders;
+3. launch through `@fireline/client/managed-agent`;
+4. observe launch state through the managed-agent launch handle;
+5. stop through the managed-agent launch handle;
 6. print a compact JSON response.
 
 This is not a Fireline API wrapper. It validates that Bun can resolve and run
@@ -16,8 +16,12 @@ the package-shaped Fireline client artifacts used by the examples repo.
 ## Files
 
 - `src/launch.ts`: Bun-compatible launch handler using the root
-  `@fireline/client`, `@fireline/client/spec`, and `@fireline/client/events`.
+  package-shaped Fireline refs, `@fireline/client/managed-agent`, and
+  managed-agent builders.
 - `src/run.ts`: local E2E runner executed by Bun.
+
+The handler uses managed-agent request and inline bundle builders instead of
+Tier 3 spec/events/state subpaths for normal lifecycle flow.
 
 ## Reviewer Reproduce
 

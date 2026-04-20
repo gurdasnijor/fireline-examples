@@ -1,18 +1,9 @@
 import {
-  appendLaunchRequest,
-  appendLaunchStop,
-  type LaunchRequestEnvelope,
-  type LaunchStopEnvelope,
-} from '@fireline/client/events'
-import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
-import { createFirelineDB, type LaunchRow } from '@fireline/state'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
+// @ts-expect-error Deno runs this TypeScript source directly.
+import { launchManagedAgent, stopManagedAgent, type ManagedAgentLaunchRow } from '../shared/managed-agent-launch.ts'
 
 declare const Deno: {
   readonly env: {
@@ -48,8 +39,21 @@ async function runDenoExample(env: DenoExampleEnv) {
   const launchInput = normalizeLaunchInput(env)
   const config = deriveConfig(env)
   const clientRequestId = stableClientRequestId(launchInput)
-  const definition = await createDefinition(clientRequestId, launchInput)
-  const request = launchSpec(definition, {
+  const request = createManagedAgentLaunchRequest({
+    name: 'deno-package-consumer',
+    agent: await createAgent(clientRequestId, launchInput),
+    sandbox: {
+      provider: 'local',
+      fsBackend: 'streamFs',
+      labels: {
+        example: '16-deno',
+        runtime: 'deno',
+      },
+    },
+    middleware: {
+      kind: 'middleware',
+      chain: [],
+    },
     clientRequestId,
     runtime: {
       name: 'deno-package-consumer',
@@ -63,11 +67,9 @@ async function runDenoExample(env: DenoExampleEnv) {
     startSession: {
       stateStream: sessionStateStream(launchInput),
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(launchInput.prompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: launchInput.prompt,
     },
     wait: {
       until: 'session',
@@ -75,55 +77,37 @@ async function runDenoExample(env: DenoExampleEnv) {
     },
   })
 
-  const launch = await appendLaunchRequest({
-    streamUrl: config.controlStreamUrl,
+  const launch = await launchManagedAgent({
+    controlStreamUrl: config.controlStreamUrl,
     request,
     idempotencyKey: clientRequestId,
     requestedBy: config.requestedBy,
-  })
-  const launchRow = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: launch.value.launchId,
+    fetch,
     timeoutMs: 60_000,
-    predicate: (row) =>
-      row.status === 'failed' || Boolean(row.runtime && row.startSession),
   })
-  if (launchRow.status === 'failed') {
-    throw new Error(launchRow.error?.message ?? `Launch ${launchRow.launchId} failed`)
-  }
 
-  const stop = await appendLaunchStop({
-    streamUrl: config.controlStreamUrl,
-    launchId: launchRow.launchId,
+  const stop = await stopManagedAgent({
+    handle: launch.handle,
     clientRequestId,
     requestedBy: config.requestedBy,
     reason: 'Deno package consumer example complete',
-  })
-  const stoppedRow = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: launchRow.launchId,
     timeoutMs: 60_000,
-    predicate: (row) => row.status === 'stopped' || row.status === 'failed',
-  })
-  if (stoppedRow.status === 'failed') {
-    throw new Error(stoppedRow.error?.message ?? `Launch ${stoppedRow.launchId} failed while stopping`)
-  }
+  }).finally(() => launch.handle.close())
 
   return summarizeRun({
     config,
     input: launchInput,
-    launch,
-    launchRow,
+    launchEnvelopeKey: launch.handle.requestEnvelope?.key,
+    launchRow: launch.row,
     stop,
-    stoppedRow,
   })
 }
 
-async function createDefinition(
+async function createAgent(
   revision: string,
   input: ReturnType<typeof normalizeLaunchInput>,
 ) {
-  const artifact = await inlineBundleArtifact({
+  return await inlineJsBundleAgent({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -142,85 +126,14 @@ async function createDefinition(
       revision,
     },
   })
-  return agentDefinition({
-    name: 'deno-package-consumer',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      labels: {
-        example: '16-deno',
-        runtime: 'deno',
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
-}
-
-async function waitForLaunchRow(options: {
-  readonly stateStreamUrl: string
-  readonly launchId: string
-  readonly timeoutMs: number
-  readonly predicate: (row: LaunchRow) => boolean
-}): Promise<LaunchRow> {
-  const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
-  try {
-    await db.preload()
-    const existing = findLaunchRow(db, options.launchId, options.predicate)
-    if (existing) return existing
-    return await new Promise((resolve, reject) => {
-      let settled = false
-      const timeout = setTimeout(() => {
-        cleanup()
-        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
-      }, options.timeoutMs)
-      let subscription: { unsubscribe(): void } | undefined
-      let unsubscribeAfterAssign = false
-      const cleanup = () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        if (subscription) {
-          subscription.unsubscribe()
-        } else {
-          unsubscribeAfterAssign = true
-        }
-      }
-      subscription = db.collections.launches.subscribe((rows) => {
-        const row = rows.find((candidate) =>
-          candidate.launchId === options.launchId && options.predicate(candidate)
-        )
-        if (!row) return
-        cleanup()
-        resolve(row)
-      })
-      if (unsubscribeAfterAssign) subscription.unsubscribe()
-    })
-  } finally {
-    db.close()
-  }
-}
-
-function findLaunchRow(
-  db: ReturnType<typeof createFirelineDB>,
-  launchId: string,
-  predicate: (row: LaunchRow) => boolean,
-): LaunchRow | undefined {
-  return db.collections.launches.toArray.find((row) =>
-    row.launchId === launchId && predicate(row)
-  )
 }
 
 function summarizeRun(options: {
   readonly config: LaunchConfig
   readonly input: ReturnType<typeof normalizeLaunchInput>
-  readonly launch: LaunchRequestEnvelope<string>
-  readonly launchRow: LaunchRow
-  readonly stop: LaunchStopEnvelope
-  readonly stoppedRow: LaunchRow
+  readonly launchEnvelopeKey?: string
+  readonly launchRow: ManagedAgentLaunchRow
+  readonly stop: Awaited<ReturnType<typeof stopManagedAgent>>
 }) {
   return {
     ok: true,
@@ -231,7 +144,7 @@ function summarizeRun(options: {
     tenantId: options.input.tenantId,
     launchId: options.launchRow.launchId,
     clientRequestId: options.launchRow.clientRequestId,
-    launchEnvelopeKey: options.launch.key,
+    launchEnvelopeKey: options.launchEnvelopeKey,
     launchStatus: options.launchRow.status,
     runtime: options.launchRow.runtime
       ? {
@@ -244,8 +157,8 @@ function summarizeRun(options: {
           acpSessionId: options.launchRow.startSession.acpSessionId,
         }
       : undefined,
-    stopId: options.stop.value.stopId,
-    stopStatus: options.stoppedRow.status,
+    stopId: options.stop.stopId,
+    stopStatus: options.stop.row.status,
   }
 }
 

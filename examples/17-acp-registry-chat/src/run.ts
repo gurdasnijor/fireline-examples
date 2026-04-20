@@ -2,25 +2,19 @@ import {
   acpRegistry,
   type ResolveAcpRegistryOptions,
 } from '@fireline/client'
-import { connectBrowserAcp } from '@fireline/client/acp-browser'
 import {
-  appendLaunchRequest,
-  appendLaunchStop,
-} from '@fireline/client/events'
-import {
-  agentDefinition,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-  type LaunchSpec,
-} from '@fireline/client/spec'
+  createManagedAgentLaunchRequest,
+} from '@fireline/client/managed-agent'
 import {
   budget,
   contextInjection,
   trace,
 } from '@fireline/client/middleware'
-import type { LaunchRow } from '@fireline/state'
-import { createFirelineDB } from '@fireline/state'
+import {
+  launchManagedAgent,
+  stopManagedAgent,
+  type ManagedAgentLaunchRow,
+} from '../../shared/managed-agent-launch.js'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -59,7 +53,7 @@ async function runRegistryChat(env: RegistryChatEnv) {
     catalog: registryCatalog(),
     transport: 'command',
   } satisfies ResolveAcpRegistryOptions)
-  const request = launchSpec(agentDefinition({
+  const request = createManagedAgentLaunchRequest({
     name: registryAgentId,
     agent: registryAgent,
     sandbox: {
@@ -84,7 +78,6 @@ async function runRegistryChat(env: RegistryChatEnv) {
         budget({ tokens: 10_000 }),
       ],
     },
-  }), {
     clientRequestId,
     runtime: {
       name: exampleId,
@@ -97,11 +90,9 @@ async function runRegistryChat(env: RegistryChatEnv) {
     startSession: {
       stateStream: sessionStateStream(input),
       create: true,
-      newSession: newSessionRequest({
-        cwd: process.cwd(),
-        mcpServers: [],
-      }),
-      prompt: textPrompt(input.initialPrompt),
+      cwd: process.cwd(),
+      mcpServers: [],
+      prompt: input.initialPrompt,
     },
     wait: {
       until: 'session',
@@ -109,32 +100,25 @@ async function runRegistryChat(env: RegistryChatEnv) {
     },
   })
 
-  const launch = await appendLaunchRequestAndObserve({
+  const launch = await launchManagedAgent({
     controlStreamUrl: config.controlStreamUrl,
     request,
-    clientRequestId,
+    idempotencyKey: clientRequestId,
     requestedBy: config.requestedBy,
+    timeoutMs: 60_000,
   })
   const followUp = await promptLaunchedSession({
-    row: launch,
+    handle: launch.handle,
+    row: launch.row,
     prompt: input.followUpPrompt,
   })
-  const stop = await appendLaunchStop({
-    streamUrl: config.controlStreamUrl,
-    launchId: launch.launchId,
+  const stop = await stopManagedAgent({
+    handle: launch.handle,
     clientRequestId,
     requestedBy: config.requestedBy,
     reason: 'ACP registry chat example complete',
-  })
-  const stopped = await waitForLaunchRow({
-    stateStreamUrl: config.controlStreamUrl,
-    launchId: launch.launchId,
     timeoutMs: 60_000,
-    predicate: (row) => row.status === 'stopped' || row.status === 'failed',
-  })
-  if (stopped.status === 'failed') {
-    throw new Error(stopped.error?.message ?? `Launch ${stopped.launchId} failed while stopping`)
-  }
+  }).finally(() => launch.handle.close())
 
   return {
     ok: true,
@@ -146,53 +130,29 @@ async function runRegistryChat(env: RegistryChatEnv) {
       transport: 'command',
       command: registryAgent.command,
     },
-    launchId: launch.launchId,
-    clientRequestId: launch.clientRequestId,
-    launchStatus: launch.status,
-    runtime: launch.runtime
+    launchId: launch.row.launchId,
+    clientRequestId: launch.row.clientRequestId,
+    launchStatus: launch.row.status,
+    runtime: launch.row.runtime
       ? {
-          runtimeId: launch.runtime.runtimeId,
-          acpUrl: launch.runtime.acp.url,
+          runtimeId: launch.row.runtime.runtimeId,
+          acpUrl: launch.row.runtime.acp.url,
         }
       : undefined,
-    session: launch.startSession
+    session: launch.row.startSession
       ? {
-          acpSessionId: launch.startSession.acpSessionId,
+          acpSessionId: launch.row.startSession.acpSessionId,
         }
       : undefined,
     followUp,
-    stopId: stop.value.stopId,
-    stopStatus: stopped.status,
+    stopId: stop.stopId,
+    stopStatus: stop.row.status,
   }
-}
-
-async function appendLaunchRequestAndObserve(options: {
-  readonly controlStreamUrl: string
-  readonly request: LaunchSpec
-  readonly clientRequestId: string
-  readonly requestedBy: string
-}): Promise<LaunchRow> {
-  const envelope = await appendLaunchRequest({
-    streamUrl: options.controlStreamUrl,
-    request: options.request,
-    idempotencyKey: options.clientRequestId,
-    requestedBy: options.requestedBy,
-  })
-  const row = await waitForLaunchRow({
-    stateStreamUrl: options.controlStreamUrl,
-    launchId: envelope.value.launchId,
-    timeoutMs: 60_000,
-    predicate: (candidate) =>
-      candidate.status === 'failed' || Boolean(candidate.runtime && candidate.startSession),
-  })
-  if (row.status === 'failed') {
-    throw new Error(row.error?.message ?? `Launch ${row.launchId} failed`)
-  }
-  return row
 }
 
 async function promptLaunchedSession(options: {
-  readonly row: LaunchRow
+  readonly handle: Awaited<ReturnType<typeof launchManagedAgent>>['handle']
+  readonly row: ManagedAgentLaunchRow
   readonly prompt: string
 }) {
   const acpUrl = options.row.runtime?.acp.url
@@ -201,8 +161,7 @@ async function promptLaunchedSession(options: {
     throw new Error(`Launch ${options.row.launchId} did not expose ACP session coordinates`)
   }
   const chunks: string[] = []
-  const acp = await connectBrowserAcp({
-    url: acpUrl,
+  const acp = await options.handle.connectBrowserAcp({
     clientName: 'fireline-examples-acp-registry-chat',
     clientVersion: '0.0.0',
     onSessionUpdate(notification) {
@@ -226,50 +185,8 @@ async function promptLaunchedSession(options: {
   }
 }
 
-async function waitForLaunchRow(options: {
-  readonly stateStreamUrl: string
-  readonly launchId: string
-  readonly timeoutMs: number
-  readonly predicate: (row: LaunchRow) => boolean
-}): Promise<LaunchRow> {
-  const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
-  try {
-    await db.preload()
-    const existing = db.collections.launches.toArray.find((row) =>
-      row.launchId === options.launchId && options.predicate(row)
-    )
-    if (existing) return existing
-    return await new Promise((resolvePromise, reject) => {
-      let settled = false
-      const timeout = setTimeout(() => {
-        cleanup()
-        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
-      }, options.timeoutMs)
-      let subscription: { unsubscribe(): void } | undefined
-      let unsubscribeAfterAssign = false
-      const cleanup = () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        if (subscription) {
-          subscription.unsubscribe()
-        } else {
-          unsubscribeAfterAssign = true
-        }
-      }
-      subscription = db.collections.launches.subscribe((rows) => {
-        const row = rows.find((candidate) =>
-          candidate.launchId === options.launchId && options.predicate(candidate)
-        )
-        if (!row) return
-        cleanup()
-        resolvePromise(row)
-      })
-      if (unsubscribeAfterAssign) subscription.unsubscribe()
-    })
-  } finally {
-    db.close()
-  }
+function textPrompt(text: string) {
+  return [{ type: 'text' as const, text }]
 }
 
 function registryCatalog() {

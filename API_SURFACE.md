@@ -18,6 +18,16 @@ npm package names.
 
 ## Fireline Imports
 
+- `@fireline/client/managed-agent`
+  - `createManagedAgentClient`
+  - `createManagedAgentLaunchRequest`
+  - `inlineJsBundleAgent`
+  - `jsModuleAgent`
+  - `acpStdioAgent`
+  - `ManagedAgentClient`
+  - `ManagedAgentLaunchHandle`
+  - `ManagedAgentLaunchWaitOptions`
+  - `ManagedAgentHeaderProvider`
 - `@fireline/client/spec`
   - `inlineBundleArtifact`
   - `jsModuleAgentForm`
@@ -25,14 +35,6 @@ npm package names.
   - `launchSpec`
   - `newSessionRequest`
   - `textPrompt`
-- `@fireline/client/managed-agent`
-  - `createManagedAgentLaunchRequest`
-  - `createManagedAgentClient`
-  - `inlineJsBundleAgent`
-  - `jsModuleAgent`
-  - `acpStdioAgent`
-  - `ManagedAgentLaunchHandle`
-  - `ManagedAgentHeaderProvider`
 - `@fireline/client/events`
   - `appendLaunchRequest`
   - `appendLaunchStop`
@@ -50,15 +52,12 @@ npm package names.
   - `connectBrowserAcp`
   - `BrowserAcpConnection`
 - `@fireline/client`
-  - default `fireline`
   - `acpRegistry`
-  - `fireline.appendLaunchRequest`
-  - `fireline.db`
 
 Examples do not import `@fireline/client/launch-control`, runtime internals,
-or private package source. Normal ergonomic examples in the mono-oet.29.3.32.2
-cutover slice use `@fireline/client/managed-agent` for launch/wait/ACP
-follow-up/stop and request construction. Direct `@fireline/client/spec` usage
+or private package source. Normal ergonomic examples in the mono-oet.29.3.32
+cutover lanes use `@fireline/client/managed-agent` for request construction,
+launch/wait, ACP follow-up, and stop. Direct `@fireline/client/spec` usage
 remains in lower-level protocol/runtime characterization examples, not in the
 normal managed-agent cutover paths.
 
@@ -356,16 +355,16 @@ first-class `fireline.launch` rows with raw HTTP `GET`.
 `examples/08-cloudflare-worker-direct` exercises a direct Cloudflare Worker
 consumer shape:
 
-- `src/worker.ts` imports Worker-safe `@fireline/client/spec`,
-  `@fireline/client/events`, and `@fireline/state` package subpaths directly.
+- `src/worker.ts` imports Worker-safe `@fireline/client/managed-agent` for
+  request construction, launch, observation, and stop.
 - `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
   `FIRELINE_STREAMS_PORT` so the Worker derives a usable launch/control stream
   URL when `fireline-v3-dev` is running with the matching `--state-stream`.
 - Custom scratch ports or stream names must be passed with Wrangler `--var`
   flags; shell environment variables alone do not override local `[vars]`.
-- `POST /launch` appends `fireline.launch_request` and reads
-  `collections.launches`.
-- `POST /stop` appends `fireline.launch_stop` and reads the stopped launch row.
+- `POST /launch` returns the managed-agent launch row.
+- `POST /stop` stops through the managed-agent handle and returns the stopped
+  launch row.
 - `POST /demo` runs launch and stop in one request for local discovery.
 - The Worker deliberately avoids Next.js, OpenNext, Node-only Fireline
   imports, `/v1/launches`, and `@fireline/client/launch-control`.
@@ -376,9 +375,8 @@ consumer shape:
   actor, tenant, and launch intent types.
 - `src/server-worker-wrapper.ts` is the Fireline boundary. It validates a
   bearer token, checks tenant/scope policy, derives a stable
-  `clientRequestId` / idempotency key, appends `fireline.launch_request`,
-  observes `@fireline/state` `collections.launches`, appends
-  `fireline.launch_stop`, and returns an app-facing summary.
+  `clientRequestId` / idempotency key, launches through managed-agent, stops
+  through managed-agent, and returns an app-facing summary.
 - `src/generated-worker-agent.ts` creates a generated multi-file inline bundle
   with `worker-entry.mjs` and `tenant-policy.mjs`.
 - The runnable smoke derives the launch/control stream URL from exact
@@ -392,10 +390,8 @@ shape:
 
 - `api/fireline-launch.ts` is a Vercel-style Node handler using
   `IncomingMessage` / `ServerResponse` types.
-- The handler imports root `@fireline/client` and uses
-  `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, plus
-  `@fireline/client/spec` for launch data and `@fireline/client/events` for
-  stop.
+- The handler imports `@fireline/client/managed-agent` for request
+  construction and lifecycle flow.
 - `src/run-local.ts` starts a local Node HTTP server around the handler and
   sends one request for E2E validation.
 - The runnable smoke derives the launch/control stream URL from exact
@@ -408,8 +404,8 @@ shape:
 
 - `src/edge.ts` is an Edge handler with `config.runtime = "edge"` and no Node
   built-in imports.
-- The handler imports Worker-safe `@fireline/client/spec`,
-  `@fireline/client/events`, and `@fireline/state` package subpaths directly.
+- The handler imports Worker-safe `@fireline/client/managed-agent` for request
+  construction and lifecycle flow.
 - `src/run-local.ts` loads the bundled handler into `@edge-runtime/vm` and
   dispatches one `POST /api/fireline-launch` request for E2E validation.
 - The runnable smoke derives the launch/control stream URL from exact
@@ -422,10 +418,8 @@ shape:
 
 `examples/14-bun` exercises a Bun runtime shape:
 
-- `src/launch.ts` imports root `@fireline/client` and uses
-  `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, plus
-  `@fireline/client/spec` for launch data and `@fireline/client/events` for
-  stop.
+- `src/launch.ts` imports `@fireline/client/managed-agent` for request
+  construction and lifecycle flow.
 - `src/run.ts` is executed by `bun` and invokes the launch handler with a
   Fetch `Request`.
 - The runnable smoke derives the launch/control stream URL from exact
@@ -436,8 +430,8 @@ shape:
 
 `examples/16-deno` exercises a Deno package-consumer shape:
 
-- `main.ts` imports documented `@fireline/client/spec`,
-  `@fireline/client/events`, and `@fireline/state` package subpaths.
+- `main.ts` imports `@fireline/client/managed-agent` for request construction
+  and lifecycle flow.
 - It runs with Deno's Node/npm compatibility using `--node-modules-dir=manual`.
 - The runnable smoke derives the launch/control stream URL from exact
   `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
@@ -450,30 +444,28 @@ shape:
 `examples/17-acp-registry-chat` exercises the safe ACP registry slice:
 
 - `src/run.ts` imports root `@fireline/client` for `acpRegistry(...)`, plus
-  documented `@fireline/client/spec`, `@fireline/client/events`,
-  `@fireline/client/middleware`, `@fireline/client/acp-browser`, and
-  `@fireline/state` package subpaths.
+  documented `@fireline/client/managed-agent` and
+  `@fireline/client/middleware` package subpaths.
 - The registry row is an inline fixture catalog with a supported `command`
   distribution. It points at `registry-agent.mjs`, a local ACP stdio agent.
 - The example decorates the resolved registry agent with local sandbox labels
   and trace/context/budget middleware, launches through
-  `fireline.launch_request`, observes `collections.launches`, attaches to the
-  returned ACP session, sends a follow-up prompt, appends
-  `fireline.launch_stop`, and observes `stopped`.
+  managed-agent, attaches to the returned ACP session through the launch
+  handle, sends a follow-up prompt, stops through managed-agent, and observes
+  `stopped`.
 - The example deliberately avoids binary registry install/cache, launcher env
-  metadata, retired launch-control surfaces, and managed-agent helper sugar.
+  metadata, retired launch-control surfaces, and hand-rolled lifecycle primitives.
 
 `examples/18-middleware-stack` exercises the focused middleware-stack slice:
 
-- `src/run.ts` imports `@fireline/client/spec`,
-  `@fireline/client/middleware`, and the shared stream helper that uses
-  `@fireline/client/events` and `@fireline/state`.
+- `src/run.ts` imports `@fireline/client/managed-agent`,
+  `@fireline/client/middleware`, and the shared managed-agent launch helper.
 - It serializes `trace(...)`, `contextInjection(...)`, and `budget(...)` into a
-  normal `agentDefinition(...)`, then uses the same launch/observe/stop path as
-  other stream-native examples.
+  normal `agentDefinition(...)`, then launches, observes, and stops through
+  managed-agent.
 - The example deliberately avoids `memory()`, approval gates,
   webhook/Telegram subscribers, launch-control HTTP, `/v1/launches`, Fireline
-  internals, and managed-agent helper sugar.
+  internals, and hand-rolled lifecycle primitives.
 
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
@@ -510,13 +502,14 @@ from direct stream-native lifecycle composition to `@fireline/client/managed-age
 Raw and deliberately lower-level examples continue to use stream-native or raw
 HTTP primitives when that is the point of the example.
 
-`examples/11-server-worker-wrapper`, `examples/12-vercel-function-node`,
-`examples/13-vercel-edge-runtime`, `examples/14-bun`, `examples/16-deno`,
-`examples/17-acp-registry-chat`, and `examples/18-middleware-stack` still use
-stream-native paths with larger generated harness, runtime-specific,
+`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
+`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
+`examples/14-bun`, `examples/16-deno`, `examples/17-acp-registry-chat`, and
+`examples/18-middleware-stack` are being moved toward managed-agent lifecycle
+consumption with larger generated harness, runtime-specific,
 registry-resolution, or middleware-stack shapes. They are characterization
-evidence for consumer boundaries, not a promise that
-`@fireline/client/spec` names are frozen.
+evidence for product consumer boundaries, not a promise that direct
+`@fireline/client/spec` builder imports should return to normal app examples.
 
 Validated `mono-oet.29.3.1` behavior:
 

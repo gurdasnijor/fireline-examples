@@ -51,8 +51,8 @@ Current checkpoint:
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
   packages.
 - `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
-  consumer using the Worker-safe `@fireline/client/spec`,
-  `@fireline/client/events`, and `@fireline/state` package subpaths. It uses
+  consumer using `@fireline/client/managed-agent` for launch observation and
+  stop. It uses managed-agent request and inline bundle builders. It uses
   explicit `pnpm dlx wrangler@4.83.0` commands and documents the Wrangler
   `--var` behavior required for custom scratch ports.
 - `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
@@ -62,33 +62,30 @@ Current checkpoint:
   first-class `fireline.launch` rows over plain HTTP.
 - `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
-  tenant checks, idempotency, launch/stop append, and launch observation.
+  tenant checks, idempotency, and managed-agent launch/observe/stop calls.
 - `examples/12-vercel-function-node` is a Vercel Functions Node-runtime shape.
-  It uses the root `@fireline/client` package surface inside a Node function,
-  appends launch/stop through durable streams, and observes launch rows with
-  `fireline.db(...)`.
+  It uses `@fireline/client/managed-agent` inside a Node function for
+  launch/observe/stop and managed-agent request construction.
 - `examples/13-vercel-edge-runtime` is a Vercel Edge Runtime shape. It bundles
-  an Edge handler that uses Worker-safe `@fireline/client/spec`,
-  `@fireline/client/events`, and `@fireline/state` package subpaths, then runs
-  locally in `@edge-runtime/vm`.
+  an Edge handler that uses `@fireline/client/managed-agent` and
+  managed-agent request builders, then runs locally in `@edge-runtime/vm`.
 - `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
-  `@fireline/client` package surface, appends launch/stop through durable
-  streams, and observes launch rows with `fireline.db(...)`.
+  package-shaped Fireline refs, and uses the managed-agent launch handle.
 - `examples/16-deno` is a Deno package-consumer shape. It uses documented
-  `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`
-  package subpaths through Deno's Node/npm compatibility layer.
+  `@fireline/client/managed-agent` through Deno's Node/npm compatibility layer.
 - `examples/17-acp-registry-chat` resolves a safe ACP registry fixture row
   with `acpRegistry(...)` from `@fireline/client`, launches the resulting command
-  distribution through durable streams, attaches to the returned ACP session,
-  sends a follow-up prompt, and stops the launch. It deliberately avoids
+  distribution through `@fireline/client/managed-agent`, attaches to the
+  returned ACP session, sends a follow-up prompt, and stops the launch. It
+  deliberately avoids
   binary registry installs, launcher env metadata, retired launch-control
-  surfaces, and managed-agent helper sugar.
+  surfaces, and hand-rolled lifecycle primitives.
 - `examples/18-middleware-stack` is a focused middleware-stack consumer. It
   builds a normal stream-native launch with `trace(...)`,
-  `contextInjection(...)`, and `budget(...)`, observes `collections.launches`,
-  and appends `fireline.launch_stop`. It deliberately avoids `memory()`,
+  `contextInjection(...)`, and `budget(...)`, then launches and stops through
+  `@fireline/client/managed-agent`. It deliberately avoids `memory()`,
   approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
-  managed-agent helper sugar.
+  hand-rolled lifecycle primitives.
 
 Setup:
 
@@ -180,6 +177,11 @@ pnpm run dev:editable-agent-web --port 5192
 The app appends to the configured launch/control stream and observes launch
 rows through package-shaped Fireline helpers. It does not call `/v1/launches`
 or use `@fireline/client/launch-control`.
+
+Managed-agent cutover note: examples 08, 11, 12, 13, 14, 16, 17, and 18 use
+`@fireline/client/managed-agent` for normal app lifecycle consumption, including
+`createManagedAgentLaunchRequest`, `inlineJsBundleAgent`, `jsModuleAgent`, and
+`acpStdioAgent` where applicable.
 
 Reviewer reproduce: fresh daemon runnable path:
 

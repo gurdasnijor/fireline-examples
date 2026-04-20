@@ -4,10 +4,10 @@ Discovery-only Vercel Edge Runtime example. It models an Edge function that
 owns the Fireline call path for one request:
 
 1. derive the launch/control stream URL from deployment environment;
-2. build a launch spec with `@fireline/client/spec`;
-3. append `fireline.launch_request` with `@fireline/client/events`;
-4. observe `collections.launches` with `@fireline/state`;
-5. append `fireline.launch_stop`;
+2. build a launch request with managed-agent builders;
+3. launch through `@fireline/client/managed-agent`;
+4. observe launch state through the managed-agent launch handle;
+5. stop through the managed-agent launch handle;
 6. return a compact JSON response to the application caller.
 
 This is not a public Vercel deployment recipe and not a Fireline API wrapper.
@@ -18,10 +18,13 @@ handler in a Vercel Edge-like Web Runtime.
 ## Files
 
 - `src/edge.ts`: Vercel Edge-style route handler. It imports
-  `@fireline/client/spec`, `@fireline/client/events`, and `@fireline/state`.
+  `@fireline/client/managed-agent` and managed-agent builders.
 - `src/run-local.ts`: local E2E runner that loads the built Edge bundle into
   `@edge-runtime/vm` and dispatches one request.
 - `vite.config.ts`: local bundling config for the Edge handler.
+
+The handler uses managed-agent request and inline bundle builders instead of
+Tier 3 spec/events/state subpaths for normal lifecycle flow.
 
 ## Reviewer Reproduce
 

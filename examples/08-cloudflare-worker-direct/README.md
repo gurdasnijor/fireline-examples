@@ -3,9 +3,10 @@
 Discovery-only direct Worker consumer. This is not an OpenNext or Next.js
 adapter path. The Worker imports only package-shaped Fireline APIs:
 
-- `@fireline/client/spec`
-- `@fireline/client/events`
-- `@fireline/state`
+- `@fireline/client/managed-agent`
+
+The Worker uses managed-agent request and inline bundle builders; it does not
+import Tier 3 spec/events/state subpaths for normal lifecycle flow.
 
 Run the local Fireline daemon from scratch state:
 
@@ -70,10 +71,9 @@ curl -sS -X POST http://127.0.0.1:8787/stop \
   --data '{"launchId":"<launch-id>","clientRequestId":"<client-request-id>"}'
 ```
 
-The Worker appends `fireline.launch_request`, reads
-`@fireline/state` `collections.launches`, appends `fireline.launch_stop`, and
-reads the stopped launch row. It does not call the legacy launch HTTP route,
-import the old launch-control client subpath, or import Fireline source
+The Worker launches, observes, and stops through
+`@fireline/client/managed-agent`. It does not call the legacy launch HTTP
+route, import the old launch-control client subpath, or import Fireline source
 internals.
 
 Retroactive quality-bar evidence for `mono-oet.29.3.21.3`:

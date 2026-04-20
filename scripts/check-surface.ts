@@ -14,6 +14,21 @@ const targetExampleBans = [
     message: 'target examples must not use FIRELINE_LAUNCH_URL',
   },
 ] as const
+const managedAgentCutoverExamples = [
+  'examples/08-cloudflare-worker-direct/',
+  'examples/11-server-worker-wrapper/',
+  'examples/12-vercel-function-node/',
+  'examples/13-vercel-edge-runtime/',
+  'examples/14-bun/',
+  'examples/16-deno/',
+  'examples/17-acp-registry-chat/',
+  'examples/18-middleware-stack/',
+] as const
+const managedAgentLifecycleBans = new Set([
+  '@fireline/client/events',
+  '@fireline/client/acp-browser',
+  '@fireline/state',
+])
 const violations: string[] = []
 
 for await (const file of walk(root)) {
@@ -47,6 +62,14 @@ for await (const file of walk(root)) {
   for (const specifier of firelineSpecifiers(text)) {
     if (specifier.includes('/internal/')) {
       violations.push(`${relative}: private Fireline subpath ${specifier}`)
+    }
+    if (
+      isManagedAgentCutoverExample(relative) &&
+      managedAgentLifecycleBans.has(specifier)
+    ) {
+      violations.push(
+        `${relative}: normal app examples should use @fireline/client/managed-agent for lifecycle flow instead of ${specifier}`,
+      )
     }
   }
   if (relative.startsWith('examples/')) {
@@ -132,4 +155,8 @@ function isNodeBuiltinSpecifier(specifier: string): boolean {
     'util',
     'zlib',
   ].includes(bare)
+}
+
+function isManagedAgentCutoverExample(relative: string): boolean {
+  return managedAgentCutoverExamples.some((prefix) => relative.startsWith(prefix))
 }

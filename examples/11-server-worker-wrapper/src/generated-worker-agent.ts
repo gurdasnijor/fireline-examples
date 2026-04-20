@@ -1,11 +1,11 @@
-import { inlineBundleArtifact } from '@fireline/client/spec'
+import { inlineJsBundleAgent } from '@fireline/client/managed-agent'
 import type { AppLaunchIntent } from './framework-boundary.js'
 
 export async function createWorkerAgentBundle(options: {
   readonly revision: string
   readonly intent: AppLaunchIntent
 }) {
-  return await inlineBundleArtifact({
+  return await inlineJsBundleAgent({
     entrypoint: 'worker-entry.mjs',
     files: [
       {

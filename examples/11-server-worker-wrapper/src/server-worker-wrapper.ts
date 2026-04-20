@@ -1,12 +1,12 @@
 import {
-  agentDefinition,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
-import type { LaunchRow } from '@fireline/state'
-import { appendAndObserveLaunch, appendAndObserveLaunchStop } from '../../shared/stream-launch.js'
+  createManagedAgentLaunchRequest,
+} from '@fireline/client/managed-agent'
+import {
+  launchManagedAgent,
+  observeManagedAgent,
+  stopManagedAgent,
+  type ManagedAgentLaunchRow,
+} from '../../shared/managed-agent-launch.js'
 import type { AppActor, AppLaunchIntent, AppLaunchSummary } from './framework-boundary.js'
 import { createWorkerAgentBundle } from './generated-worker-agent.js'
 
@@ -38,7 +38,7 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
     controlStreamUrl,
     async submitLaunch(request: AppLaunchRequest): Promise<{
       readonly summary: AppLaunchSummary
-      readonly row: LaunchRow
+      readonly row: ManagedAgentLaunchRow
     }> {
       const actor = authorize({
         authorization: request.authorization,
@@ -48,56 +48,69 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
         requiredScope: 'fireline:launch',
       })
       const clientRequestId = stableClientRequestId(request.intent)
-      const launch = await appendAndObserveLaunch({
+      const launch = await launchManagedAgent({
         controlStreamUrl,
         idempotencyKey: clientRequestId,
         requestedBy,
         timeoutMs: 60_000,
-        request: launchSpec(
-          await createDefinition(request.intent, clientRequestId),
-          {
-            clientRequestId,
-            runtime: {
-              name: 'server-worker-wrapper',
-              provider: 'local',
-              labels: {
-                example: '11-server-worker-wrapper',
-                tenantId: actor.tenantId,
-                documentId: request.intent.documentId,
-              },
+        request: createManagedAgentLaunchRequest({
+          name: 'server-worker-wrapper',
+          agent: await createWorkerAgentBundle({ revision: clientRequestId, intent: request.intent }),
+          sandbox: {
+            provider: 'local',
+            fsBackend: 'streamFs',
+            env: {
+              APP_TENANT_ID: request.intent.tenantId,
+              APP_DOCUMENT_ID: request.intent.documentId,
             },
-            startSession: {
-              stateStream: sessionStateStream(request.intent),
-              create: true,
-              newSession: newSessionRequest({
-                cwd: '/',
-                mcpServers: [],
-              }),
-              prompt: textPrompt(request.intent.prompt),
-            },
-            wait: {
-              until: 'session',
-              timeoutMs: 60_000,
+            labels: {
+              example: '11-server-worker-wrapper',
+              boundary: 'server-worker',
+              tenantId: request.intent.tenantId,
             },
           },
-        ),
+          middleware: {
+            kind: 'middleware',
+            chain: [],
+          },
+          clientRequestId,
+          runtime: {
+            name: 'server-worker-wrapper',
+            provider: 'local',
+            labels: {
+              example: '11-server-worker-wrapper',
+              tenantId: actor.tenantId,
+              documentId: request.intent.documentId,
+            },
+          },
+          startSession: {
+            stateStream: sessionStateStream(request.intent),
+            create: true,
+            cwd: '/',
+            mcpServers: [],
+            prompt: request.intent.prompt,
+          },
+          wait: {
+            until: 'session',
+            timeoutMs: 60_000,
+          },
+        }),
       })
       const events = [
         `authorized tenant ${actor.tenantId}`,
-        `appended ${launch.envelope.type}`,
+        `appended ${launch.handle.requestEnvelope?.type ?? 'fireline.launch_request'}`,
         `observed collections.launches row ${launch.row.launchId}`,
       ]
 
       try {
-        const stop = await appendAndObserveLaunchStop({
-          controlStreamUrl,
-          launchId: launch.row.launchId,
+        const stop = await stopManagedAgent({
+          handle: launch.handle,
           clientRequestId,
           requestedBy,
           reason: 'server wrapper smoke complete',
           timeoutMs: 60_000,
         })
-        events.push(`appended ${stop.envelope.type}`)
+        events.push('appended fireline.launch_stop')
         events.push(`observed stop row ${stop.row.status}`)
 
         return {
@@ -124,10 +137,10 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
           },
         }
       } finally {
-        launch.db.close()
+        launch.handle.close()
       }
     },
-    async stopLaunch(request: AppStopRequest): Promise<LaunchRow> {
+    async stopLaunch(request: AppStopRequest): Promise<ManagedAgentLaunchRow> {
       authorize({
         authorization: request.authorization,
         expectedToken: config.authToken,
@@ -135,15 +148,23 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
         tenantId: request.tenantId,
         requiredScope: 'fireline:stop',
       })
-      const stop = await appendAndObserveLaunchStop({
+      const handle = observeManagedAgent({
         controlStreamUrl,
         launchId: request.launchId,
-        clientRequestId: request.clientRequestId,
         requestedBy,
-        reason: 'app requested stop through server wrapper',
-        timeoutMs: 60_000,
       })
-      return stop.row
+      try {
+        const stop = await stopManagedAgent({
+          handle,
+          clientRequestId: request.clientRequestId,
+          requestedBy,
+          reason: 'app requested stop through server wrapper',
+          timeoutMs: 60_000,
+        })
+        return stop.row
+      } finally {
+        handle.close()
+      }
     },
   }
 }
@@ -165,32 +186,6 @@ function authorize(options: {
     throw new Error(`forbidden: missing ${options.requiredScope}`)
   }
   return options.actor
-}
-
-async function createDefinition(intent: AppLaunchIntent, clientRequestId: string) {
-  return agentDefinition({
-    name: 'server-worker-wrapper',
-    agent: jsModuleAgentForm({
-      artifact: await createWorkerAgentBundle({ revision: clientRequestId, intent }),
-    }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      env: {
-        APP_TENANT_ID: intent.tenantId,
-        APP_DOCUMENT_ID: intent.documentId,
-      },
-      labels: {
-        example: '11-server-worker-wrapper',
-        boundary: 'server-worker',
-        tenantId: intent.tenantId,
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
 }
 
 function resolveLaunchControlStreamUrl(env: NodeJS.ProcessEnv): string {
