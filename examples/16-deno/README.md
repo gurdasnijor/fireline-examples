@@ -107,7 +107,7 @@ FIRELINE_STREAMS_PORT=7716 \
 FIRELINE_CONTROL_STREAM=fireline-deno-fresh \
 DENO_EXAMPLE_RUN_ID=fresh-daemon-run-001 \
 DENO_EXAMPLE_ATTEMPT_ID=attempt-1 \
-pnpm --dir /Users/gnijor/gurdasnijor/fireline-examples-be3-mono-oet-29-3-16-deno run smoke:deno
+pnpm --dir /Users/gnijor/gurdasnijor/fireline-examples run smoke:deno
 ```
 
 Result: `ok: true`, `deno: true`, `launchStatus: "session_ready"`, and
