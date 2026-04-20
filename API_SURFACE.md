@@ -109,8 +109,9 @@ private client subpath, even though external app code does not touch it.
   highest-precedence exact launch/control stream append target.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
   examples 02-03.
-- `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams base URL used by
-  example 06 when the exact launch/control stream URL is not provided.
+- `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
+  in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this base
+  when the exact launch/control stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
   URL. Example 06 also uses it to derive the launch/control stream URL when
@@ -196,9 +197,11 @@ client/server boundaries, and build constraints.
 - `src/generated-harness.ts` produces a multi-file inline bundle with
   `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
-- The runnable smoke derives the launch/control stream URL from
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`, `FIRELINE_DURABLE_STREAMS_URL`, or
-  `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`; builds a stable
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`; builds a stable
   `clientRequestId` / `idempotencyKey` from `FLAMECAST_WORKSPACE_ID`,
   `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; appends
   `fireline.launch_request`; observes the launch row; attaches to

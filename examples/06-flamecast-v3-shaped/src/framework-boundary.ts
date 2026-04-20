@@ -76,7 +76,10 @@ function resolveLaunchControlStreamUrl(env: NodeJS.ProcessEnv): string {
   if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) return env.FIRELINE_LAUNCH_CONTROL_STREAM_URL
 
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? 'fireline-flamecast-shaped-control'
-  const streamsBaseUrl = env.FIRELINE_DURABLE_STREAMS_URL ??
-    `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? '7474'}`
-  return `${streamsBaseUrl.replace(/\/$/, '')}/v1/stream/${encodeURIComponent(controlStream)}`
+  if (env.FIRELINE_DURABLE_STREAMS_URL) {
+    return `${env.FIRELINE_DURABLE_STREAMS_URL.replace(/\/$/, '')}/${encodeURIComponent(controlStream)}`
+  }
+
+  const localBaseUrl = `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? '7474'}`
+  return `${localBaseUrl}/v1/stream/${encodeURIComponent(controlStream)}`
 }

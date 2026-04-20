@@ -45,9 +45,11 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
 ```
 
 The adapter accepts `FIRELINE_LAUNCH_CONTROL_STREAM_URL` when the application
-already has the exact launch/control stream URL. Otherwise it derives the URL
-from `FIRELINE_DURABLE_STREAMS_URL` or from `FIRELINE_STREAMS_PORT` plus
-`FIRELINE_CONTROL_STREAM`.
+already has the exact launch/control stream URL. Otherwise it treats
+`FIRELINE_DURABLE_STREAMS_URL` as the durable streams append base ending in
+`/v1/stream` and appends `/<FIRELINE_CONTROL_STREAM>`. For local dev without
+that base URL, it derives
+`http://127.0.0.1:<FIRELINE_STREAMS_PORT>/v1/stream/<FIRELINE_CONTROL_STREAM>`.
 
 `FLAMECAST_RUN_ID` and `FLAMECAST_ATTEMPT_ID` are product coordinates. The
 example builds `clientRequestId` and `idempotencyKey` from them, so retries of
