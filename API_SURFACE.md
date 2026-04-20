@@ -45,9 +45,11 @@ This is discovery artifact friction, not intended public app configuration.
   - `BrowserAcpConnection`
 
 Examples 01-06 do not import Fireline root exports, `@fireline/client/launch-control`,
-runtime internals, or private package source. The target launch path appends
+runtime internals, or private package source. Example 07 intentionally imports
+no Fireline packages and uses raw HTTP only. The target launch paths append
 `fireline.launch_request` and `fireline.launch_stop` to the configured control
-stream and observes `@fireline/state` `collections.launches`.
+stream and observe `collections.launches` through either `@fireline/state`
+or first-class raw `fireline.launch` stream rows.
 
 ## Framework Imports
 
@@ -84,6 +86,7 @@ private client subpath, even though external app code does not touch it.
 - `pnpm run typecheck`
 - `pnpm run check:surface`
 - `pnpm run smoke:inline-js-local`
+- `pnpm run smoke:curl-shell-raw-http`
 - `pnpm run dev:editable-agent-web`
 - `pnpm run build:editable-agent-web`
 - `pnpm run build:tanstack-shaped`
@@ -94,6 +97,10 @@ private client subpath, even though external app code does not touch it.
 - `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
+- `sh examples/07-curl-shell-raw-http/run.sh`
+- `node examples/07-curl-shell-raw-http/make-envelope.mjs`
+- `node examples/07-curl-shell-raw-http/observe-launches.mjs`
+- `curl -X POST ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}`
 - `vite` through the Vite example scripts
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
@@ -105,16 +112,16 @@ private client subpath, even though external app code does not touch it.
 ## Environment Variables
 
 - `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: read by examples 01-03 and passed into
-  the Next-shaped examples as `controlStreamUrl`. Example 06 accepts it as the
-  highest-precedence exact launch/control stream append target.
+  the Next-shaped examples as `controlStreamUrl`. Examples 06-07 accept it as
+  the highest-precedence exact launch/control stream append target.
 - `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
   examples 02-03.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this base
-  when the exact launch/control stream URL is not provided.
+  in `/v1/stream`. Examples 06-07 append `/<FIRELINE_CONTROL_STREAM>` to this
+  base when the exact launch/control stream URL is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Example 06 also uses it to derive the launch/control stream URL when
+  URL. Examples 06-07 also use it to derive the launch/control stream URL when
   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
@@ -125,6 +132,20 @@ private client subpath, even though external app code does not touch it.
   smoke recipe so generated output does not land under the repo.
 - `FIRELINE_STATE_DIR`: scratch-directory convention for this spike.
 - `FIRELINE_EXAMPLES_ROOT`: helper variable in the README recipe only.
+- `FIRELINE_RAW_HTTP_RUN_ID`: optional example-only run coordinate for
+  `examples/07-curl-shell-raw-http`.
+- `FIRELINE_RAW_HTTP_LAUNCH_ID`: optional raw HTTP example launch id. Defaults
+  from `FIRELINE_RAW_HTTP_RUN_ID`.
+- `FIRELINE_RAW_HTTP_CLIENT_REQUEST_ID`: optional raw HTTP example idempotency
+  coordinate. Defaults from `FIRELINE_RAW_HTTP_RUN_ID`.
+- `FIRELINE_RAW_HTTP_STATE_STREAM`: optional runtime/session stream name for
+  the raw HTTP example.
+- `FIRELINE_RAW_HTTP_REQUESTED_BY`: optional raw HTTP example `requestedBy`.
+- `FIRELINE_RAW_HTTP_PROMPT`: optional raw HTTP example initial prompt text.
+- `FIRELINE_RAW_HTTP_WAIT_TIMEOUT_MS`: optional raw HTTP example observation
+  timeout.
+- `FIRELINE_RAW_HTTP_STOP_ID`: optional raw HTTP example stop id.
+- `FIRELINE_RAW_HTTP_STOP_REASON`: optional raw HTTP example stop reason.
 - `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
   through the Flamecast-shaped adapter into the generated runtime shim.
 - `FLAMECAST_RUN_ID`: example-only product run coordinate. Reuse it for retries
@@ -145,9 +166,13 @@ private client subpath, even though external app code does not touch it.
   `@fireline/client/events`; `appendLaunchRequest` appends the
   `fireline.launch_request` envelope and `appendLaunchStop` appends the
   `fireline.launch_stop` envelope through that package.
+- `POST ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` is called directly with `curl`
+  by `examples/07-curl-shell-raw-http` for raw `fireline.launch_request` and
+  `fireline.launch_stop` appends.
 - `GET ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` and the stream subscription
   endpoints used internally by `@fireline/state` observe
-  `collections.launches`.
+  `collections.launches`. Example 07 uses raw `GET` snapshots and filters
+  first-class `fireline.launch` rows without importing `@fireline/state`.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned in
   `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` for
   follow-up prompts.
@@ -210,6 +235,25 @@ client/server boundaries, and build constraints.
   observes the stopped row.
 - The example deliberately does not import real Flamecast v3 modules.
 
+`examples/07-curl-shell-raw-http` exercises the T1 raw Durable Streams HTTP
+surface:
+
+- It has no Fireline package imports and no `@fireline/client` dependency in
+  the example files.
+- `run.sh` derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` plus `FIRELINE_CONTROL_STREAM`; otherwise from
+  local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
+- `make-envelope.mjs` builds the `fireline.launch_request` and
+  `fireline.launch_stop` STATE-PROTOCOL envelopes, including a local inline JS
+  module agent bundle, without importing Fireline helper packages.
+- `run.sh` appends both envelopes with `curl -X POST`.
+- `observe-launches.mjs` reads the same stream with raw `GET` and filters
+  first-class `fireline.launch` rows, matching the backing rows for
+  `collections.launches`.
+- Generated JSON and response artifacts go under `/tmp` by default through
+  `${FIRELINE_EXAMPLE_OUTPUT_ROOT:-${TMPDIR:-/tmp}/fireline-examples}`.
+
 ## Stream-Native Checkpoint
 
 After Fireline #228, #231, #233, #237, #242, and #245, examples 01-06 use the
@@ -226,6 +270,12 @@ stream-native path:
 `examples/06-flamecast-v3-shaped` uses the same stream-native path with a
 larger generated harness shape. It is characterization evidence for product
 consumer boundaries, not a promise that `@fireline/client/spec` names are frozen.
+
+`examples/07-curl-shell-raw-http` validates the lower-level raw HTTP branch of
+the same stream-native contract. It does not freeze shell variable names beyond
+the documented discovery recipe; it records the exact raw append and launch row
+observation shape that external consumers can implement without Fireline helper
+packages.
 
 Validated `mono-oet.29.3.1` behavior:
 

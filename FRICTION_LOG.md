@@ -159,6 +159,19 @@ a Fireline bead or be closed as an intentional boundary.
    boundary, but a real product integration likely wants a typed session handle
    or resume helper once public surface freeze permits it.
 
+18. Raw Durable Streams HTTP is dependency-free but verbose.
+
+   `examples/07-curl-shell-raw-http` proves a consumer can append
+   `fireline.launch_request`, observe first-class `fireline.launch` rows backing
+   `collections.launches`, and append `fireline.launch_stop` with only shell,
+   `curl`, and built-in Node APIs. The cost is that the example must spell out
+   the inline JS module artifact shape, artifact hashes, launch envelope,
+   stop envelope, stream URL derivation, and polling loop by hand.
+
+   This is useful as T1 raw-surface evidence, but it should not become the
+   recommended ergonomic path for normal app code after managed-agent helpers
+   are ready.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -178,6 +191,10 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: Flamecast-v3-shaped consumers need a stable
   generated-harness adapter story. The current example proves the substrate
   path without freezing package names or helper names.
+- Missing Fireline/public support: raw HTTP consumers need one documented
+  canonical JSON fixture or generated sample for the inline JS module artifact
+  shape. Example 07 carries a local builder so it can avoid `@fireline/client`,
+  but that is intentionally discovery code rather than a public helper.
 - Already fixed Fireline gap: direct local launch-control CORS was enabled by
   PR #220, but target examples now bypass `/v1/launches` entirely.
 - Already fixed Fireline gap: `SandboxSpec.env` propagation for local jsModule
@@ -212,3 +229,5 @@ a Fireline bead or be closed as an intentional boundary.
   idempotency, tenant policy, or secrets.
 - Idiomatic managed-agent launch/session helper after the lower-level
   materialized launch model and API freeze gates permit it.
+- Canonical raw HTTP fixture coverage for launch request, launch stop, and
+  first-class launch row observation without relying on `@fireline/client`.
