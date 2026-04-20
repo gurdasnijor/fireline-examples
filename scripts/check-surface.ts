@@ -15,6 +15,7 @@ const targetExampleBans = [
   },
 ] as const
 const managedAgentCutoverExamples = [
+  'examples/02-editable-agent-web/',
   'examples/08-cloudflare-worker-direct/',
   'examples/11-server-worker-wrapper/',
   'examples/12-vercel-function-node/',
@@ -71,6 +72,37 @@ for await (const file of walk(root)) {
         `${relative}: normal app examples should use @fireline/client/managed-agent for lifecycle flow instead of ${specifier}`,
       )
     }
+    if (
+      relative.startsWith('examples/') &&
+      specifier === '@fireline/client' &&
+      /import\s*{[^}]*\b(createManagedAgentClient|ManagedAgent[A-Za-z]*)\b[^}]*}\s*from\s+['"]@fireline\/client['"]/s.test(text)
+    ) {
+      violations.push(`${relative}: managed-agent helpers must import @fireline/client/managed-agent, not the root barrel`)
+    }
+  }
+  if (
+    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
+    !text.includes('@fireline/client/managed-agent')
+  ) {
+    violations.push(`${relative}: editable-agent-web must use Tier 1 @fireline/client/managed-agent`)
+  }
+  if (
+    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
+    text.includes('@fireline/client/spec')
+  ) {
+    violations.push(`${relative}: editable-agent-web must not import Tier 3 @fireline/client/spec for normal app launch construction`)
+  }
+  if (
+    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
+    text.includes('../../shared/stream-launch.js')
+  ) {
+    violations.push(`${relative}: editable-agent-web must not call shared stream-launch helpers for normal app lifecycle`)
+  }
+  if (
+    relative === 'examples/02-editable-agent-web/src/App.tsx' &&
+    text.includes('@fireline/client/acp-browser')
+  ) {
+    violations.push(`${relative}: editable-agent-web must use ManagedAgentLaunchHandle.connectBrowserAcp for normal browser ACP`)
   }
   if (relative.startsWith('examples/')) {
     for (const ban of targetExampleBans) {

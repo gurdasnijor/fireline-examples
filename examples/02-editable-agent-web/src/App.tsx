@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { connectBrowserAcp, type BrowserAcpConnection } from '@fireline/client/acp-browser'
 import {
   createEditableLaunch,
   stopEditableLaunch,
+  type EditableAcpConnection,
   type BrainPlacement,
   type EditableLaunchResult,
   type FilesystemPlacement,
@@ -54,7 +54,7 @@ export function App() {
   const [status, setStatus] = useState('Idle')
   const [logs, setLogs] = useState<readonly LogEntry[]>([])
   const [busy, setBusy] = useState(false)
-  const acp = useRef<BrowserAcpConnection | undefined>(undefined)
+  const acp = useRef<EditableAcpConnection | undefined>(undefined)
 
   const launch = result?.row
   const acpSessionId = launch?.startSession?.acpSessionId
@@ -90,9 +90,10 @@ export function App() {
   async function run() {
     await withBusy(async () => {
       await closeAcp()
+      result?.close()
       setResult(undefined)
       setLogs([])
-      addLog('launch', 'Creating launch and waiting for session coordinates.')
+      addLog('launch', 'Creating managed-agent launch and waiting for session coordinates.')
       setRecoveryHint(undefined)
       const next = await createEditableLaunch({
         controlStreamUrl,
@@ -105,8 +106,7 @@ export function App() {
       setResult(next)
       addLog('launch', `Launch ${next.row.launchId} reached ${next.row.status}.`)
       if (next.row.runtime?.acp.url) {
-        acp.current = await connectBrowserAcp({
-          url: next.row.runtime.acp.url,
+        acp.current = await next.connectBrowserAcp({
           clientName: 'fireline-examples-editable-agent-web',
           onSessionUpdate(notification) {
             addLog('session/update', summarizeUpdate(notification))
@@ -137,11 +137,10 @@ export function App() {
       await closeAcp()
       addLog('stop', `Appending launch_stop for ${result.row.launchId}.`)
       const stopped = await stopEditableLaunch({
-        controlStreamUrl,
         launch: result,
         reason: 'Stopped from editable-agent-web UI',
       })
-      result.db.close()
+      result.close()
       setResult(undefined)
       addLog('stop', `Launch ${stopped.row.launchId} reached ${stopped.row.status}.`)
     }, 'Stopping')
@@ -185,7 +184,7 @@ export function App() {
       <section className="workbench">
         <div className="topline">
           <div>
-            <p className="eyebrow">Discovery, not canonical</p>
+            <p className="eyebrow">Tier 1 managed-agent discovery</p>
             <h1>Editable Fireline Agent</h1>
           </div>
           <div className="status" aria-live="polite">{status}</div>

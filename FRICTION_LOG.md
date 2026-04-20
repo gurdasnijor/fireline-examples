@@ -255,7 +255,22 @@ a Fireline bead or be closed as an intentional boundary.
    processing `fireline.runtime_instance`; TL1 tracks that under
    `mono-oet.29.3.24`.
 
-25. Vercel Functions Node can use managed-agent.
+25. Editable-agent-web now uses the Tier 1 managed-agent lifecycle and launch request helper.
+
+   `mono-4rv` restores the accepted `mono-oet.29.3.32.1` cutover on main:
+   `examples/02-editable-agent-web` no longer imports Tier 3 spec builders,
+   direct state observation, shared stream-launch helpers, or direct
+   `@fireline/client/acp-browser` for the normal app lifecycle. The app now
+   creates a managed-agent client, builds the inline JS agent launch request
+   through `createManagedAgentLaunchRequest(...)` and
+   `inlineJsBundleAgent(...)`, launches through the returned handle, connects
+   browser ACP through the handle, and stops through the handle.
+
+   Fresh-daemon and prior-daemon reuse browser E2E were rerun for this import
+   graph restoration. Successful runs still can print known ACP websocket
+   close/reset teardown warnings after the UI flow has completed.
+
+26. Vercel Functions Node can use managed-agent.
 
    `examples/12-vercel-function-node` validates the Node serverless case that
    can run Fireline package refs in a Node function. The WIP handler uses
@@ -270,7 +285,7 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed warnings can appear after the example has already returned
    `ok: true`, `session_ready`, and `stopped`.
 
-26. Vercel Edge Runtime can use managed-agent, but still needs bundling.
+27. Vercel Edge Runtime can use managed-agent, but still needs bundling.
 
    `examples/13-vercel-edge-runtime` validates an Edge handler that avoids Node
    built-ins and root `@fireline/client`, then runs locally in
@@ -289,7 +304,7 @@ a Fireline bead or be closed as an intentional boundary.
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
 
-27. Bun can resolve and run the package-shaped managed-agent surface.
+28. Bun can resolve and run the package-shaped managed-agent surface.
 
    `examples/14-bun` validates a Bun process that imports package-shaped
    Fireline refs and uses `@fireline/client/managed-agent` for request
@@ -305,7 +320,7 @@ a Fireline bead or be closed as an intentional boundary.
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
 
-28. Go raw HTTP works without an SDK, but repeats the low-level envelope burden.
+29. Go raw HTTP works without an SDK, but repeats the low-level envelope burden.
 
    `examples/15-go-raw-http` validates a plain Go consumer using only standard
    library HTTP/JSON/crypto/filesystem packages. Fresh-daemon and prior-daemon
@@ -320,7 +335,7 @@ a Fireline bead or be closed as an intentional boundary.
    websocket reset/closed teardown warning; the Go example did not patch around
    it.
 
-29. Deno can consume package-shaped managed-agent helpers, but Node compatibility needs explicit permissions.
+30. Deno can consume package-shaped managed-agent helpers, but Node compatibility needs explicit permissions.
 
    `examples/16-deno` validates Deno 2.x resolving
    `@fireline/client/managed-agent` through the repo package install.
@@ -333,7 +348,7 @@ a Fireline bead or be closed as an intentional boundary.
    because transitive Node-compat checks in the package stack read it. This is
    acceptable discovery evidence, not a polished Deno SDK experience.
 
-30. ACP registry resolution works for the safe command slice, but real catalog coverage is still gated.
+31. ACP registry resolution works for the safe command slice, but real catalog coverage is still gated.
 
    `examples/17-acp-registry-chat` validates `acpRegistry(...)` with an inline
    ACP registry fixture row that lowers to the currently supported `command`
@@ -349,7 +364,7 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed teardown warnings tracked separately under
    `mono-oet.29.3.24`.
 
-31. Middleware stack builders are package-shaped, but only the conservative stack is runnable today.
+32. Middleware stack builders are package-shaped, but only the conservative stack is runnable today.
 
    `examples/18-middleware-stack` validates the current external-consumer
    middleware path with `trace(...)`, `contextInjection(...)`, and `budget(...)`
@@ -371,7 +386,7 @@ a Fireline bead or be closed as an intentional boundary.
    the known ACP websocket reset/closed teardown warning tracked separately
    under `mono-oet.29.3.24`.
 
-32. Managed-agent cutover removes direct spec builders from normal target examples.
+33. Managed-agent cutover removes direct spec builders from normal target examples.
 
    `examples/01-inline-js-local`, `examples/03-tanstack-shaped-app`,
    `examples/04-next-basic`, `examples/05-next-open-cloudflare`, and
@@ -430,9 +445,9 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/state cleanup: live `collections.launches` observation
   should deliver runtime/result/stop updates without fresh-DB preload snapshots.
   Tracked by `mono-oet.29.3.2`.
-- Missing Fireline/public support: launching an editable inline agent and
-  attaching a chat session is now narrower through managed-agent lifecycle
-  helpers. Editable-agent cutover remains separate from this examples slice.
+- Already fixed Fireline gap: launching an editable inline agent and attaching
+  a chat session is now narrower through managed-agent lifecycle helpers.
+  `mono-4rv` restores that example 02 cutover on main.
 - Missing Fireline/public support: Flamecast-v3-shaped consumers need a stable
   generated-harness adapter story. The current example proves the substrate
   path without freezing package names or helper names.

@@ -1,25 +1,19 @@
-import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-  type AgentDefinition,
-  type MiddlewareChain,
-  type SandboxSpec,
-} from '@fireline/client/spec'
 import { budget, contextInjection, trace } from '@fireline/client/middleware'
-import type { FirelineDB, LaunchRow } from '@fireline/state'
 import {
-  appendAndObserveLaunch,
-  appendAndObserveLaunchStop,
-  type StreamLaunchStopResult,
-} from '../../shared/stream-launch.js'
+  createManagedAgentClient,
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+  type ManagedAgentClient,
+  type ManagedAgentLaunchHandle,
+  type ManagedAgentStopResult,
+} from '@fireline/client/managed-agent'
 
 export type BrainPlacement = 'inline-js-local'
 export type FilesystemPlacement = 'local' | 'streamFs'
 export type MiddlewareChoice = 'trace' | 'contextInjection' | 'budget'
+export type EditableAcpConnection =
+  Awaited<ReturnType<ManagedAgentLaunchHandle<'editable-agent-web'>['connectBrowserAcp']>>
+type EditableLaunchRow = NonNullable<ReturnType<ManagedAgentLaunchHandle<'editable-agent-web'>['current']>>
 
 export interface EditableLaunchOptions {
   readonly controlStreamUrl: string
@@ -31,15 +25,42 @@ export interface EditableLaunchOptions {
 }
 
 export interface EditableLaunchResult {
-  readonly envelope: Awaited<ReturnType<typeof appendAndObserveLaunch>>['envelope']
-  readonly row: LaunchRow
-  readonly db: FirelineDB
+  readonly envelope: NonNullable<ManagedAgentLaunchHandle<'editable-agent-web'>['requestEnvelope']>
+  readonly row: EditableLaunchRow
+  readonly handle: ManagedAgentLaunchHandle<'editable-agent-web'>
+  readonly client: ManagedAgentClient
+  readonly connectBrowserAcp: ManagedAgentLaunchHandle<'editable-agent-web'>['connectBrowserAcp']
+  close(): void
 }
 
 export async function createEditableLaunch(options: EditableLaunchOptions): Promise<EditableLaunchResult> {
   const clientRequestId = `editable-agent-web-${Date.now()}-${Math.random().toString(16).slice(2)}`
-  const spec = await editableSpec(options, clientRequestId)
-  const request = launchSpec(spec, {
+  const request = createManagedAgentLaunchRequest({
+    name: 'editable-agent-web',
+    agent: await inlineJsBundleAgent({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: options.agentCode,
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: 'examples/02-editable-agent-web',
+        revision: clientRequestId,
+      },
+    }),
+    sandbox: {
+      provider: 'local',
+      fsBackend: options.filesystemPlacement,
+      labels: {
+        example: '02-editable-agent-web',
+        mode: 'discovery',
+        brain: options.brainPlacement,
+        fsBackend: options.filesystemPlacement,
+      },
+    },
+    middleware: middlewareChain(options.middleware),
     clientRequestId,
     runtime: {
       name: 'editable-agent-web',
@@ -52,11 +73,9 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     startSession: {
       stateStream: clientRequestId,
       create: true,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(options.initialPrompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: options.initialPrompt,
     },
     wait: {
       until: 'session',
@@ -64,69 +83,67 @@ export async function createEditableLaunch(options: EditableLaunchOptions): Prom
     },
   })
 
-  const result = await appendAndObserveLaunch({
-    controlStreamUrl: options.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
+  const client = createManagedAgentClient({
+    launchControlStreamUrl: options.controlStreamUrl,
     requestedBy: 'examples/02-editable-agent-web',
-    timeoutMs: 60_000,
+    defaults: {
+      wait: {
+        until: 'session_ready',
+        timeoutMs: 60_000,
+      },
+      stopReason: 'editable-agent-web stop requested',
+    },
   })
-  return result
+  try {
+    const handle = await client.launch(request, {
+      idempotencyKey: clientRequestId,
+      wait: {
+        until: 'session_ready',
+        timeoutMs: 60_000,
+      },
+    })
+    const row = handle.current() ?? await handle.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const envelope = handle.requestEnvelope
+    if (!envelope) {
+      throw new Error(`Managed-agent launch ${handle.launchId} did not expose a request envelope`)
+    }
+    return {
+      envelope,
+      row,
+      handle,
+      client,
+      connectBrowserAcp: handle.connectBrowserAcp,
+      close() {
+        handle.close()
+        client.close()
+      },
+    }
+  } catch (error) {
+    client.close()
+    throw error
+  }
 }
 
 export async function stopEditableLaunch(options: {
-  readonly controlStreamUrl: string
   readonly launch: EditableLaunchResult
   readonly reason?: string
-}): Promise<StreamLaunchStopResult> {
-  return await appendAndObserveLaunchStop({
-    controlStreamUrl: options.controlStreamUrl,
-    launchId: options.launch.row.launchId,
+}): Promise<ManagedAgentStopResult & { readonly row: EditableLaunchRow }> {
+  const stopped = await options.launch.handle.stop({
     clientRequestId: options.launch.row.clientRequestId,
     requestedBy: 'examples/02-editable-agent-web',
     reason: options.reason ?? 'editable-agent-web stop requested',
-    timeoutMs: 60_000,
-  })
-}
-
-async function editableSpec(
-  options: EditableLaunchOptions,
-  clientRequestId: string,
-): Promise<AgentDefinition<'editable-agent-web'>> {
-  const artifact = await inlineBundleArtifact({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: options.agentCode,
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: 'examples/02-editable-agent-web',
-      revision: clientRequestId,
+    wait: {
+      until: 'terminal',
+      timeoutMs: 60_000,
     },
   })
-  const sandbox: SandboxSpec = {
-    provider: 'local',
-    fsBackend: options.filesystemPlacement,
-    labels: {
-      example: '02-editable-agent-web',
-      mode: 'discovery',
-      brain: options.brainPlacement,
-      fsBackend: options.filesystemPlacement,
-    },
-  }
-  return agentDefinition({
-    name: 'editable-agent-web',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox,
-    middleware: middlewareChain(options.middleware),
-  })
+  const row = stopped.row ?? await options.launch.handle.waitUntil('terminal', { timeoutMs: 60_000 })
+  return { ...stopped, row }
 }
 
-function middlewareChain(choices: readonly MiddlewareChoice[]): MiddlewareChain {
+function middlewareChain(choices: readonly MiddlewareChoice[]) {
   return {
-    kind: 'middleware',
+    kind: 'middleware' as const,
     chain: choices.map((choice) => {
       switch (choice) {
         case 'trace':

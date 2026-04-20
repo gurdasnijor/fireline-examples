@@ -28,6 +28,7 @@ npm package names.
   - `ManagedAgentLaunchHandle`
   - `ManagedAgentLaunchWaitOptions`
   - `ManagedAgentHeaderProvider`
+  - `ManagedAgentStopResult`
 - `@fireline/client/spec`
   - `inlineBundleArtifact`
   - `jsModuleAgentForm`
@@ -55,7 +56,8 @@ npm package names.
   - `acpRegistry`
 
 Examples do not import `@fireline/client/launch-control`, runtime internals,
-or private package source. Normal ergonomic examples in the mono-oet.29.3.32
+private package source, or managed-agent helpers from the root
+`@fireline/client` barrel. Normal ergonomic examples in the mono-oet.29.3.32
 cutover lanes use `@fireline/client/managed-agent` for request construction,
 launch/wait, ACP follow-up, and stop. Direct `@fireline/client/spec` usage
 remains in lower-level protocol/runtime characterization examples, not in the

@@ -30,10 +30,10 @@ Current checkpoint:
   Request construction uses `createManagedAgentLaunchRequest` and
   `inlineJsBundleAgent` from the managed-agent subpath.
 - `examples/02-editable-agent-web` is a TypeScript/TSX app-shaped discovery
-  example. It lets a user edit inline agent code, append a launch request,
-  inspect launch/session/runtime coordinates from `collections.launches`, send
-  a follow-up ACP prompt through `@fireline/client/acp-browser`, and stop the
-  launch with `appendLaunchStop`.
+  example for the Tier 1 `@fireline/client/managed-agent` lifecycle helper. It
+  lets a user edit inline agent code, launch through a managed-agent handle,
+  inspect launch/session/runtime coordinates, send a follow-up ACP prompt
+  through the handle, and stop the launch through the same handle.
 - `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
   `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
   examples. They keep Fireline calls package-shaped and use
@@ -86,6 +86,22 @@ Current checkpoint:
   `@fireline/client/managed-agent`. It deliberately avoids `memory()`,
   approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
   hand-rolled lifecycle primitives.
+
+Surface posture:
+
+- Tier 1 canonical TypeScript app API:
+  `@fireline/client/managed-agent`.
+- Tier 2 protocol/runtime reference:
+  raw Durable Streams HTTP plus the `@fireline/runtime` / `fireline-v3-dev`
+  command path.
+- Tier 3 primitive escape hatch:
+  `@fireline/client/spec`, `@fireline/client/events`, `@fireline/state`, and
+  `@fireline/client/acp-browser`.
+
+Normal TypeScript app examples should use Tier 1 where the helper covers the
+flow. Raw HTTP and language-neutral examples stay Tier 2 references. Tier 3
+primitive usage is still allowed for escape-hatch evidence or explicit helper
+gap discovery, but it is not the canonical app-facing path.
 
 Setup:
 
@@ -142,8 +158,10 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web
 ```
 
 Open `http://127.0.0.1:5173/` and click **Run**. The app pre-fills the
-launch/control stream URL from the daemon handoff. If you intentionally run the
-private Vite child script separately, it falls back to
+launch/control stream URL from the daemon handoff and uses
+`@fireline/client/managed-agent` for inline agent request construction, launch
+waiting, ACP attachment, and stop.
+If you intentionally run the private Vite child script separately, it falls back to
 `http://127.0.0.1:7474/v1/stream/fireline-examples-control`, probes the local
 streams health endpoint, and shows a copyable one-line derivation:
 
@@ -174,9 +192,11 @@ FIRELINE_PORT=5537 FIRELINE_STREAMS_PORT=8574 \
 pnpm run dev:editable-agent-web --port 5192
 ```
 
-The app appends to the configured launch/control stream and observes launch
-rows through package-shaped Fireline helpers. It does not call `/v1/launches`
-or use `@fireline/client/launch-control`.
+The app gives `@fireline/client/managed-agent` the configured launch/control
+stream URL and uses the returned handle for launch observation, ACP connection,
+and stop. It does not call `/v1/launches`, use
+`@fireline/client/launch-control`, or import managed-agent helpers from the
+root `@fireline/client` barrel.
 
 Managed-agent cutover note: examples 08, 11, 12, 13, 14, 16, 17, and 18 use
 `@fireline/client/managed-agent` for normal app lifecycle consumption, including
