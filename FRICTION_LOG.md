@@ -360,6 +360,28 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed teardown warnings tracked separately under
    `mono-oet.29.3.24`.
 
+31. Middleware stack builders are package-shaped, but only the conservative stack is runnable today.
+
+   `examples/18-middleware-stack` validates the current external-consumer
+   middleware path with `trace(...)`, `contextInjection(...)`, and `budget(...)`
+   from `@fireline/client/middleware`. The example keeps the launch normal:
+   build `agentDefinition(...)`, append `fireline.launch_request`, observe
+   `collections.launches`, append `fireline.launch_stop`, and observe
+   `stopped`.
+
+   This slice intentionally does not use `memory()` because the host-side
+   MCP/proxy backing is not part of this examples bead. It also avoids approval
+   gates and webhook/Telegram durable-subscriber profiles because the quality
+   bar for this example is a bounded launch/observe/stop smoke, not an
+   end-to-end approval or subscriber delivery test.
+
+   Fresh-daemon and prior-daemon reuse E2E both passed. Each run returned
+   `ok: true`, `middlewareKinds: ["trace", "contextInjection", "budget"]`,
+   a `session_ready` launch with runtime/session coordinates, and a `stopped`
+   launch row after `fireline.launch_stop`. The fresh-daemon run still printed
+   the known ACP websocket reset/closed teardown warning tracked separately
+   under `mono-oet.29.3.24`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -409,6 +431,10 @@ a Fireline bead or be closed as an intentional boundary.
 - Registry seam: `acpRegistry(...)` can resolve command/npx/uvx rows today, but
   binary-only and launcher-env rows remain explicit non-goals for examples
   until the Fireline signoff and implementation gates land.
+- Middleware seam: `trace(...)`, `contextInjection(...)`, and `budget(...)` are
+  usable in package-shaped examples today; `memory()`, approval gates, and
+  subscriber middleware still need dedicated backing/evidence before they are
+  taught as runnable examples.
 
 ## Follow-Up Bead Candidates
 

@@ -80,6 +80,12 @@ Current checkpoint:
   sends a follow-up prompt, and stops the launch. It deliberately avoids
   binary registry installs, launcher env metadata, retired launch-control
   surfaces, and managed-agent helper sugar.
+- `examples/18-middleware-stack` is a focused middleware-stack consumer. It
+  builds a normal stream-native launch with `trace(...)`,
+  `contextInjection(...)`, and `budget(...)`, observes `collections.launches`,
+  and appends `fireline.launch_stop`. It deliberately avoids `memory()`,
+  approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
+  managed-agent helper sugar.
 
 Setup:
 
@@ -365,6 +371,30 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     ACP_REGISTRY_CHAT_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
       "$FIRELINE_EXAMPLES_ROOT/examples/17-acp-registry-chat/src/run.ts"
+```
+
+Run the middleware stack shape from scratch state:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-30-fresh-state
+export FIRELINE_PORT=4630
+export FIRELINE_STREAMS_PORT=7730
+export FIRELINE_CONTROL_STREAM=fireline-middleware-stack-control
+rm -rf "$FIRELINE_STATE_DIR"
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+FIRELINE_PORT="$FIRELINE_PORT" \
+FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
+    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+    MIDDLEWARE_STACK_RUN_ID="middleware-stack-run-001" \
+    MIDDLEWARE_STACK_ATTEMPT_ID="attempt-1" \
+    pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
+      "$FIRELINE_EXAMPLES_ROOT/examples/18-middleware-stack/src/run.ts"
 ```
 
 Run the Flamecast-shaped characterization from scratch state:

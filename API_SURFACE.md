@@ -94,6 +94,7 @@ violations.
 - `pnpm run smoke:rust-raw-http`
 - `pnpm run smoke:go-raw-http`
 - `pnpm run smoke:acp-registry-chat`
+- `pnpm run smoke:middleware-stack`
 - `pnpm run check:deno`
 - `pnpm run smoke:deno`
 - `pnpm run dev:editable-agent-web`
@@ -121,6 +122,7 @@ violations.
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `go run examples/15-go-raw-http/main.go`
 - `tsx examples/17-acp-registry-chat/src/run.ts`
+- `tsx examples/18-middleware-stack/src/run.ts`
 - `node examples/17-acp-registry-chat/registry-agent.mjs`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
 - `vite` through the private Vite child script
@@ -253,6 +255,15 @@ violations.
   session startup in `examples/17-acp-registry-chat`.
 - `ACP_REGISTRY_CHAT_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt sent
   after `examples/17-acp-registry-chat` attaches to the launched session.
+- `MIDDLEWARE_STACK_TENANT_ID`: example-only middleware stack tenant
+  coordinate.
+- `MIDDLEWARE_STACK_RUN_ID`: example-only middleware stack run coordinate.
+  Reuse it for retries of the same run.
+- `MIDDLEWARE_STACK_ATTEMPT_ID`: example-only middleware stack attempt
+  coordinate. Reuse it for retries of the same attempt; change it for a new
+  attempt.
+- `MIDDLEWARE_STACK_PROMPT`: optional initial prompt for
+  `examples/18-middleware-stack`.
 
 ## Endpoints
 
@@ -441,6 +452,18 @@ shape:
 - The example deliberately avoids binary registry install/cache, launcher env
   metadata, retired launch-control surfaces, and managed-agent helper sugar.
 
+`examples/18-middleware-stack` exercises the focused middleware-stack slice:
+
+- `src/run.ts` imports `@fireline/client/spec`,
+  `@fireline/client/middleware`, and the shared stream helper that uses
+  `@fireline/client/events` and `@fireline/state`.
+- It serializes `trace(...)`, `contextInjection(...)`, and `budget(...)` into a
+  normal `agentDefinition(...)`, then uses the same launch/observe/stop path as
+  other stream-native examples.
+- The example deliberately avoids `memory()`, approval gates,
+  webhook/Telegram subscribers, launch-control HTTP, `/v1/launches`, Fireline
+  internals, and managed-agent helper sugar.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -473,11 +496,11 @@ stream-native path:
 
 `examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
 `examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
-`examples/14-bun`, `examples/16-deno`, and
-`examples/17-acp-registry-chat` use the same stream-native path with larger
-generated harness, runtime-specific, or registry-resolution shapes. They are
-characterization evidence for product consumer boundaries, not a promise that
-`@fireline/client/spec` names are frozen.
+`examples/14-bun`, `examples/16-deno`, `examples/17-acp-registry-chat`, and
+`examples/18-middleware-stack` use the same stream-native path with larger
+generated harness, runtime-specific, registry-resolution, or middleware-stack
+shapes. They are characterization evidence for product consumer boundaries,
+not a promise that `@fireline/client/spec` names are frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 
