@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { connectBrowserAcp, type BrowserAcpConnection } from '@fireline/client/acp-browser'
 import {
   createEditableLaunch,
@@ -17,6 +17,23 @@ const defaultAgentCode = `export default async function handle(ctx) {
 }
 `
 
+const defaultControlStream = envValue(import.meta.env.VITE_FIRELINE_CONTROL_STREAM) ?? 'fireline-examples-control'
+const defaultStreamsPort = envValue(import.meta.env.VITE_FIRELINE_STREAMS_PORT) ?? '7474'
+const derivedLocalControlStreamUrl =
+  `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${defaultControlStream}`
+const defaultControlStreamUrl =
+  envValue(import.meta.env.VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL) ?? derivedLocalControlStreamUrl
+const daemonDefaultControlStream = 'fireline-v3-dev-daemon'
+const daemonDefaultControlStreamUrl =
+  `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${daemonDefaultControlStream}`
+const localStreamsHealthUrl = `http://127.0.0.1:${defaultStreamsPort}/healthz`
+const localDaemonCommand =
+  `FIRELINE_CONTROL_STREAM=${defaultControlStream} fireline-v3-dev --state-stream ${defaultControlStream}`
+const shellDerivation =
+  `export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`
+const viteHandoffCommand =
+  'FIRELINE_CONTROL_STREAM=<daemon-stream> fireline-v3-dev --state-stream <daemon-stream> -- pnpm run dev:editable-agent-web'
+
 interface LogEntry {
   readonly at: string
   readonly kind: string
@@ -24,9 +41,9 @@ interface LogEntry {
 }
 
 export function App() {
-  const [controlStreamUrl, setControlStreamUrl] = useState(
-    import.meta.env.VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL ?? ''
-  )
+  const [controlStreamUrl, setControlStreamUrl] = useState(defaultControlStreamUrl)
+  const [daemonStatus, setDaemonStatus] = useState('Checking local fireline-v3-dev...')
+  const [recoveryHint, setRecoveryHint] = useState<string | undefined>()
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
   const [filesystemPlacement, setFilesystemPlacement] = useState<FilesystemPlacement>('local')
   const [middleware, setMiddleware] = useState<readonly MiddlewareChoice[]>(['trace'])
@@ -60,12 +77,23 @@ export function App() {
     startSession: launch.startSession,
   }, null, 2) : 'No launch yet.', [launch])
 
+  useEffect(() => {
+    let cancelled = false
+    void probeLocalDaemon(controlStreamUrl).then((status) => {
+      if (!cancelled) setDaemonStatus(status)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [controlStreamUrl])
+
   async function run() {
     await withBusy(async () => {
       await closeAcp()
       setResult(undefined)
       setLogs([])
       addLog('launch', 'Creating launch and waiting for session coordinates.')
+      setRecoveryHint(undefined)
       const next = await createEditableLaunch({
         controlStreamUrl,
         agentCode,
@@ -128,6 +156,11 @@ export function App() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       addLog('error', message)
+      const recovery = explainLaunchError(error, controlStreamUrl)
+      if (recovery) {
+        setRecoveryHint(recovery)
+        addLog('recovery', recovery)
+      }
       setStatus('Error')
     } finally {
       setBusy(false)
@@ -159,14 +192,32 @@ export function App() {
         </div>
 
         <div className="control-grid">
-          <label>
-            Launch/control stream URL
-            <input
-              value={controlStreamUrl}
-              onChange={(event) => setControlStreamUrl(event.target.value)}
-              placeholder="http://127.0.0.1:7474/v1/stream/fireline-examples-control"
-            />
-          </label>
+          <div className="stream-config">
+            <label>
+              Launch/control stream URL
+              <input
+                value={controlStreamUrl}
+                onChange={(event) => setControlStreamUrl(event.target.value)}
+                aria-describedby="stream-config-help"
+              />
+            </label>
+            <p id="stream-config-help">
+              {daemonStatus} Default stream: <code>{defaultControlStream}</code>.
+            </p>
+            {recoveryHint && <p className="recovery-hint">{recoveryHint}</p>}
+            <div className="stream-actions">
+              <button type="button" onClick={() => setControlStreamUrl(defaultControlStreamUrl)}>
+                Use local default
+              </button>
+              <button type="button" onClick={() => setControlStreamUrl(daemonDefaultControlStreamUrl)}>
+                Use daemon default
+              </button>
+              <button type="button" onClick={() => void navigator.clipboard?.writeText(shellDerivation)}>
+                Copy derivation
+              </button>
+            </div>
+            <code className="command-line">{shellDerivation}</code>
+          </div>
           <label>
             Brain placement
             <select value={brainPlacement} onChange={(event) => setBrainPlacement(event.target.value as BrainPlacement)}>
@@ -237,6 +288,66 @@ export function App() {
       </section>
     </main>
   )
+}
+
+async function probeLocalDaemon(controlStreamUrl: string): Promise<string> {
+  try {
+    await fetch(localStreamsHealthUrl, {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+    })
+    const streamName = streamNameFromUrl(controlStreamUrl)
+    if (!streamName) return `Detected local streams on ${localStreamsHealthUrl}.`
+    const streamProbe = await fetch(controlStreamUrl, { method: 'GET', cache: 'no-store' })
+    if (streamProbe.ok) {
+      return `Detected local streams on ${localStreamsHealthUrl}; ${streamName} is readable.`
+    }
+    if (streamProbe.status === 404) {
+      return [
+        `Detected local streams on ${localStreamsHealthUrl}, but ${streamName} is not readable yet.`,
+        'If Run returns 404, reuse the exact launch/control URL exported by the daemon or restart with the matching --state-stream.',
+      ].join(' ')
+    }
+    return `Detected local streams on ${localStreamsHealthUrl}; stream probe returned HTTP ${streamProbe.status}.`
+  } catch {
+    return `Start local Fireline with: ${localDaemonCommand}`
+  }
+}
+
+function explainLaunchError(error: unknown, controlStreamUrl: string): string | undefined {
+  const message = error instanceof Error ? error.message : String(error)
+  if (!/404|Stream not found/i.test(message)) return undefined
+  const missingStream = streamNameFromMessage(message) ?? streamNameFromUrl(controlStreamUrl) ?? '<stream>'
+  return [
+    `Launch/control stream ${missingStream} was not found by durable streams.`,
+    'This usually means editable-agent-web is pointed at a stream the reused daemon is not watching.',
+    `Use the exact FIRELINE_LAUNCH_CONTROL_STREAM_URL printed/exported by fireline-v3-dev, or restart through: ${viteHandoffCommand}.`,
+    `For the daemon default stream, try ${daemonDefaultControlStreamUrl}.`,
+  ].join(' ')
+}
+
+function streamNameFromMessage(message: string): string | undefined {
+  const match = /Stream not found:\s*([^\s"'<>]+)/i.exec(message)
+  return match?.[1]
+}
+
+function streamNameFromUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value)
+    const marker = '/v1/stream/'
+    const index = url.pathname.indexOf(marker)
+    if (index < 0) return undefined
+    const encoded = url.pathname.slice(index + marker.length)
+    return decodeURIComponent(encoded)
+  } catch {
+    return undefined
+  }
+}
+
+function envValue(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
 }
 
 function Choice(props: {

@@ -52,14 +52,32 @@ a Fireline bead or be closed as an intentional boundary.
    simplest future product example until higher-level helpers are unblocked by
    `mono-oet.29.14`.
 
-7. Local runtime/bootstrap discovery is still manual.
+7. Local runtime/bootstrap discovery is still uneven across examples.
 
-   The examples require the app-facing `FIRELINE_LAUNCH_CONTROL_STREAM_URL` and
-   the local `fireline-v3-dev --state-stream <control-stream>` process to point
-   at the same durable stream. This is intentionally explicit in the discovery
-   repo, but a normal external consumer should not have to assemble that
-   alignment by hand. Follow-up bead candidate: endpoint/bootstrap discovery
-   for stream-native local apps.
+   `examples/02-editable-agent-web` now makes the public
+   `pnpm run dev:editable-agent-web` command start through `fireline-v3-dev` and
+   inject the exported `FIRELINE_LAUNCH_CONTROL_STREAM_URL` into Vite. The
+   private Vite child script still derives
+   `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when run on its
+   own, probes the local streams health endpoint, and shows a copyable
+   derivation for custom ports or stream names. On `Stream not found`/404, the
+   UI names the missing stream and shows restart or exact-URL recovery
+   instructions. Other examples still require the app-facing
+   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` and the local
+   `fireline-v3-dev --state-stream <control-stream>` process to point at the
+   same durable stream. This is intentionally explicit in the discovery repo,
+   but a normal external consumer should not have to assemble that alignment by
+   hand. Follow-up bead candidate: endpoint/bootstrap discovery for
+   stream-native local apps.
+
+   `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
+   blocker: `fireline-v3-dev` could reuse an existing daemon, export
+   `FIRELINE_LAUNCH_CONTROL_STREAM_URL` for `fireline-v3-dev-daemon`, and then
+   fail append with `HTTP Error 404 ... Stream not found:
+   fireline-v3-dev-daemon`. Fireline PR #291 / `mono-oet.29.3.22` fixed that
+   launcher/stream mismatch by creating and verifying the exported stream before
+   child startup. The examples branch keeps diagnostics and recovery guidance
+   for genuinely stale port/process/store reuse.
 
 8. Stream-native stop is now usable, but still low-level.
 
@@ -203,14 +221,30 @@ a Fireline bead or be closed as an intentional boundary.
    example output is correct (`accepted: true`, `session_ready`, `stopped`),
    but reviewer logs still contain runtime teardown noise.
 
+22. Editable-agent-web naive dev previously did not own daemon startup.
+
+   `mono-oet.29.3.25` reproduced the zero-opaque-config gap: a user could run
+   `pnpm run dev:editable-agent-web` with no pre-started daemon and no Vite
+   launch/control URL, leaving the browser to depend on fallback derivation
+   rather than the daemon's exported URL. The dev command now wraps Vite with
+   `fireline-v3-dev`; fresh and prior-daemon runs injected
+   `http://127.0.0.1:<streams-port>/v1/stream/fireline-v3-dev-daemon` into the
+   Vite environment and launch/stop completed. Both evidence runs still logged
+   the known `Symbol(liveQueryInternal)` durable-state/TanStack DB warning while
+   processing `fireline.runtime_instance`; TL1 tracks that under
+   `mono-oet.29.3.24`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
   artifact refs are still needed for normal external consumers. This branch now
   uses documented git artifact refs; public npm remains gated.
-- Missing Fireline/public support: local stream-native bootstrap still requires
-  manual alignment between the configured control stream URL and the dev daemon
-  stream watcher.
+- Missing Fireline/public support: local stream-native bootstrap still relies on
+  `fireline-v3-dev` env handoff or equivalent control-stream alignment. Example
+  02 owns that handoff for its public dev command now, but stale processes or
+  mismatched stream stores can still leave reviewers with a timeout or
+  `Stream not found`; the example surfaces recovery instructions instead of
+  leaving the raw failure alone.
 - Missing Fireline/public support: stream-native stop now works through
   `appendLaunchStop`, but app authors still need to compose stop append,
   observation, and ACP cleanup directly.
