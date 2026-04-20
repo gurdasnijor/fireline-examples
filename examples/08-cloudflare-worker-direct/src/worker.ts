@@ -195,21 +195,53 @@ async function waitForLaunchRow(options: {
   readonly timeoutMs: number
   readonly predicate: (row: LaunchRow) => boolean
 }): Promise<LaunchRow> {
-  const deadline = Date.now() + options.timeoutMs
-  while (Date.now() < deadline) {
-    const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
-    try {
-      await db.preload()
-      const row = db.collections.launches.toArray.find((candidate) =>
-        candidate.launchId === options.launchId && options.predicate(candidate)
-      )
-      if (row) return row
-    } finally {
-      db.close()
-    }
-    await sleep(250)
+  const db = createFirelineDB({ stateStreamUrl: options.stateStreamUrl })
+  try {
+    await db.preload()
+    const existing = findMatchingLaunch(db, options.launchId, options.predicate)
+    if (existing) return existing
+
+    return await new Promise((resolve, reject) => {
+      let settled = false
+      const timeout = setTimeout(() => {
+        cleanup()
+        reject(new Error(`Timed out waiting for launch ${options.launchId}`))
+      }, options.timeoutMs)
+      let subscription: { unsubscribe(): void } | undefined
+      let unsubscribeAfterAssign = false
+      const cleanup = () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        if (subscription) {
+          subscription.unsubscribe()
+        } else {
+          unsubscribeAfterAssign = true
+        }
+      }
+      subscription = db.collections.launches.subscribe((rows) => {
+        const row = rows.find((candidate) =>
+          candidate.launchId === options.launchId && options.predicate(candidate)
+        )
+        if (!row) return
+        cleanup()
+        resolve(row)
+      })
+      if (unsubscribeAfterAssign) subscription.unsubscribe()
+    })
+  } finally {
+    db.close()
   }
-  throw new Error(`Timed out waiting for launch ${options.launchId}`)
+}
+
+function findMatchingLaunch(
+  db: ReturnType<typeof createFirelineDB>,
+  launchId: string,
+  predicate: (row: LaunchRow) => boolean,
+): LaunchRow | undefined {
+  return db.collections.launches.toArray.find((row) =>
+    row.launchId === launchId && predicate(row)
+  )
 }
 
 function deriveConfig(env: Env) {
@@ -279,10 +311,6 @@ function summarizeRow(row: LaunchRow) {
     },
     startSession: row.startSession,
   }
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

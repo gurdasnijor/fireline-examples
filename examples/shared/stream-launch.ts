@@ -110,24 +110,24 @@ async function waitForLaunchRowSnapshot(options: {
   readonly predicate: (row: LaunchRow) => boolean
   readonly signal?: AbortSignal
 }): Promise<LaunchRow> {
-  const deadline = Date.now() + options.timeoutMs
-  while (Date.now() < deadline) {
-    if (options.signal?.aborted) throw abortError()
-    const db = createFirelineDB({
-      stateStreamUrl: options.stateStreamUrl,
-      headers: options.headers ? { ...options.headers } : undefined,
+  if (options.signal?.aborted) throw abortError()
+  const db = createFirelineDB({
+    stateStreamUrl: options.stateStreamUrl,
+    headers: options.headers ? { ...options.headers } : undefined,
+    signal: options.signal,
+  })
+  try {
+    await db.preload()
+    return await waitForLaunchRow({
+      db,
+      launchId: options.launchId,
+      timeoutMs: options.timeoutMs,
+      predicate: options.predicate,
       signal: options.signal,
     })
-    try {
-      await db.preload()
-      const row = findMatchingLaunch(db, options.launchId, options.predicate)
-      if (row) return row
-    } finally {
-      db.close()
-    }
-    await sleep(250, options.signal)
+  } finally {
+    db.close()
   }
-  throw new Error(`Timed out waiting for launch ${options.launchId}`)
 }
 
 export async function waitForLaunchRow(options: {
@@ -151,25 +151,16 @@ export async function waitForLaunchRow(options: {
       reject(abortError())
     }
     let subscription: { unsubscribe(): void } | undefined
-    const poll = setInterval(() => {
-      void options.db.preload()
-        .then(() => {
-          const row = findMatchingLaunch(options.db, options.launchId, options.predicate)
-          if (!row) return
-          cleanup()
-          resolve(row)
-        })
-        .catch((error) => {
-          cleanup()
-          reject(error)
-        })
-    }, 250)
+    let unsubscribeAfterAssign = false
     const cleanup = () => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
-      clearInterval(poll)
-      subscription?.unsubscribe()
+      if (subscription) {
+        subscription.unsubscribe()
+      } else {
+        unsubscribeAfterAssign = true
+      }
       options.signal?.removeEventListener('abort', abort)
     }
     subscription = options.db.collections.launches.subscribe((rows) => {
@@ -180,6 +171,7 @@ export async function waitForLaunchRow(options: {
       cleanup()
       resolve(row)
     })
+    if (unsubscribeAfterAssign) subscription.unsubscribe()
 
     options.signal?.addEventListener('abort', abort, { once: true })
     if (options.signal?.aborted) abort()
@@ -200,21 +192,4 @@ function abortError(): Error {
   const error = new Error('Launch observation aborted')
   error.name = 'AbortError'
   return error
-}
-
-async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const cleanup = () => signal?.removeEventListener('abort', abort)
-    const timeout = setTimeout(() => {
-      cleanup()
-      resolve()
-    }, ms)
-    const abort = () => {
-      clearTimeout(timeout)
-      cleanup()
-      reject(abortError())
-    }
-    signal?.addEventListener('abort', abort, { once: true })
-    if (signal?.aborted) abort()
-  })
 }
