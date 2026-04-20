@@ -159,6 +159,37 @@ a Fireline bead or be closed as an intentional boundary.
    boundary, but a real product integration likely wants a typed session handle
    or resume helper once public surface freeze permits it.
 
+18. Package-shaped evidence still needs artifact choreography.
+
+   The 2026-04-19 runnable evidence used Fireline workflow run `24650112221`
+   artifacts, then locally staged `@fireline/runtime` meta and platform
+   packages under `/tmp`. This stays package-shaped and external-consumer safe,
+   but it is too much choreography for a normal reviewer. A stable git artifact
+   ref or published internal package channel would make example validation much
+   simpler.
+
+   Non-happy-path observation: reusing the old `/tmp` tarball filenames with
+   new artifact bytes can trip pnpm's tarball integrity check from the scratch
+   lockfile. Refreshing only the scratch lockfile with `pnpm install
+   --no-frozen-lockfile` fixed the evidence run; the source branch lockfile was
+   not modified.
+
+19. Fresh-daemon wrapper lifetime is not intuitive.
+
+   The fresh-daemon command form successfully ran the child example and printed
+   the expected JSON summary, but the wrapper daemon process stayed alive until
+   the scratch process was explicitly stopped. This is acceptable for local dev,
+   but copy-paste smoke recipes need an explicit cleanup expectation.
+
+20. Runtime close noise is still visible even on successful runs.
+
+   Both fresh-daemon and prior-daemon reuse scenarios completed with
+   `followUpSent: true` and `stopStatus: "stopped"`, but logs still showed the
+   known `Symbol(liveQueryInternal)` durable-state/TanStack DB error while
+   processing `fireline.runtime_instance` rows. The runtime also logged ACP
+   websocket reset/closed warnings during teardown. These did not fail the
+   example, but they remain non-happy-path reviewer noise.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -197,6 +228,9 @@ a Fireline bead or be closed as an intentional boundary.
 - Framework seam: OpenNext/Cloudflare builds require app-local package scripts
   and generated adapter directories, and the current safe path keeps Fireline
   launch calls in browser code.
+- Evidence seam: runnable examples currently require manual artifact staging
+  from Fireline workflow outputs until a stable package or git artifact channel
+  exists for external-consumer validation.
 
 ## Follow-Up Bead Candidates
 
