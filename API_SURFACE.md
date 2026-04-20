@@ -39,11 +39,16 @@ npm package names.
 - `@fireline/client/acp-browser`
   - `connectBrowserAcp`
   - `BrowserAcpConnection`
+- `@fireline/client`
+  - default `fireline`
+  - `fireline.appendLaunchRequest`
+  - `fireline.db`
 
-Examples 01-06 do not import Fireline root exports, `@fireline/client/launch-control`,
-runtime internals, or private package source. The target launch path appends
+Examples do not import `@fireline/client/launch-control`, runtime internals,
+or private package source. The target launch path appends
 `fireline.launch_request` and `fireline.launch_stop` to the configured control
-stream and observes `@fireline/state` `collections.launches`.
+stream and observes launch rows through `@fireline/state` collections or the
+root `fireline.db(...)` wrapper.
 
 ## Framework Imports
 
@@ -96,6 +101,7 @@ violations.
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
 - `sh examples/07-curl-shell-raw-http/run.sh`
 - `tsx examples/11-server-worker-wrapper/src/run.ts`
+- `tsx examples/12-vercel-function-node/src/run-local.ts`
 - `python3 examples/09-python-raw-http/run.py`
 - `cargo run --manifest-path examples/10-rust-raw-http/Cargo.toml`
 - `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
@@ -186,6 +192,15 @@ violations.
   retries of the same attempt; change it for a new attempt.
 - `APP_TITLE`: optional example-only title for the server wrapper launch.
 - `APP_PROMPT`: optional example-only initial prompt for the generated agent.
+- `VERCEL_FUNCTION_TENANT_ID`: example-only Vercel Function tenant
+  coordinate.
+- `VERCEL_FUNCTION_RUN_ID`: example-only Vercel Function run coordinate. Reuse
+  it for retries of the same run.
+- `VERCEL_FUNCTION_ATTEMPT_ID`: example-only Vercel Function attempt
+  coordinate. Reuse it for retries of the same attempt; change it for a new
+  attempt.
+- `VERCEL_FUNCTION_PROMPT`: optional example-only initial prompt for the
+  Vercel Function Node launch.
 
 ## Endpoints
 
@@ -298,6 +313,23 @@ consumer shape:
   `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
   `FIRELINE_CONTROL_STREAM`.
 
+`examples/12-vercel-function-node` exercises a Vercel Functions Node runtime
+shape:
+
+- `api/fireline-launch.ts` is a Vercel-style Node handler using
+  `IncomingMessage` / `ServerResponse` types.
+- The handler imports root `@fireline/client` and uses
+  `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, plus
+  `@fireline/client/spec` for launch data and `@fireline/client/events` for
+  stop.
+- `src/run-local.ts` starts a local Node HTTP server around the handler and
+  sends one request for E2E validation.
+- The runnable smoke derives the launch/control stream URL from exact
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
+  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
+  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
+  `FIRELINE_CONTROL_STREAM`.
+
 `examples/09-python-raw-http` exercises the T2 Python raw Durable Streams HTTP
 surface with only Python stdlib HTTP and JSON modules. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
@@ -322,10 +354,11 @@ stream-native path:
 - Append `fireline.launch_stop` with `appendLaunchStop` and observe the
   materialized launch row reach `stopped`.
 
-`examples/06-flamecast-v3-shaped` and `examples/11-server-worker-wrapper` use
-the same stream-native path with larger generated harness shapes. They are
-characterization evidence for product consumer boundaries, not a promise that
-`@fireline/client/spec` names are frozen.
+`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`, and
+`examples/12-vercel-function-node` use the same stream-native path with larger
+generated harness shapes. They are characterization evidence for product
+consumer boundaries, not a promise that `@fireline/client/spec` names are
+frozen.
 
 Validated `mono-oet.29.3.1` behavior:
 

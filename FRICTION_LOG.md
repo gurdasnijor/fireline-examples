@@ -261,6 +261,24 @@ a Fireline bead or be closed as an intentional boundary.
    processing `fireline.runtime_instance`; TL1 tracks that under
    `mono-oet.29.3.24`.
 
+25. Vercel Functions Node can use the root client surface, but still composes low-level pieces.
+
+   `examples/12-vercel-function-node` validates the Node serverless case that
+   is allowed to import the full root `@fireline/client` package. The handler
+   uses `fireline.appendLaunchRequest(...)` and `fireline.db(...)`, while still
+   building launch data through `@fireline/client/spec` and appending stop
+   through `@fireline/client/events`.
+
+   This is useful for Vercel Functions and other Node serverless handlers, but
+   it does not remove the need to derive the launch/control stream URL, choose
+   a stable `clientRequestId`, observe `collections.launches`, and append stop.
+   It is still a discovery example, not a stable high-level SDK.
+
+   Fresh-daemon and prior-daemon reuse E2E both passed. The same teardown noise
+   seen in other inline JS module examples remains visible: ACP websocket
+   reset/closed warnings can appear after the example has already returned
+   `ok: true`, `session_ready`, and `stopped`.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
