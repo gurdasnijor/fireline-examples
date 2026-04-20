@@ -1,11 +1,7 @@
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
 import { launchAndStopManagedAgent } from '../../shared/managed-agent-launch'
 
 export async function runInlineLaunch(options: {
@@ -14,27 +10,26 @@ export async function runInlineLaunch(options: {
   readonly example: string
 }) {
   const clientRequestId = `${options.example}-${Date.now()}`
-  const artifact = await inlineBundleArtifact({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: `export default async function handle(ctx) {
+  const request = createManagedAgentLaunchRequest({
+    name: options.example,
+    agent: await inlineJsBundleAgent({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: `export default async function handle(ctx) {
   const text = ctx.prompt.find((block) => block.type === "text")?.text ?? ""
   await ctx.session.text("Next-shaped agent heard: " + text)
   await ctx.session.complete()
 }
 `,
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: options.example,
-      revision: clientRequestId,
-    },
-  })
-  const spec = agentDefinition({
-    name: options.example,
-    agent: jsModuleAgentForm({ artifact }),
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: options.example,
+        revision: clientRequestId,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: 'local',
@@ -43,8 +38,6 @@ export async function runInlineLaunch(options: {
         mode: 'discovery',
       },
     },
-  })
-  const request = launchSpec(spec, {
     clientRequestId,
     runtime: {
       name: options.example,
@@ -53,11 +46,9 @@ export async function runInlineLaunch(options: {
     startSession: {
       create: true,
       stateStream: clientRequestId,
-      newSession: newSessionRequest({
-        cwd: '/',
-        mcpServers: [],
-      }),
-      prompt: textPrompt(options.prompt),
+      cwd: '/',
+      mcpServers: [],
+      prompt: options.prompt,
     },
     wait: {
       until: 'session',

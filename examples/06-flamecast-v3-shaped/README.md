@@ -60,11 +60,8 @@ Expected output is a JSON summary with launch id, runtime ACP URL, ACP session
 id, follow-up status, and stop status. The example does not call the legacy HTTP
 launch endpoint, does not import the legacy launch-control subpath, does not
 import Fireline repo internals, and does not import real Flamecast v3 modules.
-It still uses `@fireline/client/spec` to build the request; that is temporary
-Tier 3 gap evidence for mono-oet.29.3.32.4, not a final ergonomic example
-contract. The accepted replacement shape is `createManagedAgentLaunchRequest`,
-`acpStdioAgent`, `inlineJsBundleAgent`, and `jsModuleAgent` from
-`@fireline/client/managed-agent`.
+It uses `createManagedAgentLaunchRequest` and `inlineJsBundleAgent` from
+`@fireline/client/managed-agent` for request construction.
 
 ## Reviewer Reproduce
 
@@ -150,7 +147,16 @@ Historical pre-managed-agent evidence from 2026-04-19:
   ACP session `jsmod-d1f806d4-5818-47b0-9044-bb3293e59e02`,
   `session.followUpSent: true`, `stopStatus: "stopped"`.
 
-Managed-agent cutover evidence for this example is intentionally not final
-until mono-oet.29.3.32.4 lands fresh artifacts with the accepted request
-helpers or TL1 approves a temporary exception for direct
-`@fireline/client/spec` usage.
+Validated 2026-04-20 managed-agent cutover evidence against
+`fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`:
+
+- Fresh daemon on `4736`/`7736`: launch
+  `6f8c7aba-78e9-4b1b-83a9-352c3379c911`, `clientRequestId`
+  `launch:flamecast-shaped:workspace-ma-cutover:fresh-run-001:attempt-1`,
+  ACP session `jsmod-eecf7100-bad8-442e-a8e9-0bfa82c25386`,
+  `session.followUpSent: true`, `stopStatus: "stopped"`.
+- Prior daemon reuse on `4740`/`7740`: launch
+  `fe438130-ee7a-44c3-b6b5-eeee46b588b6`, `clientRequestId`
+  `launch:flamecast-shaped:workspace-ma-cutover:reuse-run-001:attempt-1`,
+  ACP session `jsmod-73cb4256-8c3c-412f-8743-201ef768e7e8`,
+  `session.followUpSent: true`, `stopStatus: "stopped"`.

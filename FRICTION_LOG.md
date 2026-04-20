@@ -43,20 +43,15 @@ a Fireline bead or be closed as an intentional boundary.
    exports it, but the current binary surface does not make the behavior
    discoverable.
 
-6. The managed-agent path now owns lifecycle, but request building is still contract-heavy.
+6. The managed-agent path now owns lifecycle and common request building.
 
    The mono-oet.29.3.32.2 cutover moves examples 01, 03, 04, 05, and 06 to
    `@fireline/client/managed-agent` for launch, wait, ACP attach, and stop.
    That removes direct `appendLaunchRequest`, `collections.launches`, and
-   `appendLaunchStop` teaching from normal ergonomic examples. The remaining
-   blocker is request construction: these examples still need
-   `@fireline/client/spec` to build a `CreateLaunchRequest`. TL1 accepted
-   canonical helper gap mono-oet.29.3.32.4 and BE2 owns the narrow builder
-   layer. The accepted replacement shape is
-   `createManagedAgentLaunchRequest`, `acpStdioAgent`, `inlineJsBundleAgent`,
-   and `jsModuleAgent` from `@fireline/client/managed-agent`, so this branch
-   preserves the direct spec-builder usage only as temporary Tier 3 gap
-   evidence until fresh artifacts land.
+   `appendLaunchStop` teaching from normal ergonomic examples. It also removes
+   direct `@fireline/client/spec` request-builder imports from these target
+   paths by using `createManagedAgentLaunchRequest`, `inlineJsBundleAgent`,
+   and the other accepted helpers from `@fireline/client/managed-agent`.
 
 7. Local runtime/bootstrap discovery is still uneven across examples.
 
@@ -165,20 +160,14 @@ a Fireline bead or be closed as an intentional boundary.
    `.open-next/` and `.wrangler/`, which are ignored. This is framework
    scaffolding roughness, not Fireline API surface.
 
-16. Flamecast-shaped consumers still assemble request data too directly.
+16. Flamecast-shaped consumers now use the managed-agent app helper boundary.
 
    `examples/06-flamecast-v3-shaped` keeps a realistic framework boundary,
    generated multi-file harness bundle, and Fireline adapter. The adapter now
    uses `@fireline/client/managed-agent` for launch, session-ready wait, ACP
-   follow-up, and stop. The shape is useful as characterization evidence, but
-   it still requires product code to know about `agentDefinition`,
-   `jsModuleAgentForm`, `inlineBundleArtifact`, `launchSpec`, and
-   `newSessionRequest`.
-
-   This should not become canonical public sample code before fresh artifacts
-   expose the accepted managed-agent request helpers or TL1 explicitly accepts
-   a temporary exception.
-   Canonical helper gap: mono-oet.29.3.32.4.
+   follow-up, stop, and request construction. The shape is useful as
+   characterization evidence for product framework boundaries without teaching
+   lower-level spec/event/state composition as the normal app path.
 
 17. ACP follow-up attachment is no longer hand-wired in normal managed-agent examples.
 
@@ -388,6 +377,31 @@ a Fireline bead or be closed as an intentional boundary.
    the known ACP websocket reset/closed teardown warning tracked separately
    under `mono-oet.29.3.24`.
 
+32. Managed-agent cutover removes direct spec builders from normal target examples.
+
+   `examples/01-inline-js-local`, `examples/03-tanstack-shaped-app`,
+   `examples/04-next-basic`, `examples/05-next-open-cloudflare`, and
+   `examples/06-flamecast-v3-shaped` now construct launches through
+   `createManagedAgentLaunchRequest(...)` and managed-agent helpers such as
+   `inlineJsBundleAgent(...)`. These target paths no longer import
+   `@fireline/client/spec`, `@fireline/client/events`, `@fireline/state`, or
+   `@fireline/client/acp-browser` directly.
+
+   Fresh-daemon E2E passed for `examples/01-inline-js-local`: all five matrix
+   cases returned `session_ready`, wrote local output under
+   `/tmp/fireline-mono-oet-29-3-32-2-output/01-fresh`, and stopped with
+   `status: "stopped"`. Prior-daemon reuse passed against an already-running
+   daemon on `4740`/`7740`: all five matrix cases returned `session_ready` and
+   stopped.
+
+   Fresh-daemon and prior-daemon reuse E2E also passed for
+   `examples/06-flamecast-v3-shaped`: both runs returned
+   `launchStatus: "session_ready"`, `session.followUpSent: true`, and
+   `stopStatus: "stopped"`. Successful runs still print the known ACP
+   websocket reset/closed teardown warnings tracked under
+   `mono-oet.29.3.24`; interrupting the long-lived prior-daemon process also
+   prints expected stream-read shutdown noise.
+
 ## Idiomaticity Audit
 
 - Missing Fireline/public support: published package refs or documented git
@@ -399,18 +413,16 @@ a Fireline bead or be closed as an intentional boundary.
   mismatched stream stores can still leave reviewers with a timeout or
   `Stream not found`; the example surfaces recovery instructions instead of
   leaving the raw failure alone.
-- Missing Fireline/public support: managed-agent now wraps stop append,
-  observation, and ACP attachment for normal examples, but the examples still
-  need direct `@fireline/client/spec` request construction until
-  mono-oet.29.3.32.4 artifacts land with the accepted request helpers or TL1
-  approves a temporary exception.
+- Missing Fireline/public support: managed-agent now wraps request
+  construction, stop append, observation, and ACP attachment for normal
+  examples. Remaining work is PM browser QA against the fresh package
+  artifacts.
 - Missing Fireline/state cleanup: live `collections.launches` observation
   should deliver runtime/result/stop updates without fresh-DB preload snapshots.
   Tracked by `mono-oet.29.3.2`.
 - Missing Fireline/public support: launching an editable inline agent and
   attaching a chat session is now narrower through managed-agent lifecycle
-  helpers, but request-builder ergonomics remain blocked by
-  mono-oet.29.3.32.4.
+  helpers. Editable-agent cutover remains separate from this examples slice.
 - Missing Fireline/public support: Flamecast-v3-shaped consumers need a stable
   generated-harness adapter story. The current example proves the substrate
   path without freezing package names or helper names.
@@ -457,5 +469,4 @@ a Fireline bead or be closed as an intentional boundary.
   (`mono-oet.29.3.2`).
 - Server/Worker stream append pattern for framework apps that need auth,
   idempotency, tenant policy, or secrets.
-- Managed-agent request-builder helper for normal ergonomic examples
-  (`mono-oet.29.3.32.4`).
+- PM browser QA for the managed-agent cutover examples after fresh/reuse E2E.

@@ -1,13 +1,15 @@
 import {
   createManagedAgentClient,
+  type ManagedAgentClient,
   type ManagedAgentHeaderProvider,
 } from '@fireline/client/managed-agent'
-import type { CreateLaunchRequest } from '@fireline/client/spec'
 
-export interface ManagedExampleLaunchOptions<Name extends string = string> {
+type ManagedAgentLaunchRequest = Parameters<ManagedAgentClient['launch']>[0]
+
+export interface ManagedExampleLaunchOptions {
   readonly controlStreamUrl: string
   readonly headers?: ManagedAgentHeaderProvider
-  readonly request: CreateLaunchRequest<Name>
+  readonly request: ManagedAgentLaunchRequest
   readonly idempotencyKey?: string
   readonly requestedBy: string
   readonly stopReason: string
@@ -15,8 +17,8 @@ export interface ManagedExampleLaunchOptions<Name extends string = string> {
   readonly signal?: AbortSignal
 }
 
-export async function launchAndStopManagedAgent<Name extends string = string>(
-  options: ManagedExampleLaunchOptions<Name>,
+export async function launchAndStopManagedAgent(
+  options: ManagedExampleLaunchOptions,
 ) {
   const client = createManagedAgentClient({
     launchControlStreamUrl: options.controlStreamUrl,

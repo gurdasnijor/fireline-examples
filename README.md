@@ -27,10 +27,8 @@ Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
   JS local matrix through `@fireline/client/managed-agent` lifecycle helpers.
-  Request construction still uses `@fireline/client/spec` as temporary Tier 3
-  gap evidence until mono-oet.29.3.32.4 lands fresh artifacts for
-  `createManagedAgentLaunchRequest`, `inlineJsBundleAgent`, and
-  `jsModuleAgent`.
+  Request construction uses `createManagedAgentLaunchRequest` and
+  `inlineJsBundleAgent` from the managed-agent subpath.
 - `examples/02-editable-agent-web` is a TypeScript/TSX app-shaped discovery
   example. It lets a user edit inline agent code, append a launch request,
   inspect launch/session/runtime coordinates from `collections.launches`, send
@@ -41,14 +39,12 @@ Current checkpoint:
   examples. They keep Fireline calls package-shaped and use
   `@fireline/client/managed-agent` for launch/wait/stop while recording
   framework seams instead of canonizing product examples. Request construction
-  still uses `@fireline/client/spec` pending the mono-oet.29.3.32.4
-  managed-agent request helpers.
+  uses the managed-agent request helpers.
 - `examples/06-flamecast-v3-shaped` is a black-box product-consumer
   characterization. It is not real Flamecast v3 code. It keeps a framework
   boundary separate from the Fireline adapter, generates a multi-file inline
   harness bundle, and uses `@fireline/client/managed-agent` for
-  launch/wait/ACP follow-up/stop. Request construction still uses
-  `@fireline/client/spec` pending the mono-oet.29.3.32.4 managed-agent
+  launch/wait/ACP follow-up/stop. Request construction uses the managed-agent
   request helpers.
 - `examples/07-curl-shell-raw-http` is a shell/curl raw Durable Streams HTTP
   consumer. It builds the launch/stop envelopes locally, appends them with

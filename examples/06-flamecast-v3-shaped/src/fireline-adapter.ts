@@ -1,14 +1,10 @@
-import { createManagedAgentClient } from '@fireline/client/managed-agent'
 import {
-  agentDefinition,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-} from '@fireline/client/spec'
+  createManagedAgentClient,
+  createManagedAgentLaunchRequest,
+} from '@fireline/client/managed-agent'
 import type { ManagedAgentLaunchHandle } from '@fireline/client/managed-agent'
 import type { FlamecastRunIntent, FlamecastRunSummary } from './framework-boundary.js'
-import { createGeneratedHarnessBundle } from './generated-harness.js'
+import { createGeneratedHarnessAgent } from './generated-harness.js'
 
 export async function runFlamecastCharacterization(
   intent: FlamecastRunIntent,
@@ -22,34 +18,52 @@ export async function runFlamecastCharacterization(
     },
   })
   const handle = await client.launch(
-    launchSpec(
-      await createDefinition(intent, clientRequestId),
-      {
-        clientRequestId,
-        runtime: {
-          name: 'flamecast-v3-shaped',
-          provider: 'local',
-          labels: {
-            example: '06-flamecast-v3-shaped',
-            framework: 'flamecast-v3-shaped',
-            workspaceId: intent.workspaceId,
-          },
+    createManagedAgentLaunchRequest({
+      name: 'flamecast-v3-shaped',
+      agent: await createGeneratedHarnessAgent({
+        revision: clientRequestId,
+        composition: intent.composition,
+      }),
+      sandbox: {
+        provider: 'local',
+        fsBackend: 'streamFs',
+        env: {
+          FLAMECAST_WORKSPACE_ID: intent.workspaceId,
+          FLAMECAST_SCENE_COUNT: String(intent.composition.sceneCount),
+          FLAMECAST_TONE: intent.composition.tone,
         },
-        startSession: {
-          stateStream: sessionStateStream(intent),
-          create: true,
-          newSession: newSessionRequest({
-            cwd: '/',
-            mcpServers: [],
-          }),
-          prompt: textPrompt('prepare flamecast composition runtime'),
-        },
-        wait: {
-          until: 'session',
-          timeoutMs: 60_000,
+        labels: {
+          example: '06-flamecast-v3-shaped',
+          mode: 'black-box-characterization',
+          framework: 'flamecast-v3-shaped',
         },
       },
-    ),
+      middleware: {
+        kind: 'middleware',
+        chain: [],
+      },
+      clientRequestId,
+      runtime: {
+        name: 'flamecast-v3-shaped',
+        provider: 'local',
+        labels: {
+          example: '06-flamecast-v3-shaped',
+          framework: 'flamecast-v3-shaped',
+          workspaceId: intent.workspaceId,
+        },
+      },
+      startSession: {
+        stateStream: sessionStateStream(intent),
+        create: true,
+        cwd: '/',
+        mcpServers: [],
+        prompt: 'prepare flamecast composition runtime',
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
+    }),
     {
       idempotencyKey: clientRequestId,
       wait: false,
@@ -109,35 +123,6 @@ export async function runFlamecastCharacterization(
     handle.close()
     client.close()
   }
-}
-
-async function createDefinition(intent: FlamecastRunIntent, clientRequestId: string) {
-  const artifact = await createGeneratedHarnessBundle({
-    revision: clientRequestId,
-    composition: intent.composition,
-  })
-  return agentDefinition({
-    name: 'flamecast-v3-shaped',
-    agent: jsModuleAgentForm({ artifact }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: 'streamFs',
-      env: {
-        FLAMECAST_WORKSPACE_ID: intent.workspaceId,
-        FLAMECAST_SCENE_COUNT: String(intent.composition.sceneCount),
-        FLAMECAST_TONE: intent.composition.tone,
-      },
-      labels: {
-        example: '06-flamecast-v3-shaped',
-        mode: 'black-box-characterization',
-        framework: 'flamecast-v3-shaped',
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-  })
 }
 
 function stableClientRequestId(intent: FlamecastRunIntent): string {

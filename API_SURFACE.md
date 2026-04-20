@@ -5,9 +5,9 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9`
+- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
 - `@fireline/runtime`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
-- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-0319905ec2c084579ebfc330bf08878680ceb5a9`
+- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
 - `@agentclientprotocol/sdk`: `0.19.0` for the local ACP stdio agent used by
   `examples/17-acp-registry-chat`.
 
@@ -26,7 +26,11 @@ npm package names.
   - `newSessionRequest`
   - `textPrompt`
 - `@fireline/client/managed-agent`
+  - `createManagedAgentLaunchRequest`
   - `createManagedAgentClient`
+  - `inlineJsBundleAgent`
+  - `jsModuleAgent`
+  - `acpStdioAgent`
   - `ManagedAgentLaunchHandle`
   - `ManagedAgentHeaderProvider`
 - `@fireline/client/events`
@@ -54,13 +58,9 @@ npm package names.
 Examples do not import `@fireline/client/launch-control`, runtime internals,
 or private package source. Normal ergonomic examples in the mono-oet.29.3.32.2
 cutover slice use `@fireline/client/managed-agent` for launch/wait/ACP
-follow-up/stop. They still construct launch requests with
-`@fireline/client/spec`; that is temporary Tier 3 gap evidence for the
-canonical mono-oet.29.3.32.4 managed-agent builder blocker owned by TL1/BE2,
-not a final public API recommendation. TL1 accepted the intended replacement
-shape as `createManagedAgentLaunchRequest`, `acpStdioAgent`,
-`inlineJsBundleAgent`, and `jsModuleAgent` from
-`@fireline/client/managed-agent`.
+follow-up/stop and request construction. Direct `@fireline/client/spec` usage
+remains in lower-level protocol/runtime characterization examples, not in the
+normal managed-agent cutover paths.
 
 ## Framework Imports
 
@@ -322,7 +322,8 @@ middleware options remain disabled.
 `examples/05-next-open-cloudflare` run a smaller managed-agent lifecycle path
 rather than the editable chat path. They exist to validate framework import
 graphs, client/server boundaries, and build constraints while the remaining
-request-builder ergonomics are tracked under mono-oet.29.3.32.4.
+framework constraints are tracked separately from managed-agent request
+construction.
 
 `examples/06-flamecast-v3-shaped` exercises a black-box product-consumer shape:
 
@@ -330,11 +331,7 @@ request-builder ergonomics are tracked under mono-oet.29.3.32.4.
   and summary types.
 - `src/fireline-adapter.ts` is the Fireline boundary. It uses
   `@fireline/client/managed-agent` for launch, session-ready wait, ACP
-  follow-up, and stop. It still teaches the current `@fireline/client/spec`
-  vocabulary for request construction: `agentDefinition(...)`,
-  `launchSpec(...)`, and `newSessionRequest(...)`. That remaining spec-builder
-  usage is temporary Tier 3 gap evidence until mono-oet.29.3.32.4 publishes
-  fresh artifacts with the accepted managed-agent request helpers.
+  follow-up, stop, and request construction.
 - `src/generated-harness.ts` produces a multi-file inline bundle with
   `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
@@ -501,7 +498,8 @@ After Fireline #228, #231, #233, #237, #242, #245, and the
 mono-oet.29.3.32 helper lane, examples 01, 03, 04, 05, and 06 are being moved
 from direct stream-native lifecycle composition to `@fireline/client/managed-agent`:
 
-- Build a `CreateLaunchRequest` with `@fireline/client/spec`.
+- Build a launch request with `createManagedAgentLaunchRequest(...)` and
+  managed-agent agent helpers such as `inlineJsBundleAgent(...)`.
 - Launch with `createManagedAgentClient(...).launch(...)`.
 - Wait with the returned managed-agent handle.
 - Use `handle.connectBrowserAcp(...)` for browser ACP attachment once the
@@ -509,13 +507,8 @@ from direct stream-native lifecycle composition to `@fireline/client/managed-age
 - Stop with `handle.stop(...)` and observe the managed-agent launch row reach
   a terminal state.
 
-The first bullet is the remaining blocker for final ergonomic examples:
-`@fireline/client/spec` request construction is temporary Tier 3 gap evidence
-until mono-oet.29.3.32.4 lands fresh artifacts with
-`createManagedAgentLaunchRequest`, `acpStdioAgent`, `inlineJsBundleAgent`, and
-`jsModuleAgent`, or TL1 explicitly approves a temporary exception. Raw and
-deliberately lower-level examples continue to use stream-native or raw HTTP
-primitives when that is the point of the example.
+Raw and deliberately lower-level examples continue to use stream-native or raw
+HTTP primitives when that is the point of the example.
 
 `examples/11-server-worker-wrapper`, `examples/12-vercel-function-node`,
 `examples/13-vercel-edge-runtime`, `examples/14-bun`, `examples/16-deno`,

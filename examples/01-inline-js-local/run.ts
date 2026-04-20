@@ -1,12 +1,7 @@
 import {
-  agentDefinition,
-  inlineBundleArtifact,
-  jsModuleAgentForm,
-  launchSpec,
-  newSessionRequest,
-  textPrompt,
-  type SandboxSpec,
-} from '@fireline/client/spec'
+  createManagedAgentLaunchRequest,
+  inlineJsBundleAgent,
+} from '@fireline/client/managed-agent'
 import {
   budget,
   contextInjection,
@@ -23,7 +18,7 @@ const runId = Date.now()
 
 interface MatrixCase {
   readonly name: string
-  readonly fsBackend: NonNullable<SandboxSpec['fsBackend']>
+  readonly fsBackend: 'local' | 'streamFs'
   readonly middleware: ReadonlyArray<{ readonly kind: string }>
 }
 
@@ -90,23 +85,21 @@ async function runCase(entry: MatrixCase) {
   const outputFile = join(outputDir, 'agent-output.txt')
   await mkdir(outputDir, { recursive: true })
 
-  const artifact = await inlineBundleArtifact({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: agentSource({ entry, outputFile }),
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: 'examples/01-inline-js-local',
-      revision: entry.name,
-    },
-  })
-
-  const spec = agentDefinition({
+  const request = createManagedAgentLaunchRequest({
     name: `inline-js-local-${entry.name}`,
-    agent: jsModuleAgentForm({ artifact }),
+    agent: await inlineJsBundleAgent({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: agentSource({ entry, outputFile }),
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: 'examples/01-inline-js-local',
+        revision: entry.name,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: entry.fsBackend,
@@ -124,9 +117,6 @@ async function runCase(entry: MatrixCase) {
       kind: 'middleware',
       chain: entry.middleware,
     },
-  })
-
-  const request = launchSpec(spec, {
     clientRequestId,
     runtime: {
       name: `inline-js-local-${entry.name}`,
@@ -139,11 +129,9 @@ async function runCase(entry: MatrixCase) {
     startSession: {
       stateStream,
       create: true,
-      newSession: newSessionRequest({
-        cwd: process.cwd(),
-        mcpServers: [],
-      }),
-      prompt: textPrompt(`ping from external fireline-examples case ${entry.name}`),
+      cwd: process.cwd(),
+      mcpServers: [],
+      prompt: `ping from external fireline-examples case ${entry.name}`,
     },
     wait: {
       until: 'session',
