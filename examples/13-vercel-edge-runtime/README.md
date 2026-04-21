@@ -35,7 +35,8 @@ stream pieces.
 Cheap checks:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 pnpm --dir "$EX" install --frozen-lockfile
 pnpm --dir "$EX" run build:vercel-edge-runtime
 pnpm --dir "$EX" run check:surface
@@ -46,15 +47,16 @@ pnpm --dir "$EX" run typecheck
 Fresh-daemon scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-13-fresh/state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5613 \
-FIRELINE_STREAMS_PORT=8613 \
 fireline runtime dev \
+  --port 5613 \
+  --streams-port 8613 \
   --launch-control-stream fireline-vercel-edge-fresh -- \
   sh -c 'pnpm --dir "$EX" run build:vercel-edge-runtime >/dev/null && VERCEL_EDGE_RUN_ID=fresh-daemon-run-001 VERCEL_EDGE_ATTEMPT_ID=attempt-1 pnpm --dir "$EX" exec tsx "$EX/examples/13-vercel-edge-runtime/src/run-local.ts"'
 ```
@@ -62,15 +64,16 @@ fireline runtime dev \
 Prior-daemon reuse scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-13-reuse/state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5614 \
-FIRELINE_STREAMS_PORT=8614 \
 fireline runtime dev \
+  --port 5614 \
+  --streams-port 8614 \
   --launch-control-stream fireline-vercel-edge-reuse -- \
   sh -c 'sleep 600'
 ```
@@ -78,12 +81,13 @@ fireline runtime dev \
 In another shell:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-13-reuse/state
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5614 \
-FIRELINE_STREAMS_PORT=8614 \
 fireline runtime dev \
+  --port 5614 \
+  --streams-port 8614 \
   --launch-control-stream fireline-vercel-edge-reuse -- \
   sh -c 'pnpm --dir "$EX" run build:vercel-edge-runtime >/dev/null && VERCEL_EDGE_RUN_ID=reuse-daemon-run-001 VERCEL_EDGE_ATTEMPT_ID=attempt-1 pnpm --dir "$EX" exec tsx "$EX/examples/13-vercel-edge-runtime/src/run-local.ts"'
 ```

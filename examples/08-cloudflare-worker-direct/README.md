@@ -17,15 +17,16 @@ Run the Worker through native runtime dev so Fireline injects
 environment variables, so pass the injected endpoint explicitly with `--var`:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-08-fresh/state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5544 \
-FIRELINE_STREAMS_PORT=8581 \
 fireline runtime dev \
+  --port 5544 \
+  --streams-port 8581 \
   --launch-control-stream fireline-worker-direct-fresh -- \
   sh -c 'pnpm --dir "$EX" dlx wrangler@4.83.0 dev --config "$EX/examples/08-cloudflare-worker-direct/wrangler.toml" --port 8787 --var FIRELINE_ENDPOINT:"$FIRELINE_ENDPOINT"'
 ```
@@ -34,15 +35,16 @@ For prior-daemon reuse, keep a native runtime-dev process alive, then run the
 Worker through a second native runtime-dev command on the same state and ports:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-08-reuse/state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5609 \
-FIRELINE_STREAMS_PORT=8609 \
 fireline runtime dev \
+  --port 5609 \
+  --streams-port 8609 \
   --launch-control-stream fireline-worker-direct-reuse -- \
   sh -c 'sleep 600'
 ```
@@ -50,12 +52,13 @@ fireline runtime dev \
 In another shell:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-irzz-wave-b-08-reuse/state
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=5609 \
-FIRELINE_STREAMS_PORT=8609 \
 fireline runtime dev \
+  --port 5609 \
+  --streams-port 8609 \
   --launch-control-stream fireline-worker-direct-reuse -- \
   sh -c 'pnpm --dir "$EX" dlx wrangler@4.83.0 dev --config "$EX/examples/08-cloudflare-worker-direct/wrangler.toml" --port 8788 --var FIRELINE_ENDPOINT:"$FIRELINE_ENDPOINT"'
 ```
