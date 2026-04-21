@@ -23,7 +23,7 @@ cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
@@ -51,7 +51,7 @@ mkdir -p "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream "$FIRELINE_CONTROL_STREAM"
 ```
 
@@ -67,7 +67,7 @@ export FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_STATE_DIR/output"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
@@ -75,7 +75,7 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     go run "$FIRELINE_EXAMPLES_ROOT/examples/15-go-raw-http/main.go"
 ```
 
-Expected: `fireline-v3-dev` reports reused daemon/streams health checks, and
+Expected: the historical runtime dev wrapper reports reused daemon/streams health checks, and
 the Go program returns the same JSON shape as the fresh-daemon run.
 
 ## Configuration

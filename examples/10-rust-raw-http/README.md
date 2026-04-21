@@ -74,7 +74,7 @@ export FIRELINE_EXAMPLE_OUTPUT_ROOT=/tmp/fireline-mono-oet-29-3-9-reuse-output
 export CARGO_TARGET_DIR=/tmp/fireline-mono-oet-29-3-9-target
 export FIRELINE_LOG=/tmp/fireline-mono-oet-29-3-9-reuse.log
 rm -rf "$FIRELINE_STATE_DIR" "$FIRELINE_EXAMPLE_OUTPUT_ROOT" "$CARGO_TARGET_DIR"
-pnpm exec fireline-v3-dev --state-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
+future-runtime-dev-after-mono-ug3b --state-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
   'cargo run --quiet --manifest-path examples/10-rust-raw-http/Cargo.toml && FIRELINE_RUST_RAW_RUN_ID=reuse-second cargo run --quiet --manifest-path examples/10-rust-raw-http/Cargo.toml' \
   > "$FIRELINE_LOG" 2>&1
 code=$?

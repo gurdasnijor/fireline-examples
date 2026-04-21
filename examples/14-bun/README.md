@@ -50,7 +50,7 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4615 \
 FIRELINE_STREAMS_PORT=7715 \
-pnpm --dir "$EX" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream fireline-bun-fresh -- \
   env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7715/v1/stream" \
     FIRELINE_CONTROL_STREAM="fireline-bun-fresh" \
@@ -70,7 +70,7 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4616 \
 FIRELINE_STREAMS_PORT=7716 \
-pnpm --dir "$EX" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream fireline-bun-reuse
 ```
 

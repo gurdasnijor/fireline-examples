@@ -71,7 +71,7 @@ export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-8-reuse-state
 export FIRELINE_EXAMPLE_OUTPUT_ROOT=/tmp/fireline-mono-oet-29-3-8-reuse-output
 export FIRELINE_LOG=/tmp/fireline-mono-oet-29-3-8-reuse.log
 rm -rf "$FIRELINE_STATE_DIR" "$FIRELINE_EXAMPLE_OUTPUT_ROOT"
-pnpm exec fireline-v3-dev --state-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
+future-runtime-dev-after-mono-ug3b --state-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
   'python3 examples/09-python-raw-http/run.py && FIRELINE_PYTHON_RAW_RUN_ID=reuse-second python3 examples/09-python-raw-http/run.py' \
   > "$FIRELINE_LOG" 2>&1
 code=$?

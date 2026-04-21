@@ -150,7 +150,6 @@ violations.
 - `pnpm run smoke:vercel-edge-runtime`
 - `pnpm run smoke:bun`
 - `pnpm run dev:cloudflare-worker-direct`
-- `pnpm exec fireline-v3-dev --state-stream <control-stream>`
 - `pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml`
 - `tsx examples/01-inline-js-local/run.ts`
 - `tsx examples/06-flamecast-v3-shaped/src/run.ts`
@@ -166,13 +165,12 @@ violations.
 - `tsx examples/17-acp-registry-chat/src/run.ts`
 - `tsx examples/18-middleware-stack/src/run.ts`
 - `node examples/17-acp-registry-chat/registry-agent.mjs`
-- `fireline-v3-dev` wrapping `vite` through `pnpm run dev:editable-agent-web`
 - `vite` through the private Vite child script
 - `vite` through the Vite example scripts
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
 - `opennextjs-cloudflare build` through `pnpm run build:opennext-cloudflare`
-- `fireline-v3-dev` from `@fireline/runtime`
+- future runtime dev command from `@fireline/runtime` after `mono-ug3b`
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
 - `bun`
@@ -184,8 +182,8 @@ violations.
   is the full Durable Streams stream URL passed to `new Fireline({ endpoint })`
   in examples 01-06.
 - `VITE_FIRELINE_ENDPOINT`: optional Vite dev/build seed for examples 02-03.
-  Example 02's public dev command starts through `fireline-v3-dev`, so this
-  value should normally be injected from the daemon's `FIRELINE_ENDPOINT`
+  Example 02's public runtime-dev wrapper is blocked on `mono-ug3b`; once the
+  replacement command lands, it should inject the daemon's `FIRELINE_ENDPOINT`
   handoff. The private Vite child script still defaults to
   `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when this is not
   set, and exposes mismatch recovery guidance when a reused daemon does not
@@ -202,7 +200,7 @@ violations.
   base when `FIRELINE_ENDPOINT` is not provided. Runtime-shaped Tier 1 examples
   use the same derivation when an exact endpoint is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
-  local `fireline-v3-dev --state-stream` process with the full control stream
+  future local runtime dev process with the full control stream
   URL. Example 06 also uses it to derive `FIRELINE_ENDPOINT` when an exact
   endpoint is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
@@ -231,10 +229,9 @@ violations.
 - `CARGO_TARGET_DIR`: reviewer-recipe scratch target directory for
   `examples/10-rust-raw-http`, set under `/tmp` so Cargo output does not land
   in the repo.
-- `FIRELINE_V3_DEV`: example-only dev-script override for local evidence runs
-  that need to point at a checked-out `fireline-v3-dev` wrapper before package
-  artifacts are refreshed. Normal consumers use the package-provided
-  `fireline-v3-dev` binary.
+- `FIRELINE_V3_DEV`: historical example-only dev-script override for local
+  evidence runs before package artifacts were refreshed. Do not use this as a
+  current reviewer recipe while `mono-ug3b` is open.
 - `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
   through the Flamecast-shaped adapter into the generated runtime shim.
 - `FLAMECAST_RUN_ID`: example-only product run coordinate. Reuse it for retries
@@ -321,8 +318,8 @@ violations.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned in
   `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` and
   `examples/17-acp-registry-chat` for follow-up prompts.
-- `GET http://127.0.0.1:<streams-port>/healthz` is used by `fireline-v3-dev`
-  local streams readiness checks.
+- `GET http://127.0.0.1:<streams-port>/healthz` is used by local streams
+  readiness checks.
 
 Target examples do not call `/v1/launches`, `GET /v1/launches/{id}`, or
 `POST /v1/launches/{id}:stop`.
@@ -388,8 +385,8 @@ consumer shape with the Tier 1 managed-agent API:
 - `src/worker.ts` imports Worker-safe `Fireline` / `Agent` / session helpers
   for launch, response, and stop.
 - `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
-  `FIRELINE_STREAMS_PORT` so the Worker derives a usable stream endpoint when
-  `fireline-v3-dev` is running with the matching `--state-stream`.
+  `FIRELINE_STREAMS_PORT` so the Worker can derive a usable stream endpoint
+  once the replacement runtime dev command can run a matching control stream.
 - Custom scratch ports or stream names must be passed with Wrangler `--var`
   flags; shell environment variables alone do not override local `[vars]`.
 - `POST /launch` returns the managed-agent launch row.

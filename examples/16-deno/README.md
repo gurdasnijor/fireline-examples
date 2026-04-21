@@ -68,7 +68,7 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4617 \
 FIRELINE_STREAMS_PORT=7717 \
-pnpm --dir "$EX" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream fireline-deno-reuse
 ```
 
