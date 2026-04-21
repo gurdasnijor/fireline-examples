@@ -12,9 +12,6 @@ const vm = new EdgeVM<FirelineEdgeContext>({
     const edgeContext = context as FirelineEdgeContext
     edgeContext.FIRELINE_VERCEL_EDGE_ENV = {
       FIRELINE_ENDPOINT: process.env.FIRELINE_ENDPOINT,
-      FIRELINE_DURABLE_STREAMS_URL: process.env.FIRELINE_DURABLE_STREAMS_URL,
-      FIRELINE_STREAMS_PORT: process.env.FIRELINE_STREAMS_PORT,
-      FIRELINE_CONTROL_STREAM: process.env.FIRELINE_CONTROL_STREAM,
       VERCEL_EDGE_TENANT_ID: process.env.VERCEL_EDGE_TENANT_ID,
       VERCEL_EDGE_RUN_ID: process.env.VERCEL_EDGE_RUN_ID,
       VERCEL_EDGE_ATTEMPT_ID: process.env.VERCEL_EDGE_ATTEMPT_ID,
