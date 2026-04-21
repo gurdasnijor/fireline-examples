@@ -1,10 +1,11 @@
 # Server/Worker Wrapper Pattern
 
-This example shows a framework server or Worker owning the Fireline boundary.
+This current Tier 1 example shows a framework server or Worker owning the
+Fireline boundary.
 The application sends a small app-facing request to the wrapper; the wrapper
-validates auth, creates a stable idempotency key, appends
-`new Fireline({ endpoint })`, creates a `new Agent(...)`, opens a session, and
-stops it through `@fireline/client/managed-agent`.
+validates auth, creates a stable idempotency key, creates
+`new Fireline({ endpoint })`, creates `new Agent(...)`, opens a session with
+`fireline.session(...)`, and stops it with `session.stop(...)`.
 
 It is not a new Fireline API. It is consumer-authored adapter code for apps
 that need tenant policy, secrets, or idempotency to stay server-side.
@@ -29,15 +30,11 @@ attempt should reuse both values; a new attempt should change
 `APP_ATTEMPT_ID`. The wrapper uses these coordinates to build a stable
 `clientRequestId` / idempotency key.
 
-The wrapper uses the Tier 1 managed-agent surface instead of Tier 3
-spec/events/state subpaths for normal lifecycle flow.
+The wrapper keeps normal lifecycle flow on the Tier 1 managed-agent surface.
 
 ## Reviewer Reproduce
 
-This branch uses package-shaped git artifact refs, not local `/tmp` tarballs:
-
-- `@fireline/client`: `fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
-- `@fireline/runtime`: `fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
+This branch uses package-shaped git artifact refs, not local `/tmp` tarballs.
 
 Install and run cheap checks:
 
@@ -104,18 +101,3 @@ env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7702/v1/stream" \
 
 Both runs should print JSON with `accepted: true`,
 `launchStatus: "session_ready"`, and `stopStatus: "stopped"`.
-
-Validated 2026-04-20 evidence:
-
-- Fresh daemon: launch `ab7869e4-c9c1-4d25-b6df-690d232b37f2`,
-  `clientRequestId`
-  `launch:server-wrapper:tenant-alpha:doc-local-001:fresh-daemon-run-001:attempt-1`,
-  ACP session `jsmod-ecea90e5-6999-4abe-8fea-e89d45c26296`,
-  `accepted: true`, `launchStatus: "session_ready"`,
-  `stopStatus: "stopped"`.
-- Prior daemon reuse: launch `4e8a1a6d-2562-4954-b2be-3410251e4d6e`,
-  `clientRequestId`
-  `launch:server-wrapper:tenant-alpha:doc-local-001:reuse-daemon-run-001:attempt-1`,
-  ACP session `jsmod-6f27243e-abe2-4772-8575-39fe5f30e869`,
-  `accepted: true`, `launchStatus: "session_ready"`,
-  `stopStatus: "stopped"`.
