@@ -16,6 +16,41 @@ channel. They are package-shaped and reviewer-installable without local
 tarball staging. They are not registry-published refs and do not freeze public
 npm package names.
 
+## Example Classification
+
+Labels:
+
+- `first-read`: start here for the normal Tier 1 app-facing shape.
+- `advanced-reference`: use after the first-read examples for framework,
+  runtime, product-shaped, registry, middleware, or boundary-specific
+  reference.
+- `tier-2-protocol-reference`: raw Durable Streams protocol examples that
+  intentionally avoid Fireline helper packages.
+
+The idiomaticity rationale lives in
+[EXAMPLES_IDIOMATICITY_AUDIT.md](EXAMPLES_IDIOMATICITY_AUDIT.md).
+
+| Example | Label | Primary surface | Notes |
+| --- | --- | --- | --- |
+| `examples/01-inline-js-local` | `first-read` | Tier 1 managed-agent | Small command-line baseline for `Fireline.run`. |
+| `examples/02-editable-agent-web` | `first-read` | Tier 1 managed-agent | Primary browser app for session/chat/stop. |
+| `examples/03-tanstack-shaped-app` | `first-read` | Tier 1 managed-agent | Small Vite/TanStack framework shape. |
+| `examples/04-next-basic` | `first-read` | Tier 1 managed-agent | Smallest Next app shape. |
+| `examples/05-next-open-cloudflare` | `advanced-reference` | Tier 1 managed-agent | OpenNext/Cloudflare-shaped framework reference. |
+| `examples/06-flamecast-v3-shaped` | `advanced-reference` | Tier 1 managed-agent | Product-shaped characterization, not product canon. |
+| `examples/07-curl-shell-raw-http` | `tier-2-protocol-reference` | Raw Durable Streams HTTP | Shell/curl protocol shape without SDK helpers. |
+| `examples/08-cloudflare-worker-direct` | `advanced-reference` | Tier 1 managed-agent | Worker runtime shape with Wrangler local-var handling. |
+| `examples/09-python-raw-http` | `tier-2-protocol-reference` | Raw Durable Streams HTTP | Python stdlib protocol shape. |
+| `examples/10-rust-raw-http` | `tier-2-protocol-reference` | Raw Durable Streams HTTP | Rust protocol shape with scratch Cargo target guidance. |
+| `examples/11-server-worker-wrapper` | `advanced-reference` | Tier 1 managed-agent | Server/Worker auth, tenant, and idempotency boundary pattern. |
+| `examples/12-vercel-function-node` | `advanced-reference` | Tier 1 managed-agent | Vercel Functions Node runtime shape. |
+| `examples/13-vercel-edge-runtime` | `advanced-reference` | Tier 1 managed-agent | Vercel Edge Runtime shape with local Edge VM. |
+| `examples/14-bun` | `advanced-reference` | Tier 1 managed-agent | Bun runtime compatibility reference. |
+| `examples/15-go-raw-http` | `tier-2-protocol-reference` | Raw Durable Streams HTTP | Go protocol shape without a Fireline SDK implication. |
+| `examples/16-deno` | `advanced-reference` | Tier 1 managed-agent | Deno compatibility reference through Node/npm compatibility. |
+| `examples/17-acp-registry-chat` | `advanced-reference` | Tier 1 managed-agent + registry fixture | Safe ACP registry row lowered to supported command distribution. |
+| `examples/18-middleware-stack` | `advanced-reference` | Tier 1 managed-agent + middleware | Trace/context/budget middleware reference. |
+
 ## Fireline Imports
 
 - `@fireline/client/managed-agent`
