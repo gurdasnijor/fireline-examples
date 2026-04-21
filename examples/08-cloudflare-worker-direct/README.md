@@ -1,13 +1,12 @@
 # Cloudflare Worker Direct
 
-Discovery-only direct Worker consumer. This is not an OpenNext or Next.js
+Current Tier 1 direct Worker consumer. This is not an OpenNext or Next.js
 adapter path. The Worker imports only package-shaped Fireline APIs:
 
 - `@fireline/client/managed-agent`
 
 The Worker uses `new Fireline({ endpoint })`, `new Agent(...)`,
-`fireline.session(...)`, and `session.stop(...)`; it does not import Tier 3
-spec/events/state subpaths for normal lifecycle flow.
+`fireline.session(...)`, and `session.stop(...)`.
 
 Run the local Fireline daemon from scratch state:
 
@@ -73,9 +72,7 @@ curl -sS -X POST http://127.0.0.1:8787/stop \
 ```
 
 The Worker launches, observes, and stops through
-`@fireline/client/managed-agent`. It does not call the legacy launch HTTP
-route, import the old launch-control client subpath, or import Fireline source
-internals.
+`@fireline/client/managed-agent`. It does not import Fireline source internals.
 
 Retroactive quality-bar evidence for `mono-oet.29.3.21.3`:
 

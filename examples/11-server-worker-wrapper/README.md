@@ -29,8 +29,8 @@ attempt should reuse both values; a new attempt should change
 `APP_ATTEMPT_ID`. The wrapper uses these coordinates to build a stable
 `clientRequestId` / idempotency key.
 
-The wrapper uses the Tier 1 managed-agent surface instead of Tier 3
-spec/events/state subpaths for normal lifecycle flow.
+The wrapper uses the current Tier 1 managed-agent surface for normal lifecycle
+flow.
 
 ## Reviewer Reproduce
 

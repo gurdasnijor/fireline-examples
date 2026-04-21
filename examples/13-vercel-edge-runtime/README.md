@@ -1,7 +1,8 @@
 # Vercel Edge Runtime
 
-Discovery-only Vercel Edge Runtime example. It models an Edge function that
-owns the Fireline call path for one request:
+Current Tier 1 Vercel Edge Runtime example. It models an Edge function that
+owns the Fireline call path for one request through `Fireline`, `Agent`, and a
+managed-agent session:
 
 1. derive the Fireline endpoint from deployment environment;
 2. build an `Agent` with `acp.inlineJsBundle(...)`;
@@ -10,7 +11,6 @@ owns the Fireline call path for one request:
 5. stop through `session.stop(...)`;
 6. return a compact JSON response to the application caller.
 
-This is not a public Vercel deployment recipe and not a Fireline API wrapper.
 The Edge bundle avoids Node built-ins and uses documented package subpaths
 only. The local smoke runner uses `@edge-runtime/vm` to execute the bundled
 handler in a Vercel Edge-like Web Runtime.
@@ -26,8 +26,7 @@ handler in a Vercel Edge-like Web Runtime.
 
 The handler uses `acp.inlineJsBundle(...)` only to build the inline agent
 fixture. Normal lifecycle flow stays on `fireline.session(...)` and
-`session.stop(...)` instead of launch-handle APIs or Tier 3 spec/events/state
-subpaths.
+`session.stop(...)`.
 
 ## Reviewer Reproduce
 
