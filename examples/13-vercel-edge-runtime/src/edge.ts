@@ -11,9 +11,6 @@ export const config = { runtime: 'edge' }
 
 interface VercelEdgeEnv {
   readonly FIRELINE_ENDPOINT?: string
-  readonly FIRELINE_DURABLE_STREAMS_URL?: string
-  readonly FIRELINE_STREAMS_PORT?: string
-  readonly FIRELINE_CONTROL_STREAM?: string
   readonly VERCEL_EDGE_TENANT_ID?: string
   readonly VERCEL_EDGE_RUN_ID?: string
   readonly VERCEL_EDGE_ATTEMPT_ID?: string
@@ -28,7 +25,6 @@ interface LaunchBody {
 }
 
 interface LaunchConfig {
-  readonly controlStream: string
   readonly endpoint: string
   readonly requestedBy: string
 }
@@ -39,8 +35,6 @@ type FetchEventWithRequest = Event & {
   respondWith(response: Promise<Response> | Response): void
 }
 
-const defaultControlStream = 'fireline-vercel-edge-control'
-const defaultStreamsPort = '7474'
 const requestedBy = 'examples/13-vercel-edge-runtime'
 
 export async function fetch(request: Request, env: VercelEdgeEnv = runtimeEnv()): Promise<Response> {
@@ -193,7 +187,6 @@ function summarizeRun(options: {
     ok: true,
     example: '13-vercel-edge-runtime',
     edgeRuntime: edgeRuntimeVersion(),
-    controlStream: options.config.controlStream,
     endpoint: options.config.endpoint,
     tenantId: options.input.tenantId,
     launchId: options.launchId,
@@ -206,20 +199,12 @@ function summarizeRun(options: {
 }
 
 function deriveConfig(env: VercelEdgeEnv): LaunchConfig {
-  const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_ENDPOINT) {
-    return {
-      controlStream,
-      endpoint: env.FIRELINE_ENDPOINT,
-      requestedBy,
-    }
+  const endpoint = env.FIRELINE_ENDPOINT
+  if (!endpoint) {
+    throw new Error('FIRELINE_ENDPOINT is required; run through fireline runtime dev')
   }
-  const durableStreamsBase =
-    env.FIRELINE_DURABLE_STREAMS_URL ??
-    `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
-    controlStream,
-    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint,
     requestedBy,
   }
 }
@@ -256,10 +241,6 @@ function edgeRuntimeVersion(): string | undefined {
 function safeIdPart(value: string): string {
   const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
   return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/g, '')
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

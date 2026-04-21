@@ -2,9 +2,6 @@ import { Agent, Fireline, acp } from '@fireline/client/managed-agent'
 
 interface Env {
   readonly FIRELINE_ENDPOINT?: string
-  readonly FIRELINE_DURABLE_STREAMS_URL?: string
-  readonly FIRELINE_STREAMS_PORT?: string
-  readonly FIRELINE_CONTROL_STREAM?: string
 }
 
 interface LaunchBody {
@@ -19,8 +16,6 @@ interface StopBody {
   readonly requestedBy?: string
 }
 
-const defaultControlStream = 'fireline-worker-direct-control'
-const defaultStreamsPort = '7474'
 const requestedBy = 'examples/08-cloudflare-worker-direct'
 
 export default {
@@ -37,13 +32,7 @@ export default {
             demo: 'POST /demo',
           },
           config,
-          localDaemonCommand:
-            `FIRELINE_CONTROL_STREAM=${config.controlStream} ` +
-            `fireline runtime dev --launch-control-stream ${config.controlStream}`,
-          endpointDerivation:
-            `export FIRELINE_ENDPOINT="http://127.0.0.1:` +
-            `\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/` +
-            `\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`,
+          localDaemonCommand: 'fireline runtime dev --launch-control-stream <stream> -- <wrangler dev command>',
         })
       }
       if (request.method === 'POST' && url.pathname === '/launch') {
@@ -232,18 +221,11 @@ async function createWorkerDirectEntrypoint(revision: string) {
 }
 
 function deriveConfig(env: Env) {
-  const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  const durableStreamsBase =
-    env.FIRELINE_DURABLE_STREAMS_URL ??
-    `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
-  const endpoint =
-    env.FIRELINE_ENDPOINT ??
-    `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`
-  return { controlStream, endpoint, durableStreamsBase }
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/g, '')
+  const endpoint = env.FIRELINE_ENDPOINT
+  if (!endpoint) {
+    throw new Error('FIRELINE_ENDPOINT is required; pass it to Wrangler with --var FIRELINE_ENDPOINT:$FIRELINE_ENDPOINT')
+  }
+  return { endpoint }
 }
 
 async function readLaunchBody(request: Request): Promise<LaunchBody> {

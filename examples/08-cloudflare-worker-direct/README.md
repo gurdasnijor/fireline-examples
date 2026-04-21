@@ -6,50 +6,59 @@ adapter path. The Worker imports only package-shaped Fireline APIs:
 - `@fireline/client/managed-agent`
 
 The Worker uses `new Fireline({ endpoint })`, `new Agent(...)`,
-`fireline.session(...)`, and `session.stop(...)`.
+`fireline.session(...)`, and `session.stop(...)`. `FIRELINE_ENDPOINT` is the
+app-facing endpoint consumed by `new Fireline({ endpoint })`; the Worker does
+not derive an endpoint from stream pieces.
 
-Run the local Fireline daemon from scratch state:
+## Local Dev
+
+Run the Worker through native runtime dev so Fireline injects
+`FIRELINE_ENDPOINT`. Wrangler local `[vars]` are not overridden by shell
+environment variables, so pass the injected endpoint explicitly with `--var`:
 
 ```sh
-export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-export FIRELINE_STATE_DIR=/tmp/fireline-worker-direct-state
-export FIRELINE_CONTROL_STREAM=fireline-worker-direct-control
-mkdir -p "$FIRELINE_STATE_DIR"
-cd "$FIRELINE_STATE_DIR"
-FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+export STATE=/tmp/fireline-mono-irzz-wave-b-08-fresh/state
+rm -rf "$STATE"
+mkdir -p "$STATE"
+cd "$STATE"
+FIRELINE_STATE_DIR="$STATE" \
+FIRELINE_PORT=5544 \
+FIRELINE_STREAMS_PORT=8581 \
 fireline runtime dev \
-  --launch-control-stream "$FIRELINE_CONTROL_STREAM"
+  --launch-control-stream fireline-worker-direct-fresh -- \
+  sh -c 'pnpm --dir "$EX" dlx wrangler@4.83.0 dev --config "$EX/examples/08-cloudflare-worker-direct/wrangler.toml" --port 8787 --var FIRELINE_ENDPOINT:"$FIRELINE_ENDPOINT"'
 ```
 
-Run the Worker in another shell:
+For prior-daemon reuse, keep a native runtime-dev process alive, then run the
+Worker through a second native runtime-dev command on the same state and ports:
 
 ```sh
-pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml
+export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+export STATE=/tmp/fireline-mono-irzz-wave-b-08-reuse/state
+rm -rf "$STATE"
+mkdir -p "$STATE"
+cd "$STATE"
+FIRELINE_STATE_DIR="$STATE" \
+FIRELINE_PORT=5609 \
+FIRELINE_STREAMS_PORT=8609 \
+fireline runtime dev \
+  --launch-control-stream fireline-worker-direct-reuse -- \
+  sh -c 'sleep 600'
 ```
 
-The Worker derives the Fireline endpoint from the same stream defaults used by
-the daemon:
+In another shell:
 
 ```sh
-export FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-worker-direct-control}"
+export EX=/Users/gnijor/gurdasnijor/fireline-examples-be6-mono-irzz-wave-b
+export STATE=/tmp/fireline-mono-irzz-wave-b-08-reuse/state
+FIRELINE_STATE_DIR="$STATE" \
+FIRELINE_PORT=5609 \
+FIRELINE_STREAMS_PORT=8609 \
+fireline runtime dev \
+  --launch-control-stream fireline-worker-direct-reuse -- \
+  sh -c 'pnpm --dir "$EX" dlx wrangler@4.83.0 dev --config "$EX/examples/08-cloudflare-worker-direct/wrangler.toml" --port 8788 --var FIRELINE_ENDPOINT:"$FIRELINE_ENDPOINT"'
 ```
-
-For custom ports or stream names, pass `FIRELINE_STREAMS_PORT`,
-`FIRELINE_CONTROL_STREAM`, `FIRELINE_DURABLE_STREAMS_URL`, or the exact
-`FIRELINE_ENDPOINT` through Wrangler `--var` flags:
-
-```sh
-pnpm dlx wrangler@4.83.0 dev \
-  --config examples/08-cloudflare-worker-direct/wrangler.toml \
-  --port 8787 \
-  --var FIRELINE_STREAMS_PORT:8581 \
-  --var FIRELINE_CONTROL_STREAM:fireline-worker-direct-control \
-  --var FIRELINE_DURABLE_STREAMS_URL:http://127.0.0.1:8581/v1/stream \
-  --var FIRELINE_ENDPOINT:http://127.0.0.1:8581/v1/stream/fireline-worker-direct-control
-```
-
-Shell environment variables alone do not override Wrangler `[vars]` in local
-dev.
 
 Exercise launch and stop in one request:
 
@@ -74,12 +83,7 @@ curl -sS -X POST http://127.0.0.1:8787/stop \
 The Worker launches, observes, and stops through
 `@fireline/client/managed-agent`. It does not import Fireline source internals.
 
-Retroactive quality-bar evidence for `mono-oet.29.3.21.3`:
+## Wave B Evidence
 
-- Fresh scratch daemon on `FIRELINE_PORT=5544` and `FIRELINE_STREAMS_PORT=8581`
-  plus Wrangler on `8787` returned a `POST /demo` launch
-  `28271295-98cf-4f19-9f2d-bfd388a20034`, session
-  `jsmod-bc841e4d-57bb-4a18-82b6-f9215a937323`, and stopped row.
-- Prior-daemon reuse with the same daemon still bound and a restarted Wrangler
-  on `8788` returned launch `3035b753-411a-4b54-a230-6e9bc0035cad`, session
-  `jsmod-37f20356-e4bd-4471-9732-976366d1defb`, and stopped row.
+Fresh-daemon and prior-daemon reuse artifacts are written under
+`/tmp/fireline-mono-irzz-wave-b-08-*` during local validation.
