@@ -1,18 +1,17 @@
 # 17. ACP Registry Chat
 
-This example resolves an ACP registry row with `acpRegistry(...)` from
-`@fireline/client`, launches the resolved ACP stdio command through
-`new Fireline({ endpoint })` and `new Agent(...)`, attaches to the returned
-session, sends a follow-up prompt with `session.chat(...)`, and stops the
-session through `session.stop(...)`.
+This current Tier 1 example resolves an ACP registry row with
+`acpRegistry(...)` from `@fireline/client`, launches the resolved ACP stdio
+command through `new Fireline({ endpoint })` and `new Agent(...)`, attaches to
+the returned session, sends a follow-up prompt with `session.chat(...)`, and
+stops the session through `session.stop(...)`.
 
 It intentionally uses a local fixture catalog row whose distribution is
-`command`. That keeps the example inside the currently supported safe slice:
+`command`. The normal app lifecycle stays inside the current managed-agent
+surface:
 
 - no binary install/cache;
 - no launcher env metadata;
-- no retired launch-control client subpath;
-- no retired HTTP launch endpoint;
 - no hand-rolled lifecycle flow outside managed-agent.
 
 The launch path stays on `fireline.session(...)` and `session.stop(...)`.
@@ -41,8 +40,7 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
-    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+  env FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
     ACP_REGISTRY_CHAT_RUN_ID="registry-chat-fresh" \
     ACP_REGISTRY_CHAT_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
@@ -102,8 +100,7 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
-    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+  env FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
     ACP_REGISTRY_CHAT_RUN_ID="registry-chat-reuse" \
     ACP_REGISTRY_CHAT_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
@@ -116,8 +113,8 @@ stream before launching the child command.
 
 ## Configuration
 
-- `FIRELINE_ENDPOINT`: exact Fireline endpoint. When
-  set, it takes precedence.
+- `FIRELINE_ENDPOINT`: exact Fireline endpoint for the selected app control
+  stream. When set, it takes precedence.
 - `FIRELINE_DURABLE_STREAMS_URL`: durable streams base ending in `/v1/stream`.
   Defaults to `http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream`.
 - `FIRELINE_CONTROL_STREAM`: control stream name. Defaults to
@@ -133,8 +130,7 @@ stream before launching the child command.
 ## Out Of Scope
 
 The example does not use live public registry rows that require binary
-download/cache or launcher env metadata. Those surfaces remain fail-closed
-until their Fireline design and implementation gates land.
+download/cache or launcher env metadata.
 
 ## Local Evidence
 
@@ -155,7 +151,7 @@ Fresh-daemon E2E:
 FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-17/fresh-state \
 FIRELINE_PORT=4617 \
 FIRELINE_STREAMS_PORT=7717 \
-FIRELINE_CONTROL_STREAM=fireline-acp-registry-chat-control \
+FIRELINE_ENDPOINT=http://127.0.0.1:7717/v1/stream/fireline-acp-registry-chat-control \
 ACP_REGISTRY_CHAT_RUN_ID=registry-chat-fresh \
 ACP_REGISTRY_CHAT_ATTEMPT_ID=attempt-1 \
 pnpm --dir /Users/gnijor/gurdasnijor/fireline-examples run smoke:acp-registry-chat

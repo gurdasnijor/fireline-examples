@@ -1,13 +1,14 @@
 # Middleware Stack Example
 
-This example validates the package-shaped middleware builder surface from
-outside the Fireline source tree. It builds a normal stream-native launch with
-`trace(...)`, `contextInjection(...)`, and `budget(...)`, then opens a session
-through `fireline.session(...)` and stops it through `session.stop(...)`.
+This current Tier 1 example validates the package-shaped middleware builder
+surface from outside the Fireline source tree. It builds a normal
+managed-agent session with `new Fireline({ endpoint })`, `new Agent(...)`,
+`trace(...)`, `contextInjection(...)`, and `budget(...)`, then opens the
+session through `fireline.session(...)` and stops it through
+`session.stop(...)`.
 
 It deliberately does not use `memory()`, approval gates, webhook/Telegram
-subscribers, retired HTTP launch helpers, or Fireline
-internals.
+subscribers, or Fireline internals.
 
 The launch path uses `new Fireline({ endpoint })`, `new Agent(...)`, and
 `acp.inlineJsBundle(...)` for the fixture agent payload. The middleware
@@ -31,8 +32,7 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
-    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+  env FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
     MIDDLEWARE_STACK_RUN_ID="middleware-stack-run-001" \
     MIDDLEWARE_STACK_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
@@ -57,8 +57,7 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
-FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
 MIDDLEWARE_STACK_RUN_ID="middleware-stack-reuse-001" \
 MIDDLEWARE_STACK_ATTEMPT_ID="attempt-1" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
