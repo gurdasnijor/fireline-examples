@@ -32,7 +32,7 @@ cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
     FLAMECAST_WORKSPACE_ID="$FLAMECAST_WORKSPACE_ID" \
@@ -88,7 +88,7 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4591 \
 FIRELINE_STREAMS_PORT=7691 \
-pnpm --dir "$EX" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream fireline-flamecast-shaped-fresh -- \
   env FIRELINE_ENDPOINT="http://127.0.0.1:7691/v1/stream/fireline-flamecast-shaped-fresh" \
     FLAMECAST_WORKSPACE_ID="workspace-characterization" \
@@ -110,7 +110,7 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4592 \
 FIRELINE_STREAMS_PORT=7692 \
-pnpm --dir "$EX" exec fireline-v3-dev \
+future-runtime-dev-after-mono-ug3b \
   --state-stream fireline-flamecast-shaped-reuse
 ```
 

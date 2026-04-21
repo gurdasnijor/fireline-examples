@@ -54,29 +54,31 @@ a Fireline bead or be closed as an intentional boundary.
 
 7. Local runtime/bootstrap discovery is still uneven across examples.
 
-   `examples/02-editable-agent-web` now makes the public
-   `pnpm run dev:editable-agent-web` command start through `fireline-v3-dev` and
-   inject the exported `FIRELINE_ENDPOINT` into Vite. The private Vite child
-   script still derives
+   Historical pre-#349 evidence made the public
+   `pnpm run dev:editable-agent-web` command start through the old runtime dev
+   wrapper and inject the exported `FIRELINE_ENDPOINT` into Vite. Fireline PR
+   #349 deleted that wrapper before the `mono-ug3b` replacement landed, so
+   current docs should treat fresh/reuse runtime recipes as rerun-needed. The
+   private Vite child script still derives
    `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when run on its
    own, probes the local streams health endpoint, and shows a copyable
    derivation for custom ports or stream names. On `Stream not found`/404, the
    UI names the missing stream and shows restart or exact-URL recovery
    instructions. Other Tier 1 examples still require the app-facing
-   `FIRELINE_ENDPOINT` and the local `fireline-v3-dev --state-stream
-   <control-stream>` process to point at the same durable stream. This is
-   intentionally explicit in the discovery repo, but a normal external
-   consumer should not have to assemble that alignment by hand. Follow-up bead
-   candidate: endpoint/bootstrap discovery for local apps.
+   `FIRELINE_ENDPOINT` and a local runtime dev process to point at the same
+   durable stream. This is intentionally explicit in the discovery repo, but a
+   normal external consumer should not have to assemble that alignment by hand.
+   Follow-up bead candidate: endpoint/bootstrap discovery for local apps.
 
    `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
-   blocker: `fireline-v3-dev` could reuse an existing daemon, export an
-   endpoint for `fireline-v3-dev-daemon`, and then
+   blocker: the old runtime dev wrapper could reuse an existing daemon, export
+   an endpoint for its default daemon stream, and then
    fail append with `HTTP Error 404 ... Stream not found:
    fireline-v3-dev-daemon`. Fireline PR #291 / `mono-oet.29.3.22` fixed that
-   launcher/stream mismatch by creating and verifying the exported stream before
-   child startup. The examples branch keeps diagnostics and recovery guidance
-   for genuinely stale port/process/store reuse.
+   launcher/stream mismatch by creating and verifying the exported stream
+   before child startup. That evidence is historical until `mono-ug3b` lands.
+   The examples branch keeps diagnostics and recovery guidance for genuinely
+   stale port/process/store reuse.
 
 8. Stream-native stop is usable, and managed-agent hides it for normal ergonomic examples.
 
@@ -240,10 +242,10 @@ a Fireline bead or be closed as an intentional boundary.
    `mono-oet.29.3.25` reproduced the zero-opaque-config gap: a user could run
    `pnpm run dev:editable-agent-web` with no pre-started daemon and no Vite
    endpoint, leaving the browser to depend on fallback derivation
-   rather than the daemon's exported URL. The dev command now wraps Vite with
-   `fireline-v3-dev`; fresh and prior-daemon runs injected
-   `http://127.0.0.1:<streams-port>/v1/stream/fireline-v3-dev-daemon` into the
-   Vite environment and launch/stop completed. Older evidence logged
+   rather than the daemon's exported URL. Historical fresh and prior-daemon
+   runs injected a daemon endpoint into the Vite environment and launch/stop
+   completed. This evidence must be rerun after `mono-ug3b` restores the
+   runtime dev implementation. Older evidence logged
    `Symbol(liveQueryInternal)` durable-state/TanStack DB warnings while
    processing `fireline.runtime_instance`; that needs repro against current
    published managed-agent artifacts before being treated as still open.
@@ -408,12 +410,12 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: published package refs or documented git
   artifact refs are still needed for normal external consumers. This branch now
   uses documented git artifact refs; public npm remains gated.
-- Missing Fireline/public support: local stream-native bootstrap still relies on
-  `fireline-v3-dev` env handoff or equivalent control-stream alignment. Example
-  02 owns that handoff for its public dev command now, but stale processes or
-  mismatched stream stores can still leave reviewers with a timeout or
-  `Stream not found`; the example surfaces recovery instructions instead of
-  leaving the raw failure alone.
+- Missing Fireline/public support: local stream-native bootstrap still needs a
+  replacement runtime-dev env handoff or equivalent control-stream alignment
+  after `mono-ug3b`. Historical example 02 evidence owned that handoff, but
+  stale processes or mismatched stream stores can still leave reviewers with a
+  timeout or `Stream not found`; the example surfaces recovery instructions
+  instead of leaving the raw failure alone.
 - Missing Fireline/public support: managed-agent now wraps request
   construction, stop append, observation, and ACP attachment for normal
   examples. Remaining work is PM browser QA against the fresh package
