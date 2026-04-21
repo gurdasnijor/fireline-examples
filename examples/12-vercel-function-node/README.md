@@ -3,11 +3,11 @@
 Discovery-only Vercel Functions Node-runtime example. It models a serverless
 Node function that owns the Fireline call path for one request:
 
-1. derive the launch/control stream URL from deployment environment;
-2. build a launch request with managed-agent builders;
-3. launch through `@fireline/client/managed-agent`;
-4. observe launch state through the managed-agent launch handle;
-5. stop through the managed-agent launch handle;
+1. derive the Fireline endpoint from deployment environment;
+2. create a `new Fireline({ endpoint })` client;
+3. create a `new Agent(...)`;
+4. open the session through `fireline.session(...)`;
+5. stop through `session.stop(...)`;
 6. return a compact JSON response to the application caller.
 
 This is not a public Vercel deployment recipe and not a Fireline API wrapper.
@@ -18,12 +18,12 @@ normal Fireline lifecycle path should stay on `@fireline/client/managed-agent`.
 
 - `api/fireline-launch.ts`: Vercel-style Node function handler. It imports
   `IncomingMessage` and `ServerResponse` types from Node,
-  `@fireline/client/managed-agent`, and managed-agent builders.
+  `@fireline/client/managed-agent`, and the Tier 1 managed-agent classes.
 - `src/run-local.ts`: local E2E runner that starts a Node HTTP server around
   the handler and sends one request.
 
-The handler uses managed-agent request and inline bundle builders instead of
-Tier 3 spec/events/state subpaths for normal lifecycle flow.
+The handler uses the Tier 1 managed-agent surface instead of Tier 3
+spec/events/state subpaths for normal lifecycle flow.
 
 ## Reviewer Reproduce
 

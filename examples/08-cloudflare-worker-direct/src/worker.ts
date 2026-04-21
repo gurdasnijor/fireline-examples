@@ -1,16 +1,7 @@
-import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
-} from '@fireline/client/managed-agent'
-import {
-  launchManagedAgent,
-  observeManagedAgent,
-  stopManagedAgent,
-  type ManagedAgentLaunchRow,
-} from '../../shared/managed-agent-launch.js'
+import { Agent, Fireline, acp } from '@fireline/client/managed-agent'
 
 interface Env {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -49,8 +40,8 @@ export default {
           localDaemonCommand:
             `FIRELINE_CONTROL_STREAM=${config.controlStream} ` +
             `fireline-v3-dev --state-stream ${config.controlStream}`,
-          streamUrlDerivation:
-            `export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:` +
+          endpointDerivation:
+            `export FIRELINE_ENDPOINT="http://127.0.0.1:` +
             `\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/` +
             `\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`,
         })
@@ -62,14 +53,7 @@ export default {
         return jsonResponse(await stopFromWorker(env, await readStopBody(request)))
       }
       if (request.method === 'POST' && url.pathname === '/demo') {
-        const launch = await launchFromWorker(env, await readLaunchBody(request))
-        const stop = await stopFromWorker(env, {
-          launchId: launch.row.launchId,
-          clientRequestId: launch.row.clientRequestId,
-          reason: 'direct Worker demo complete',
-          requestedBy,
-        })
-        return jsonResponse({ launch, stop })
+        return jsonResponse(await demoFromWorker(env, await readLaunchBody(request)))
       }
       return jsonResponse({ error: 'Not found' }, 404)
     } catch (error) {
@@ -81,11 +65,80 @@ export default {
 }
 
 async function launchFromWorker(env: Env, body: LaunchBody) {
+  const opened = await openWorkerSession(env, body)
+  try {
+    return summarizeLaunch(opened)
+  } finally {
+    await opened.session.close()
+    opened.fireline.close()
+  }
+}
+
+async function demoFromWorker(env: Env, body: LaunchBody) {
+  const opened = await openWorkerSession(env, body)
+  try {
+    const launch = summarizeLaunch(opened)
+    const stop = await stopSession({
+      ...opened,
+      clientRequestId: opened.clientRequestId,
+      requestedBy: body.requestedBy ?? requestedBy,
+      reason: 'direct Worker demo complete',
+    })
+    return { launch, stop }
+  } finally {
+    await opened.session.close()
+    opened.fireline.close()
+  }
+}
+
+async function stopFromWorker(env: Env, body: StopBody) {
+  if (!body.launchId) throw new Error('POST /stop requires launchId')
+  const config = deriveConfig(env)
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: body.requestedBy ?? requestedBy,
+    fetch,
+    defaults: {
+      stopReason: body.reason ?? 'direct Worker stop requested',
+    },
+  })
+  const session = await fireline.reconnect({
+    launchId: body.launchId,
+    fetch,
+  })
+  try {
+    return await stopSession({
+      config,
+      session,
+      clientRequestId: body.clientRequestId ?? `stop:worker-direct:${crypto.randomUUID()}`,
+      requestedBy: body.requestedBy ?? requestedBy,
+      reason: body.reason ?? 'direct Worker stop requested',
+    })
+  } finally {
+    await session.close()
+    fireline.close()
+  }
+}
+
+async function openWorkerSession(env: Env, body: LaunchBody) {
   const config = deriveConfig(env)
   const clientRequestId = `launch:worker-direct:${crypto.randomUUID()}`
-  const request = createManagedAgentLaunchRequest({
-    name: 'cloudflare-worker-direct',
-    agent: await createWorkerDirectAgent(clientRequestId),
+  const requestOwner = body.requestedBy ?? requestedBy
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: requestOwner,
+    fetch,
+    defaults: {
+      wait: {
+        until: 'session_ready',
+        timeoutMs: 60_000,
+      },
+      stopReason: 'direct Worker stop requested',
+    },
+  })
+  const agent = new Agent({
+    id: 'cloudflare-worker-direct',
+    entrypoint: await createWorkerDirectEntrypoint(clientRequestId),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -98,67 +151,67 @@ async function launchFromWorker(env: Env, body: LaunchBody) {
       kind: 'middleware',
       chain: [],
     },
-    clientRequestId,
-    runtime: {
-      name: 'cloudflare-worker-direct',
-      provider: 'local',
-      labels: {
-        example: '08-cloudflare-worker-direct',
-        runtime: 'cloudflare-worker',
+    defaults: {
+      runtime: {
+        name: 'cloudflare-worker-direct',
+        provider: 'local',
+        labels: {
+          example: '08-cloudflare-worker-direct',
+          runtime: 'cloudflare-worker',
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
       },
     },
-    startSession: {
-      stateStream: clientRequestId.replace(/:/g, '-'),
-      create: true,
-      cwd: '/',
-      mcpServers: [],
-      prompt: body.prompt ?? 'Run the direct Cloudflare Worker example.',
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
-    },
   })
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
+  const session = await fireline.session(agent, {
+    prompt: body.prompt ?? 'Run the direct Cloudflare Worker example.',
+    cwd: '/',
+    mcpServers: [],
     idempotencyKey: clientRequestId,
-    requestedBy: body.requestedBy ?? requestedBy,
-    fetch,
-    timeoutMs: 60_000,
+    requestedBy: requestOwner,
+    advanced: {
+      startSession: {
+        stateStream: clientRequestId.replace(/:/g, '-'),
+        create: true,
+      },
+      request: {
+        clientRequestId,
+      },
+    },
   })
-  try {
-    return summarizeLaunch({ config, handle: launch.handle, row: launch.row })
-  } finally {
-    launch.handle.close()
-  }
+  return { config, fireline, session, clientRequestId }
 }
 
-async function stopFromWorker(env: Env, body: StopBody) {
-  if (!body.launchId) throw new Error('POST /stop requires launchId')
-  const config = deriveConfig(env)
-  const handle = observeManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    launchId: body.launchId,
-    requestedBy: body.requestedBy ?? requestedBy,
-    fetch,
-  })
-  try {
-    const stop = await stopManagedAgent({
-      handle,
-      clientRequestId: body.clientRequestId,
-      reason: body.reason ?? 'direct Worker stop requested',
-      requestedBy: body.requestedBy ?? requestedBy,
+async function stopSession(options: {
+  readonly config: ReturnType<typeof deriveConfig>
+  readonly session: Awaited<ReturnType<Fireline['session']>>
+  readonly clientRequestId: string
+  readonly requestedBy: string
+  readonly reason: string
+}) {
+  const stop = await options.session.stop({
+    clientRequestId: options.clientRequestId,
+    requestedBy: options.requestedBy,
+    reason: options.reason,
+    wait: {
+      until: 'terminal',
       timeoutMs: 60_000,
-    })
-    return summarizeStop({ config, stopId: stop.stopId, row: stop.row })
-  } finally {
-    handle.close()
+    },
+  })
+  return {
+    endpoint: options.config.endpoint,
+    launchId: options.session.launchId,
+    clientRequestId: options.clientRequestId,
+    stopId: stop.envelope.value.stopId,
+    stopStatus: stop.row?.status ?? 'unknown',
   }
 }
 
-async function createWorkerDirectAgent(revision: string) {
-  return await inlineJsBundleAgent({
+async function createWorkerDirectEntrypoint(revision: string) {
+  return await acp.inlineJsBundle({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',
@@ -183,10 +236,10 @@ function deriveConfig(env: Env) {
   const durableStreamsBase =
     env.FIRELINE_DURABLE_STREAMS_URL ??
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
-  const controlStreamUrl =
-    env.FIRELINE_LAUNCH_CONTROL_STREAM_URL ??
+  const endpoint =
+    env.FIRELINE_ENDPOINT ??
     `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`
-  return { controlStream, controlStreamUrl, durableStreamsBase }
+  return { controlStream, endpoint, durableStreamsBase }
 }
 
 function trimTrailingSlash(value: string): string {
@@ -203,44 +256,19 @@ async function readStopBody(request: Request): Promise<StopBody> {
   return await request.json() as StopBody
 }
 
-function summarizeLaunch(options: {
-  readonly config: ReturnType<typeof deriveConfig>
-  readonly handle: Awaited<ReturnType<typeof launchManagedAgent>>['handle']
-  readonly row: ManagedAgentLaunchRow
-}) {
+function summarizeLaunch(options: Awaited<ReturnType<typeof openWorkerSession>>) {
+  const snapshot = options.session.current()
   return {
-    controlStreamUrl: options.config.controlStreamUrl,
-    envelope: {
-      type: options.handle.requestEnvelope?.type,
-      key: options.handle.requestEnvelope?.key,
-    },
-    row: summarizeRow(options.row),
-  }
-}
-
-function summarizeStop(options: {
-  readonly config: ReturnType<typeof deriveConfig>
-  readonly stopId: string
-  readonly row: ManagedAgentLaunchRow
-}) {
-  return {
-    controlStreamUrl: options.config.controlStreamUrl,
-    stopId: options.stopId,
-    row: summarizeRow(options.row),
-  }
-}
-
-function summarizeRow(row: ManagedAgentLaunchRow) {
-  return {
-    launchId: row.launchId,
-    clientRequestId: row.clientRequestId,
-    status: row.status,
-    runtime: row.runtime && {
-      runtimeId: row.runtime.runtimeId,
-      acpUrl: row.runtime.acp.url,
-      stateUrl: row.runtime.state.url,
-    },
-    startSession: row.startSession,
+    endpoint: options.config.endpoint,
+    launchId: options.session.launchId,
+    clientRequestId: options.clientRequestId,
+    launchStatus: snapshot.status,
+    session: snapshot.sessionId
+      ? {
+          acpSessionId: snapshot.sessionId,
+        }
+      : undefined,
+    requiredActions: snapshot.requiredActions,
   }
 }
 

@@ -1,12 +1,4 @@
-import {
-  createManagedAgentLaunchRequest,
-} from '@fireline/client/managed-agent'
-import {
-  launchManagedAgent,
-  observeManagedAgent,
-  stopManagedAgent,
-  type ManagedAgentLaunchRow,
-} from '../../shared/managed-agent-launch.js'
+import { Agent, Fireline } from '@fireline/client/managed-agent'
 import type { AppActor, AppLaunchIntent, AppLaunchSummary } from './framework-boundary.js'
 import { createWorkerAgentBundle } from './generated-worker-agent.js'
 
@@ -31,14 +23,13 @@ export interface AppStopRequest {
 }
 
 export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
-  const controlStreamUrl = resolveLaunchControlStreamUrl(config.env)
+  const endpoint = resolveEndpoint(config.env)
   const requestedBy = config.requestedBy ?? 'examples/11-server-worker-wrapper'
 
   return {
-    controlStreamUrl,
+    endpoint,
     async submitLaunch(request: AppLaunchRequest): Promise<{
       readonly summary: AppLaunchSummary
-      readonly row: ManagedAgentLaunchRow
     }> {
       const actor = authorize({
         authorization: request.authorization,
@@ -48,32 +39,41 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
         requiredScope: 'fireline:launch',
       })
       const clientRequestId = stableClientRequestId(request.intent)
-      const launch = await launchManagedAgent({
-        controlStreamUrl,
-        idempotencyKey: clientRequestId,
+      const fireline = new Fireline({
+        endpoint,
         requestedBy,
-        timeoutMs: 60_000,
-        request: createManagedAgentLaunchRequest({
-          name: 'server-worker-wrapper',
-          agent: await createWorkerAgentBundle({ revision: clientRequestId, intent: request.intent }),
-          sandbox: {
-            provider: 'local',
-            fsBackend: 'streamFs',
-            env: {
-              APP_TENANT_ID: request.intent.tenantId,
-              APP_DOCUMENT_ID: request.intent.documentId,
-            },
-            labels: {
-              example: '11-server-worker-wrapper',
-              boundary: 'server-worker',
-              tenantId: request.intent.tenantId,
-            },
+        defaults: {
+          wait: {
+            until: 'session_ready',
+            timeoutMs: 60_000,
           },
-          middleware: {
-            kind: 'middleware',
-            chain: [],
+          stopReason: 'server wrapper smoke complete',
+        },
+      })
+      const agent = new Agent({
+        id: 'server-worker-wrapper',
+        entrypoint: await createWorkerAgentBundle({
+          revision: clientRequestId,
+          intent: request.intent,
+        }),
+        sandbox: {
+          provider: 'local',
+          fsBackend: 'streamFs',
+          env: {
+            APP_TENANT_ID: request.intent.tenantId,
+            APP_DOCUMENT_ID: request.intent.documentId,
           },
-          clientRequestId,
+          labels: {
+            example: '11-server-worker-wrapper',
+            boundary: 'server-worker',
+            tenantId: request.intent.tenantId,
+          },
+        },
+        middleware: {
+          kind: 'middleware',
+          chain: [],
+        },
+        defaults: {
           runtime: {
             name: 'server-worker-wrapper',
             provider: 'local',
@@ -83,64 +83,70 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
               documentId: request.intent.documentId,
             },
           },
-          startSession: {
-            stateStream: sessionStateStream(request.intent),
-            create: true,
-            cwd: '/',
-            mcpServers: [],
-            prompt: request.intent.prompt,
-          },
           wait: {
             until: 'session',
             timeoutMs: 60_000,
           },
-        }),
+        },
+      })
+      const session = await fireline.session(agent, {
+        prompt: request.intent.prompt,
+        cwd: '/',
+        mcpServers: [],
+        idempotencyKey: clientRequestId,
+        requestedBy,
+        advanced: {
+          startSession: {
+            stateStream: sessionStateStream(request.intent),
+            create: true,
+          },
+          request: {
+            clientRequestId,
+          },
+        },
       })
       const events = [
         `authorized tenant ${actor.tenantId}`,
-        `appended ${launch.handle.requestEnvelope?.type ?? 'fireline.launch_request'}`,
-        `observed collections.launches row ${launch.row.launchId}`,
+        `opened managed-agent session ${session.launchId}`,
       ]
 
       try {
-        const stop = await stopManagedAgent({
-          handle: launch.handle,
+        const ready = session.current()
+        events.push(`observed session status ${ready.status ?? 'unknown'}`)
+        const stop = await session.stop({
           clientRequestId,
           requestedBy,
           reason: 'server wrapper smoke complete',
-          timeoutMs: 60_000,
+          wait: {
+            until: 'terminal',
+            timeoutMs: 60_000,
+          },
         })
-        events.push('appended fireline.launch_stop')
-        events.push(`observed stop row ${stop.row.status}`)
+        events.push('requested managed-agent stop')
+        events.push(`observed stop row ${stop.row?.status ?? 'unknown'}`)
 
         return {
-          row: launch.row,
           summary: {
             accepted: true,
             tenantId: actor.tenantId,
-            launchId: launch.row.launchId,
-            clientRequestId: launch.row.clientRequestId,
-            launchStatus: launch.row.status,
-            runtime: launch.row.runtime
+            launchId: session.launchId,
+            clientRequestId,
+            launchStatus: ready.status ?? 'unknown',
+            session: ready.sessionId
               ? {
-                  runtimeId: launch.row.runtime.runtimeId,
-                  acpUrl: launch.row.runtime.acp.url,
+                  acpSessionId: ready.sessionId,
                 }
               : undefined,
-            session: launch.row.startSession
-              ? {
-                  acpSessionId: launch.row.startSession.acpSessionId,
-                }
-              : undefined,
-            stopStatus: stop.row.status,
+            stopStatus: stop.row?.status ?? 'unknown',
             events,
           },
         }
       } finally {
-        launch.handle.close()
+        await session.close()
+        fireline.close()
       }
     },
-    async stopLaunch(request: AppStopRequest): Promise<ManagedAgentLaunchRow> {
+    async stopLaunch(request: AppStopRequest) {
       authorize({
         authorization: request.authorization,
         expectedToken: config.authToken,
@@ -148,22 +154,31 @@ export function createServerWorkerWrapper(config: ServerWorkerWrapperConfig) {
         tenantId: request.tenantId,
         requiredScope: 'fireline:stop',
       })
-      const handle = observeManagedAgent({
-        controlStreamUrl,
-        launchId: request.launchId,
+      const fireline = new Fireline({
+        endpoint,
         requestedBy,
       })
+      const session = await fireline.reconnect({
+        launchId: request.launchId,
+      })
       try {
-        const stop = await stopManagedAgent({
-          handle,
+        const stop = await session.stop({
           clientRequestId: request.clientRequestId,
           requestedBy,
           reason: 'app requested stop through server wrapper',
-          timeoutMs: 60_000,
+          wait: {
+            until: 'terminal',
+            timeoutMs: 60_000,
+          },
         })
-        return stop.row
+        return {
+          launchId: session.launchId,
+          status: stop.row?.status ?? session.current().status ?? 'unknown',
+          requiredActions: session.current().requiredActions,
+        }
       } finally {
-        handle.close()
+        await session.close()
+        fireline.close()
       }
     },
   }
@@ -188,8 +203,8 @@ function authorize(options: {
   return options.actor
 }
 
-function resolveLaunchControlStreamUrl(env: NodeJS.ProcessEnv): string {
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) return env.FIRELINE_LAUNCH_CONTROL_STREAM_URL
+function resolveEndpoint(env: NodeJS.ProcessEnv): string {
+  if (env.FIRELINE_ENDPOINT) return env.FIRELINE_ENDPOINT
 
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? 'fireline-server-wrapper-control'
   if (env.FIRELINE_DURABLE_STREAMS_URL) {

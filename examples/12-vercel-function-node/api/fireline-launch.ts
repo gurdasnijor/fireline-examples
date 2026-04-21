@@ -1,11 +1,4 @@
-import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
-} from '@fireline/client/managed-agent'
-import {
-  launchManagedAgent,
-  stopManagedAgent,
-} from '../../shared/managed-agent-launch.js'
+import { Agent, Fireline, acp } from '@fireline/client/managed-agent'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 interface LaunchBody {
@@ -16,7 +9,7 @@ interface LaunchBody {
 }
 
 interface VercelFunctionEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -28,7 +21,7 @@ interface VercelFunctionEnv {
 
 interface LaunchConfig {
   readonly controlStream: string
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly requestedBy: string
 }
 
@@ -62,9 +55,20 @@ export async function runVercelFunctionLaunch(options: {
   const config = deriveConfig(options.env)
   const launchInput = normalizeLaunchInput(options.env, options.body ?? {})
   const clientRequestId = stableClientRequestId(launchInput)
-  const request = createManagedAgentLaunchRequest({
-    name: 'vercel-function-node',
-    agent: await createAgent(clientRequestId, launchInput),
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: config.requestedBy,
+    defaults: {
+      wait: {
+        until: 'session_ready',
+        timeoutMs: 60_000,
+      },
+      stopReason: 'Vercel Function Node example complete',
+    },
+  })
+  const agent = new Agent({
+    id: 'vercel-function-node',
+    entrypoint: await createEntrypoint(clientRequestId, launchInput),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -77,73 +81,79 @@ export async function runVercelFunctionLaunch(options: {
       kind: 'middleware',
       chain: [],
     },
-    clientRequestId,
-    runtime: {
-      name: 'vercel-function-node',
-      provider: 'local',
-      labels: {
-        example: '12-vercel-function-node',
-        tenantId: launchInput.tenantId,
-        runtime: 'vercel-function-node',
+    defaults: {
+      runtime: {
+        name: 'vercel-function-node',
+        provider: 'local',
+        labels: {
+          example: '12-vercel-function-node',
+          tenantId: launchInput.tenantId,
+          runtime: 'vercel-function-node',
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
       },
     },
-    startSession: {
-      stateStream: sessionStateStream(launchInput),
-      create: true,
-      cwd: '/',
-      mcpServers: [],
-      prompt: launchInput.prompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
-    },
   })
-
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
+  const session = await fireline.session(agent, {
+    prompt: launchInput.prompt,
+    cwd: '/',
+    mcpServers: [],
     idempotencyKey: clientRequestId,
     requestedBy: config.requestedBy,
-    timeoutMs: 60_000,
+    advanced: {
+      startSession: {
+        stateStream: sessionStateStream(launchInput),
+        create: true,
+      },
+      request: {
+        clientRequestId,
+      },
+    },
   })
-  const stop = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy: config.requestedBy,
-    reason: 'Vercel Function Node example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
 
-  return {
-    ok: true,
-    example: '12-vercel-function-node',
-    controlStream: config.controlStream,
-    launchId: launch.row.launchId,
-    clientRequestId: launch.row.clientRequestId,
-    launchStatus: launch.row.status,
-    runtime: launch.row.runtime
-      ? {
-          runtimeId: launch.row.runtime.runtimeId,
-          acpUrl: launch.row.runtime.acp.url,
-        }
-      : undefined,
-    session: launch.row.startSession
-      ? {
-          acpSessionId: launch.row.startSession.acpSessionId,
-        }
-      : undefined,
-    stopId: stop.stopId,
-    stopStatus: stop.row.status,
+  try {
+    const ready = session.current()
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy: config.requestedBy,
+      reason: 'Vercel Function Node example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
+    return {
+      ok: true,
+      example: '12-vercel-function-node',
+      controlStream: config.controlStream,
+      endpoint: config.endpoint,
+      launchId: session.launchId,
+      clientRequestId,
+      launchStatus: ready.status,
+      session: ready.sessionId
+        ? {
+            acpSessionId: ready.sessionId,
+          }
+        : undefined,
+      stopId: stop.envelope.value.stopId,
+      stopStatus: stop.row?.status ?? 'unknown',
+    }
+  } finally {
+    await session.close()
+    fireline.close()
   }
 }
 
 function deriveConfig(env: VercelFunctionEnv): LaunchConfig {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
       requestedBy,
     }
   }
@@ -152,7 +162,7 @@ function deriveConfig(env: VercelFunctionEnv): LaunchConfig {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
     requestedBy,
   }
 }
@@ -166,11 +176,11 @@ function normalizeLaunchInput(env: VercelFunctionEnv, body: LaunchBody) {
   }
 }
 
-async function createAgent(
+async function createEntrypoint(
   revision: string,
   input: ReturnType<typeof normalizeLaunchInput>,
 ) {
-  return await inlineJsBundleAgent({
+  return await acp.inlineJsBundle({
     entrypoint: 'agent.mjs',
     files: [{
       path: 'agent.mjs',

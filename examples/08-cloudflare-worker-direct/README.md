@@ -5,8 +5,9 @@ adapter path. The Worker imports only package-shaped Fireline APIs:
 
 - `@fireline/client/managed-agent`
 
-The Worker uses managed-agent request and inline bundle builders; it does not
-import Tier 3 spec/events/state subpaths for normal lifecycle flow.
+The Worker uses `new Fireline({ endpoint })`, `new Agent(...)`,
+`fireline.session(...)`, and `session.stop(...)`; it does not import Tier 3
+spec/events/state subpaths for normal lifecycle flow.
 
 Run the local Fireline daemon from scratch state:
 
@@ -27,16 +28,16 @@ Run the Worker in another shell:
 pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml
 ```
 
-The Worker derives the launch/control stream URL from the same defaults used by
+The Worker derives the Fireline endpoint from the same stream defaults used by
 the daemon:
 
 ```sh
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-worker-direct-control}"
+export FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-worker-direct-control}"
 ```
 
 For custom ports or stream names, pass `FIRELINE_STREAMS_PORT`,
 `FIRELINE_CONTROL_STREAM`, `FIRELINE_DURABLE_STREAMS_URL`, or the exact
-`FIRELINE_LAUNCH_CONTROL_STREAM_URL` through Wrangler `--var` flags:
+`FIRELINE_ENDPOINT` through Wrangler `--var` flags:
 
 ```sh
 pnpm dlx wrangler@4.83.0 dev \
@@ -45,7 +46,7 @@ pnpm dlx wrangler@4.83.0 dev \
   --var FIRELINE_STREAMS_PORT:8581 \
   --var FIRELINE_CONTROL_STREAM:fireline-worker-direct-control \
   --var FIRELINE_DURABLE_STREAMS_URL:http://127.0.0.1:8581/v1/stream \
-  --var FIRELINE_LAUNCH_CONTROL_STREAM_URL:http://127.0.0.1:8581/v1/stream/fireline-worker-direct-control
+  --var FIRELINE_ENDPOINT:http://127.0.0.1:8581/v1/stream/fireline-worker-direct-control
 ```
 
 Shell environment variables alone do not override Wrangler `[vars]` in local
