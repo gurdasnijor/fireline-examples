@@ -62,12 +62,15 @@ a Fireline bead or be closed as an intentional boundary.
    own, probes the local streams health endpoint, and shows a copyable
    derivation for custom ports or stream names. On `Stream not found`/404, the
    UI names the missing stream and shows restart or exact-URL recovery
-   instructions. Other Tier 1 examples still require the app-facing
-   `FIRELINE_ENDPOINT` and the local `fireline-v3-dev --state-stream
-   <control-stream>` process to point at the same durable stream. This is
-   intentionally explicit in the discovery repo, but a normal external
-   consumer should not have to assemble that alignment by hand. Follow-up bead
-   candidate: endpoint/bootstrap discovery for local apps.
+   instructions. `examples/04-next-basic` can consume `FIRELINE_ENDPOINT` from
+   the Next server layer, but one-command isolated-daemon startup is blocked on
+   mono-runtime-dev-posture/#349. Do not add a JavaScript runtime wrapper or
+   synthesize an endpoint in this repo. Other Tier 1 examples still require
+   the app-facing `FIRELINE_ENDPOINT` and the local runtime process to point at
+   the same durable stream. This is intentionally explicit in the discovery
+   repo, but a normal external consumer should not have to assemble that
+   alignment by hand. Follow-up bead candidate: endpoint/bootstrap discovery
+   for the remaining local app examples after the native CLI contract lands.
 
    `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
    blocker: `fireline-v3-dev` could reuse an existing daemon, export an

@@ -238,6 +238,23 @@ session log includes a recovery entry naming the missing stream and directs the
 reviewer to paste the exact daemon URL, use the daemon default, or restart with
 the matching `--state-stream`.
 
+The straightforward Next app is prepared to consume the same app-facing
+`FIRELINE_ENDPOINT` value from its server layer:
+
+```sh
+export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
+export FIRELINE_STATE_DIR=/tmp/fireline-next-basic-state
+mkdir -p "$FIRELINE_STATE_DIR"
+cd "$FIRELINE_STATE_DIR"
+FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
+pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:next-basic
+```
+
+One-command isolated-daemon startup for this example is intentionally blocked
+until mono-runtime-dev-posture/#349 lands the native Rust runtime dev CLI
+contract. Do not add a JavaScript wrapper or derive a replacement endpoint in
+this repo.
+
 Framework-shaped checks:
 
 ```sh
