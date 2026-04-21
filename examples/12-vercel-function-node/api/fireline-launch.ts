@@ -10,9 +10,6 @@ interface LaunchBody {
 
 interface VercelFunctionEnv {
   readonly FIRELINE_ENDPOINT?: string
-  readonly FIRELINE_DURABLE_STREAMS_URL?: string
-  readonly FIRELINE_STREAMS_PORT?: string
-  readonly FIRELINE_CONTROL_STREAM?: string
   readonly VERCEL_FUNCTION_RUN_ID?: string
   readonly VERCEL_FUNCTION_ATTEMPT_ID?: string
   readonly VERCEL_FUNCTION_TENANT_ID?: string
@@ -20,13 +17,10 @@ interface VercelFunctionEnv {
 }
 
 interface LaunchConfig {
-  readonly controlStream: string
   readonly endpoint: string
   readonly requestedBy: string
 }
 
-const defaultControlStream = 'fireline-vercel-function-control'
-const defaultStreamsPort = '7474'
 const requestedBy = 'examples/12-vercel-function-node'
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -129,7 +123,6 @@ export async function runVercelFunctionLaunch(options: {
     return {
       ok: true,
       example: '12-vercel-function-node',
-      controlStream: config.controlStream,
       endpoint: config.endpoint,
       launchId: session.launchId,
       clientRequestId,
@@ -149,20 +142,12 @@ export async function runVercelFunctionLaunch(options: {
 }
 
 function deriveConfig(env: VercelFunctionEnv): LaunchConfig {
-  const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_ENDPOINT) {
-    return {
-      controlStream,
-      endpoint: env.FIRELINE_ENDPOINT,
-      requestedBy,
-    }
+  if (!env.FIRELINE_ENDPOINT) {
+    throw new Error('FIRELINE_ENDPOINT is required; run through fireline runtime dev or provide the deployed endpoint')
   }
-  const durableStreamsBase =
-    env.FIRELINE_DURABLE_STREAMS_URL ??
-    `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
+
   return {
-    controlStream,
-    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: env.FIRELINE_ENDPOINT,
     requestedBy,
   }
 }
@@ -239,8 +224,4 @@ function sessionStateStream(input: ReturnType<typeof normalizeLaunchInput>): str
 function safeIdPart(value: string): string {
   const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
   return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/g, '')
 }
