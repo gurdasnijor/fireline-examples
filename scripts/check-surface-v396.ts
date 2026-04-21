@@ -9,7 +9,7 @@ const tier2Examples = [
   'examples/15-go-raw-http/',
 ] as const
 
-const futureTier1Examples = [
+const tier1Examples = [
   'examples/01-inline-js-local/',
   'examples/02-editable-agent-web/',
   'examples/03-tanstack-shaped-app/',
@@ -24,7 +24,6 @@ const futureTier1Examples = [
   'examples/16-deno/',
   'examples/17-acp-registry-chat/',
   'examples/18-middleware-stack/',
-  'examples/19-remote-brain-managed-agent/',
 ] as const
 
 const bridgeNameBans = [
@@ -33,6 +32,7 @@ const bridgeNameBans = [
   'launchAgent(',
   'launchAgent<',
   'ManagedAgentLaunchHandle',
+  'launchControlStreamUrl',
 ] as const
 
 const tier3SpecifierBans = [
@@ -47,23 +47,17 @@ const sharedHelperBans = [
   '../shared/stream-launch.js',
   '../../shared/stream-launch',
   '../../shared/stream-launch.js',
-] as const
-
-const targetShapeTokens = [
-  'new Fireline(',
-  'new Agent(',
-  '.session(',
-  '.chat(',
-  '.respond(',
-  '.stop(',
-  '.run(',
+  '../shared/managed-agent-launch',
+  '../shared/managed-agent-launch.js',
+  '../../shared/managed-agent-launch',
+  '../../shared/managed-agent-launch.js',
 ] as const
 
 const managedAgentSpecifier = '@fireline/client/managed-agent'
 const violations: string[] = []
 const skippedDirs: string[] = []
 
-for (const exampleDir of futureTier1Examples) {
+for (const exampleDir of tier1Examples) {
   if (!(await exists(new URL(exampleDir, root)))) {
     skippedDirs.push(exampleDir)
     continue
@@ -96,13 +90,30 @@ for (const exampleDir of futureTier1Examples) {
     }
   }
 
+  if (aggregate.includes('shared/run-inline-fireline')) {
+    const helperText = await readFile(new URL('examples/shared/run-inline-fireline.ts', root), 'utf8')
+    aggregate += `\n${helperText}`
+    if (helperText.includes(managedAgentSpecifier)) {
+      sawManagedAgentImport = true
+    }
+  }
+
   if (!sawManagedAgentImport) {
     violations.push(`${exampleDir}: future Tier 1 example must import ${managedAgentSpecifier}`)
   }
 
-  if (!targetShapeTokens.some((token) => aggregate.includes(token))) {
+  if (!aggregate.includes('new Fireline(')) {
+    violations.push(`${exampleDir}: future Tier 1 example must construct new Fireline({ endpoint })`)
+  }
+  if (!aggregate.includes('new Agent(')) {
+    violations.push(`${exampleDir}: future Tier 1 example must construct new Agent(...)`)
+  }
+  const hasRunFlow = aggregate.includes('.run(')
+  const hasSessionFlow = aggregate.includes('.session(') &&
+    aggregate.includes('.stop(')
+  if (!hasRunFlow && !hasSessionFlow) {
     violations.push(
-      `${exampleDir}: future Tier 1 example must use Fireline/Agent/session/chat/respond/stop/run target vocabulary`,
+      `${exampleDir}: Tier 1 example must use fireline.run(...) or fireline.session(...) with session.stop(...)`,
     )
   }
 }

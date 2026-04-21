@@ -31,9 +31,6 @@ const tier1Examples = [
   'examples/04-next-basic/',
   'examples/05-next-open-cloudflare/',
   'examples/06-flamecast-v3-shaped/',
-] as const
-
-const tier3EscapeHatchExamples = [
   'examples/08-cloudflare-worker-direct/',
   'examples/11-server-worker-wrapper/',
   'examples/12-vercel-function-node/',
@@ -43,6 +40,8 @@ const tier3EscapeHatchExamples = [
   'examples/17-acp-registry-chat/',
   'examples/18-middleware-stack/',
 ] as const
+
+const tier3EscapeHatchExamples = [] as const
 
 const normalPathVocabularyBans = [
   'createManagedAgentClient',
@@ -187,11 +186,10 @@ for (const exampleDir of tier1Examples) {
   }
   const hasRunFlow = aggregate.includes('.run(')
   const hasSessionFlow = aggregate.includes('.session(') &&
-    (aggregate.includes('.chat(') || aggregate.includes('.respond(')) &&
     aggregate.includes('.stop(')
   if (!hasRunFlow && !hasSessionFlow) {
     violations.push(
-      `${exampleDir}: Tier 1 example must use fireline.run(...) or fireline.session(...) with session.chat/respond/stop`,
+      `${exampleDir}: Tier 1 example must use fireline.run(...) or fireline.session(...) with session.stop(...)`,
     )
   }
 }

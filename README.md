@@ -50,9 +50,9 @@ Current checkpoint:
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
   packages.
 - `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
-  consumer kept as Tier 3 escape-hatch evidence until its Worker-safe cutover
-  lands. It uses explicit `pnpm dlx wrangler@4.83.0` commands and documents
-  the Wrangler `--var` behavior required for custom scratch ports.
+  consumer using the Tier 1 managed-agent API in a Worker-safe package shape.
+  It uses explicit `pnpm dlx wrangler@4.83.0` commands and documents the
+  Wrangler `--var` behavior required for custom scratch ports.
 - `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
   `examples/15-go-raw-http` are raw Durable Streams HTTP consumers. They do
   not import Fireline packages, crates, or SDKs; they build
@@ -60,29 +60,26 @@ Current checkpoint:
   first-class `fireline.launch` rows over plain HTTP.
 - `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
-  tenant checks, idempotency, and a Tier 3 escape-hatch Fireline adapter until
-  its Tier 1 cutover lands.
+  tenant checks, idempotency, and Tier 1 Fireline session calls.
 - `examples/12-vercel-function-node` is a Vercel Functions Node-runtime shape.
-  It remains Tier 3 escape-hatch evidence until its function adapter moves to
-  `Fireline` / `Agent` / session helpers.
+  It uses the Tier 1 managed-agent API inside a Node function.
 - `examples/13-vercel-edge-runtime` is a Vercel Edge Runtime shape. It bundles
-  an Edge handler that remains Tier 3 escape-hatch evidence, then runs locally
-  in `@edge-runtime/vm`.
+  an Edge handler that uses the Tier 1 managed-agent API, then runs locally in
+  `@edge-runtime/vm`.
 - `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
-  package-shaped Fireline refs, and remains Tier 3 escape-hatch evidence until
-  its runtime-specific adapter moves to the Tier 1 API.
-- `examples/16-deno` is a Deno package-consumer shape. It remains Tier 3
-  escape-hatch evidence through Deno's Node/npm compatibility layer.
+  package-shaped Fireline refs, and uses the Tier 1 managed-agent API.
+- `examples/16-deno` is a Deno package-consumer shape. It uses the Tier 1
+  managed-agent API through Deno's Node/npm compatibility layer.
 - `examples/17-acp-registry-chat` resolves a safe ACP registry fixture row
   with `acpRegistry(...)` from `@fireline/client`, launches the resulting command
-  distribution through a Tier 3 escape-hatch adapter, sends a follow-up
-  prompt, and stops the session. It deliberately avoids
+  distribution through the Tier 1 managed-agent API, sends a follow-up prompt,
+  and stops the session. It deliberately avoids
   binary registry installs, launcher env metadata, retired launch-control
   surfaces, and hand-rolled lifecycle primitives.
 - `examples/18-middleware-stack` is a focused middleware-stack consumer. It
   builds a middleware stack with `trace(...)`, `contextInjection(...)`, and
-  `budget(...)`, then runs through a Tier 3 escape-hatch adapter until the
-  middleware slice moves to the Tier 1 API. It deliberately avoids `memory()`,
+  `budget(...)`, then runs through the Tier 1 managed-agent API. It
+  deliberately avoids `memory()`,
   approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
   hand-rolled lifecycle primitives.
 
