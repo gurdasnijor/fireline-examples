@@ -204,15 +204,11 @@ function authorize(options: {
 }
 
 function resolveEndpoint(env: NodeJS.ProcessEnv): string {
-  if (env.FIRELINE_ENDPOINT) return env.FIRELINE_ENDPOINT
-
-  const controlStream = env.FIRELINE_CONTROL_STREAM ?? 'fireline-server-wrapper-control'
-  if (env.FIRELINE_DURABLE_STREAMS_URL) {
-    return `${env.FIRELINE_DURABLE_STREAMS_URL.replace(/\/$/, '')}/${encodeURIComponent(controlStream)}`
+  if (!env.FIRELINE_ENDPOINT) {
+    throw new Error('FIRELINE_ENDPOINT is required; run through fireline runtime dev or provide the deployed endpoint')
   }
 
-  const localBaseUrl = `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? '7474'}`
-  return `${localBaseUrl}/v1/stream/${encodeURIComponent(controlStream)}`
+  return env.FIRELINE_ENDPOINT
 }
 
 function stableClientRequestId(intent: AppLaunchIntent): string {

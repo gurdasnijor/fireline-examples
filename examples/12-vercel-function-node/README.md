@@ -4,7 +4,7 @@ Current Tier 1 Vercel Functions Node-runtime example. It models a serverless
 Node function that owns the Fireline call path for one request through
 `Fireline`, `Agent`, and a managed-agent session:
 
-1. derive the Fireline endpoint from deployment environment;
+1. read the app-facing Fireline endpoint from `FIRELINE_ENDPOINT`;
 2. create a `new Fireline({ endpoint })` client;
 3. create a `new Agent(...)`;
 4. open the session through `fireline.session(...)`;
@@ -24,6 +24,8 @@ normal Fireline lifecycle path should stay on `@fireline/client/managed-agent`.
 
 The handler uses the current Tier 1 managed-agent surface for normal lifecycle
 flow.
+In local dev, `fireline runtime dev --launch-control-stream ... --` injects
+`FIRELINE_ENDPOINT` into the example command.
 
 ## Reviewer Reproduce
 
@@ -52,9 +54,7 @@ FIRELINE_PORT=4612 \
 FIRELINE_STREAMS_PORT=7712 \
 fireline runtime dev \
   --launch-control-stream fireline-vercel-function-fresh -- \
-  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7712/v1/stream" \
-    FIRELINE_CONTROL_STREAM="fireline-vercel-function-fresh" \
-    VERCEL_FUNCTION_RUN_ID="fresh-daemon-run-001" \
+  env VERCEL_FUNCTION_RUN_ID="fresh-daemon-run-001" \
     VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
     pnpm --dir "$EX" exec tsx \
       "$EX/examples/12-vercel-function-node/src/run-local.ts"
@@ -72,33 +72,41 @@ FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4613 \
 FIRELINE_STREAMS_PORT=7713 \
 fireline runtime dev \
-  --launch-control-stream fireline-vercel-function-reuse
+  --launch-control-stream fireline-vercel-function-reuse -- \
+  sh -c 'sleep 300'
 ```
 
-In another shell:
+Leave that holder running. In another shell:
 
 ```sh
 export EX=/Users/gnijor/gurdasnijor/fireline-examples
-env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7713/v1/stream" \
-  FIRELINE_CONTROL_STREAM="fireline-vercel-function-reuse" \
-  VERCEL_FUNCTION_RUN_ID="reuse-daemon-run-001" \
-  VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
-  pnpm --dir "$EX" exec tsx \
-    "$EX/examples/12-vercel-function-node/src/run-local.ts"
+export STATE=/tmp/fireline-mono-oet-29-3-12/reuse-state
+cd "$STATE"
+FIRELINE_STATE_DIR="$STATE" \
+FIRELINE_PORT=4613 \
+FIRELINE_STREAMS_PORT=7713 \
+fireline runtime dev \
+  --launch-control-stream fireline-vercel-function-reuse -- \
+  env VERCEL_FUNCTION_RUN_ID="reuse-daemon-run-001" \
+    VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
+    pnpm --dir "$EX" exec tsx \
+      "$EX/examples/12-vercel-function-node/src/run-local.ts"
 ```
 
 Both runs should print JSON with `ok: true`, `launchStatus: "session_ready"`,
 and `stopStatus: "stopped"`.
 
-Validated 2026-04-20 evidence:
+Validated 2026-04-21 evidence:
 
-- Fresh daemon: launch `294a2186-26a4-42ff-81b8-bfead1ec5dc7`,
+- Fresh daemon: launch `4b7f70b6-b021-499b-85a0-d4853a246774`,
   `clientRequestId`
-  `launch:vercel-function-node:tenant-vercel-node:fresh-daemon-run-001:attempt-1`,
-  ACP session `jsmod-694228a2-33f0-4f6e-8b9e-9fa2402f1c24`,
+  `launch:vercel-function-node:tenant-vercel-node:mono-irzz-wave-b-12-fresh:attempt-1`,
+  ACP session `jsmod-d489fbef-0a3d-4dfb-890c-5469135b3eb9`,
   `ok: true`, `launchStatus: "session_ready"`, `stopStatus: "stopped"`.
-- Prior daemon reuse: launch `3f740242-4a89-4392-b736-0d81f146034f`,
+  Artifacts: `/tmp/fireline-mono-irzz-wave-b-12-fresh`.
+- Prior daemon reuse: launch `029efb93-a12d-4a28-8cfd-c2fb0babd86a`,
   `clientRequestId`
-  `launch:vercel-function-node:tenant-vercel-node:reuse-daemon-run-001:attempt-1`,
-  ACP session `jsmod-50251cf0-e802-48f9-990d-398f5c9608cf`,
+  `launch:vercel-function-node:tenant-vercel-node:mono-irzz-wave-b-12-reuse:attempt-1`,
+  ACP session `jsmod-a9e883a1-6536-4749-8f8c-06cd1e8ce9fd`,
   `ok: true`, `launchStatus: "session_ready"`, `stopStatus: "stopped"`.
+  Artifacts: `/tmp/fireline-mono-irzz-wave-b-12-reuse`.
