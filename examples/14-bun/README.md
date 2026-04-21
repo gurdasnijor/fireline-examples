@@ -1,7 +1,7 @@
 # Bun Runtime
 
-Discovery-only Bun example. It models a Bun process that owns the Fireline call
-path for one request:
+Current Tier 1 Bun example. It models a Bun process that owns the Fireline call
+path for one request through `Fireline`, `Agent`, and a managed-agent session:
 
 1. derive the Fireline endpoint from environment;
 2. build an `Agent` with `acp.inlineJsBundle(...)`;
@@ -10,8 +10,8 @@ path for one request:
 5. stop through `session.stop(...)`;
 6. print a compact JSON response.
 
-This is not a Fireline API wrapper. It validates that Bun can resolve and run
-the package-shaped Fireline client artifacts used by the examples repo.
+It validates that Bun can resolve and run the package-shaped Fireline client
+artifacts used by the examples repo.
 
 ## Files
 
@@ -21,8 +21,8 @@ the package-shaped Fireline client artifacts used by the examples repo.
 - `src/run.ts`: local E2E runner executed by Bun.
 
 The handler uses `acp.inlineJsBundle(...)` only for the inline agent fixture.
-Normal lifecycle flow stays on `fireline.session(...)` and `session.stop(...)`
-instead of launch-handle APIs or Tier 3 spec/events/state subpaths.
+Normal lifecycle flow stays on `fireline.session(...)` and
+`session.stop(...)`.
 
 ## Reviewer Reproduce
 

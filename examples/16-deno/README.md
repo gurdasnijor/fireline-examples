@@ -1,7 +1,8 @@
 # Deno Package Consumer
 
-Discovery-only Deno example. It validates that Deno can resolve Fireline's
-package-shaped TypeScript surfaces from the repo `node_modules` install:
+Current Tier 1 Deno example. It validates that Deno can resolve Fireline's
+package-shaped TypeScript surfaces from the repo `node_modules` install and
+run the managed-agent session flow:
 
 1. derive the Fireline endpoint from deployment environment;
 2. build an `Agent` with `acp.inlineJsBundle(...)`;
@@ -10,10 +11,9 @@ package-shaped TypeScript surfaces from the repo `node_modules` install:
 5. stop through `session.stop(...)`;
 6. print a compact JSON result.
 
-This is not a public Deno SDK. It is an external consumer shape for Deno's
-resolver against the current package artifact channel. It does not import
-Fireline source files, private package paths, the retired launch HTTP endpoint,
-or the retired launch-control client subpath.
+It is an external consumer shape for Deno's resolver against the current
+package artifact channel. It does not import Fireline source files or private
+package paths.
 
 ## Files
 
@@ -21,8 +21,8 @@ or the retired launch-control client subpath.
   `fireline.session(...)`, and `session.stop(...)`.
 
 The script uses `acp.inlineJsBundle(...)` only for the inline agent fixture.
-Normal lifecycle flow stays on `fireline.session(...)` and `session.stop(...)`
-instead of launch-handle APIs or Tier 3 spec/events/state subpaths.
+Normal lifecycle flow stays on `fireline.session(...)` and
+`session.stop(...)`.
 
 ## Reviewer Reproduce
 

@@ -1,13 +1,14 @@
 # Middleware Stack Example
 
-This example validates the package-shaped middleware builder surface from
-outside the Fireline source tree. It builds a normal stream-native launch with
-`trace(...)`, `contextInjection(...)`, and `budget(...)`, then opens a session
-through `fireline.session(...)` and stops it through `session.stop(...)`.
+This current Tier 1 example validates the package-shaped middleware builder
+surface from outside the Fireline source tree. It builds a normal
+managed-agent session with `new Fireline({ endpoint })`, `new Agent(...)`,
+`trace(...)`, `contextInjection(...)`, and `budget(...)`, then opens the
+session through `fireline.session(...)` and stops it through
+`session.stop(...)`.
 
 It deliberately does not use `memory()`, approval gates, webhook/Telegram
-subscribers, retired HTTP launch helpers, or Fireline
-internals.
+subscribers, or Fireline internals.
 
 The launch path uses `new Fireline({ endpoint })`, `new Agent(...)`, and
 `acp.inlineJsBundle(...)` for the fixture agent payload. The middleware

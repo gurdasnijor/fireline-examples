@@ -1,18 +1,17 @@
 # 17. ACP Registry Chat
 
-This example resolves an ACP registry row with `acpRegistry(...)` from
-`@fireline/client`, launches the resolved ACP stdio command through
-`new Fireline({ endpoint })` and `new Agent(...)`, attaches to the returned
-session, sends a follow-up prompt with `session.chat(...)`, and stops the
-session through `session.stop(...)`.
+This current Tier 1 example resolves an ACP registry row with
+`acpRegistry(...)` from `@fireline/client`, launches the resolved ACP stdio
+command through `new Fireline({ endpoint })` and `new Agent(...)`, attaches to
+the returned session, sends a follow-up prompt with `session.chat(...)`, and
+stops the session through `session.stop(...)`.
 
 It intentionally uses a local fixture catalog row whose distribution is
-`command`. That keeps the example inside the currently supported safe slice:
+`command`. The normal app lifecycle stays inside the current managed-agent
+surface:
 
 - no binary install/cache;
 - no launcher env metadata;
-- no retired launch-control client subpath;
-- no retired HTTP launch endpoint;
 - no hand-rolled lifecycle flow outside managed-agent.
 
 The launch path stays on `fireline.session(...)` and `session.stop(...)`.
@@ -133,8 +132,7 @@ stream before launching the child command.
 ## Out Of Scope
 
 The example does not use live public registry rows that require binary
-download/cache or launcher env metadata. Those surfaces remain fail-closed
-until their Fireline design and implementation gates land.
+download/cache or launcher env metadata.
 
 ## Local Evidence
 

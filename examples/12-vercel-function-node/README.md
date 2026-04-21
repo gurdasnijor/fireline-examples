@@ -1,7 +1,8 @@
 # Vercel Function Node Runtime
 
-Discovery-only Vercel Functions Node-runtime example. It models a serverless
-Node function that owns the Fireline call path for one request:
+Current Tier 1 Vercel Functions Node-runtime example. It models a serverless
+Node function that owns the Fireline call path for one request through
+`Fireline`, `Agent`, and a managed-agent session:
 
 1. derive the Fireline endpoint from deployment environment;
 2. create a `new Fireline({ endpoint })` client;
@@ -10,7 +11,6 @@ Node function that owns the Fireline call path for one request:
 5. stop through `session.stop(...)`;
 6. return a compact JSON response to the application caller.
 
-This is not a public Vercel deployment recipe and not a Fireline API wrapper.
 It is a Node serverless consumer shape. Node built-ins are permitted, but the
 normal Fireline lifecycle path should stay on `@fireline/client/managed-agent`.
 
@@ -22,8 +22,8 @@ normal Fireline lifecycle path should stay on `@fireline/client/managed-agent`.
 - `src/run-local.ts`: local E2E runner that starts a Node HTTP server around
   the handler and sends one request.
 
-The handler uses the Tier 1 managed-agent surface instead of Tier 3
-spec/events/state subpaths for normal lifecycle flow.
+The handler uses the current Tier 1 managed-agent surface for normal lifecycle
+flow.
 
 ## Reviewer Reproduce
 
