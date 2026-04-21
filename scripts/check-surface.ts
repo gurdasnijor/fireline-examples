@@ -68,6 +68,10 @@ const sharedHelperBans = [
   '../shared/managed-agent-launch.js',
   '../../shared/managed-agent-launch',
   '../../shared/managed-agent-launch.js',
+  '../shared/run-inline-fireline',
+  '../shared/run-inline-fireline.js',
+  '../../shared/run-inline-fireline',
+  '../../shared/run-inline-fireline.js',
 ] as const
 
 const managedAgentSpecifier = '@fireline/client/managed-agent'
@@ -163,14 +167,6 @@ for (const exampleDir of tier1Examples) {
       if (sharedHelperBans.includes(specifier as (typeof sharedHelperBans)[number])) {
         violations.push(`${relative}: current Tier 1 example must not use shared lifecycle helper ${specifier}`)
       }
-    }
-  }
-
-  if (aggregate.includes('shared/run-inline-fireline')) {
-    const helperText = await readFile(new URL('examples/shared/run-inline-fireline.ts', root), 'utf8')
-    aggregate += `\n${helperText}`
-    if (helperText.includes(managedAgentSpecifier)) {
-      sawManagedAgentImport = true
     }
   }
 
