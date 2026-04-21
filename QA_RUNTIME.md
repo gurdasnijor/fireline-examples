@@ -1,7 +1,18 @@
 # Runtime E2E Sweep
 
 Branch: `be4/examples-runtime-e2e-sweep`
-Base: `main` at `7e3003dbf8e7eec47c3b4324ab1c1098274b7adc`
+Base: `main` at `67be9728f9cb74a92abd0cea19557b9612c8477e`
+
+## Runtime Dev Status
+
+This document records accepted historical evidence from the pre-#349 runtime
+dev path. Fireline #349 deleted the JS runtime-dev orchestration, and native
+`fireline runtime dev` remains blocked on `mono-ug3b`.
+
+Do not use this file as a current runnable recipe for starting runtime dev.
+After `mono-ug3b` lands with native runtime dev artifacts, rerun this sweep
+against that command and replace the historical evidence below with current
+commands and artifacts.
 
 ## Static Checks
 
@@ -35,10 +46,11 @@ rg -n "Discovery-only|Tier 3|until.*cutover|until.*land|not a public|not a Firel
 
 Result: no matches.
 
-## E2E Result
+## Historical E2E Result
 
 Every runtime/server example reached a ready session and a stopped row in both
-fresh-daemon and prior-daemon reuse scenarios.
+fresh-daemon and prior-daemon reuse scenarios before #349 removed the JS
+runtime-dev entrypoint.
 
 | Example | Fresh artifact | Reuse artifact | Result |
 | --- | --- | --- | --- |
@@ -51,59 +63,23 @@ fresh-daemon and prior-daemon reuse scenarios.
 | 17 ACP registry chat | `/tmp/fireline-examples-runtime-e2e-17-fresh` | `/tmp/fireline-examples-runtime-e2e-17-reuse` | `sessionStatus: "session_ready"`, `stopStatus: "stopped"` |
 | 18 middleware stack | `/tmp/fireline-examples-runtime-e2e-18-fresh` | `/tmp/fireline-examples-runtime-e2e-18-reuse` | `sessionStatus: "session_ready"`, `stopStatus: "stopped"` |
 
-The Vercel Edge bundle build log is at
+The historical Vercel Edge bundle build log was at
 `/tmp/fireline-examples-runtime-e2e-edge-build.log`.
 
-## Command Shape
+## Rerun Plan After mono-ug3b
 
-Fresh one-shot examples used:
-
-```sh
-FIRELINE_STATE_DIR=<artifact>/state \
-pnpm exec fireline-v3-dev \
-  --fireline-port <port> \
-  --streams-port <streams-port> \
-  --state-stream <stream> -- \
-  env FIRELINE_ENDPOINT="http://127.0.0.1:<streams-port>/v1/stream/<stream>" \
-    <example command>
-```
-
-Prior-daemon reuse examples started the daemon first:
+When native runtime dev is available, rerun the same fresh-daemon and
+prior-daemon reuse scenarios for examples 08, 11, 12, 13, 14, 16, 17, and 18.
+The runtime dev command must inject:
 
 ```sh
-FIRELINE_STATE_DIR=<artifact>/state \
-pnpm exec fireline-v3-dev \
-  --fireline-port <port> \
-  --streams-port <streams-port> \
-  --state-stream <stream> -- sleep 180
+FIRELINE_ENDPOINT=<full appendable launch/control stream URL>
 ```
 
-Then ran the example in a second process with:
-
-```sh
-FIRELINE_ENDPOINT="http://127.0.0.1:<streams-port>/v1/stream/<stream>" \
-  <example command>
-```
-
-Cloudflare Worker direct used the same daemon pattern plus Wrangler:
-
-```sh
-pnpm dlx wrangler@4.83.0 dev \
-  --config examples/08-cloudflare-worker-direct/wrangler.toml \
-  --ip 127.0.0.1 \
-  --port <worker-port> \
-  --local \
-  --show-interactive-dev-session=false \
-  --var FIRELINE_ENDPOINT:http://127.0.0.1:<streams-port>/v1/stream/<stream>
-```
-
-Then:
-
-```sh
-curl -fsS -X POST "http://127.0.0.1:<worker-port>/demo" \
-  -H "content-type: application/json" \
-  --data '{"prompt":"Run runtime E2E"}'
-```
+The examples should pass that value directly to `new Fireline({ endpoint })`
+or expose it to the browser as the app-facing endpoint value. Do not re-add
+`fireline-v3-dev` recipes or temporary binary wrappers to synthesize the
+endpoint.
 
 ## Notes
 
