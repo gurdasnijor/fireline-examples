@@ -1,5 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises'
+
 const root = new URL('..', import.meta.url)
+
 const targetExampleBans = [
   {
     pattern: /@fireline\/client\/launch-control/,
@@ -14,8 +16,24 @@ const targetExampleBans = [
     message: 'target examples must not use FIRELINE_LAUNCH_URL',
   },
 ] as const
-const managedAgentCutoverExamples = [
+
+const tier2Examples = [
+  'examples/07-curl-shell-raw-http/',
+  'examples/09-python-raw-http/',
+  'examples/10-rust-raw-http/',
+  'examples/15-go-raw-http/',
+] as const
+
+const currentTier1Examples = [
+  'examples/01-inline-js-local/',
   'examples/02-editable-agent-web/',
+  'examples/03-tanstack-shaped-app/',
+  'examples/04-next-basic/',
+  'examples/05-next-open-cloudflare/',
+  'examples/06-flamecast-v3-shaped/',
+] as const
+
+const bridgeTier1Examples = [
   'examples/08-cloudflare-worker-direct/',
   'examples/11-server-worker-wrapper/',
   'examples/12-vercel-function-node/',
@@ -25,6 +43,48 @@ const managedAgentCutoverExamples = [
   'examples/17-acp-registry-chat/',
   'examples/18-middleware-stack/',
 ] as const
+
+const bridgeNameBans = [
+  'createManagedAgentClient',
+  'createManagedAgentLaunchRequest',
+  'launchAgent(',
+  'launchAgent<',
+  'ManagedAgentLaunchHandle',
+  'launchControlStreamUrl',
+  'FIRELINE_LAUNCH_CONTROL_STREAM_URL',
+  'VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL',
+  'NEXT_PUBLIC_FIRELINE_LAUNCH_CONTROL_STREAM_URL',
+] as const
+
+const tier3SpecifierBans = [
+  '@fireline/client/spec',
+  '@fireline/client/events',
+  '@fireline/client/acp-browser',
+  '@fireline/state',
+] as const
+
+const sharedHelperBans = [
+  '../shared/stream-launch',
+  '../shared/stream-launch.js',
+  '../../shared/stream-launch',
+  '../../shared/stream-launch.js',
+  '../shared/managed-agent-launch',
+  '../shared/managed-agent-launch.js',
+  '../../shared/managed-agent-launch',
+  '../../shared/managed-agent-launch.js',
+] as const
+
+const targetShapeTokens = [
+  'new Fireline(',
+  'new Agent(',
+  '.session(',
+  '.chat(',
+  '.respond(',
+  '.stop(',
+  '.run(',
+] as const
+
+const managedAgentSpecifier = '@fireline/client/managed-agent'
 const managedAgentLifecycleBans = new Set([
   '@fireline/client/events',
   '@fireline/client/acp-browser',
@@ -60,55 +120,92 @@ for await (const file of walk(root)) {
       }
     }
   }
+
   for (const specifier of firelineSpecifiers(text)) {
     if (specifier.includes('/internal/')) {
       violations.push(`${relative}: private Fireline subpath ${specifier}`)
     }
     if (
-      isManagedAgentCutoverExample(relative) &&
+      isBridgeTier1Example(relative) &&
       managedAgentLifecycleBans.has(specifier)
     ) {
       violations.push(
-        `${relative}: normal app examples should use @fireline/client/managed-agent for lifecycle flow instead of ${specifier}`,
+        `${relative}: current Tier 1 bridge examples should use @fireline/client/managed-agent for lifecycle flow instead of ${specifier}`,
       )
     }
     if (
       relative.startsWith('examples/') &&
       specifier === '@fireline/client' &&
-      /import\s*{[^}]*\b(createManagedAgentClient|ManagedAgent[A-Za-z]*)\b[^}]*}\s*from\s+['"]@fireline\/client['"]/s.test(text)
+      /import\s*{[^}]*\b(createManagedAgentClient|createManagedAgentLaunchRequest|launchAgent|ManagedAgent[A-Za-z]*|Fireline|Agent)\b[^}]*}\s*from\s+['"]@fireline\/client['"]/s.test(text)
     ) {
       violations.push(`${relative}: managed-agent helpers must import @fireline/client/managed-agent, not the root barrel`)
     }
   }
-  if (
-    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
-    !text.includes('@fireline/client/managed-agent')
-  ) {
-    violations.push(`${relative}: editable-agent-web must use Tier 1 @fireline/client/managed-agent`)
-  }
-  if (
-    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
-    text.includes('@fireline/client/spec')
-  ) {
-    violations.push(`${relative}: editable-agent-web must not import Tier 3 @fireline/client/spec for normal app launch construction`)
-  }
-  if (
-    relative === 'examples/02-editable-agent-web/src/fireline.ts' &&
-    text.includes('../../shared/stream-launch.js')
-  ) {
-    violations.push(`${relative}: editable-agent-web must not call shared stream-launch helpers for normal app lifecycle`)
-  }
-  if (
-    relative === 'examples/02-editable-agent-web/src/App.tsx' &&
-    text.includes('@fireline/client/acp-browser')
-  ) {
-    violations.push(`${relative}: editable-agent-web must use ManagedAgentLaunchHandle.connectBrowserAcp for normal browser ACP`)
-  }
+
   if (relative.startsWith('examples/')) {
     for (const ban of targetExampleBans) {
       if (ban.pattern.test(text)) {
         violations.push(`${relative}: ${ban.message}`)
       }
+    }
+  }
+}
+
+for (const exampleDir of currentTier1Examples) {
+  const files = await collectCheckedFiles(new URL(exampleDir, root))
+  let aggregate = ''
+  let sawManagedAgentImport = false
+
+  for (const file of files) {
+    const text = await readFile(file, 'utf8')
+    const relative = file.replace(root.pathname, '')
+    aggregate += `\n${text}`
+
+    for (const bridgeName of bridgeNameBans) {
+      if (text.includes(bridgeName)) {
+        violations.push(`${relative}: current Tier 1 example must not use bridge or old endpoint vocabulary ${bridgeName}`)
+      }
+    }
+
+    for (const specifier of importSpecifiers(text)) {
+      if (specifier === managedAgentSpecifier) {
+        sawManagedAgentImport = true
+      }
+      if (tier3SpecifierBans.includes(specifier as (typeof tier3SpecifierBans)[number])) {
+        violations.push(`${relative}: current Tier 1 example must not import Tier 3 escape hatch ${specifier}`)
+      }
+      if (sharedHelperBans.includes(specifier as (typeof sharedHelperBans)[number])) {
+        violations.push(`${relative}: current Tier 1 example must not use shared lifecycle helper ${specifier}`)
+      }
+    }
+  }
+
+  if (aggregate.includes('shared/run-inline-fireline')) {
+    const helperText = await readFile(new URL('examples/shared/run-inline-fireline.ts', root), 'utf8')
+    aggregate += `\n${helperText}`
+    if (helperText.includes(managedAgentSpecifier)) {
+      sawManagedAgentImport = true
+    }
+  }
+
+  if (!sawManagedAgentImport) {
+    violations.push(`${exampleDir}: current Tier 1 example must import ${managedAgentSpecifier}`)
+  }
+
+  if (!targetShapeTokens.some((token) => aggregate.includes(token))) {
+    violations.push(
+      `${exampleDir}: current Tier 1 example must use Fireline/Agent/session/chat/respond/stop/run target vocabulary`,
+    )
+  }
+}
+
+for (const exampleDir of tier2Examples) {
+  const files = await collectCheckedFiles(new URL(exampleDir, root))
+  for (const file of files) {
+    const text = await readFile(file, 'utf8')
+    const relative = file.replace(root.pathname, '')
+    if (text.includes(managedAgentSpecifier)) {
+      violations.push(`${relative}: Tier 2 example should remain protocol/raw and must not import managed-agent`)
     }
   }
 }
@@ -119,6 +216,16 @@ if (violations.length > 0) {
 }
 
 console.log('surface check passed')
+
+async function collectCheckedFiles(dirUrl: URL): Promise<string[]> {
+  const files: string[] = []
+  for await (const file of walk(dirUrl)) {
+    if (isCheckedFile(file)) {
+      files.push(file)
+    }
+  }
+  return files
+}
 
 async function* walk(dirUrl: URL): AsyncGenerator<string> {
   for (const entry of await readdir(dirUrl, { withFileTypes: true })) {
@@ -189,6 +296,6 @@ function isNodeBuiltinSpecifier(specifier: string): boolean {
   ].includes(bare)
 }
 
-function isManagedAgentCutoverExample(relative: string): boolean {
-  return managedAgentCutoverExamples.some((prefix) => relative.startsWith(prefix))
+function isBridgeTier1Example(relative: string): boolean {
+  return bridgeTier1Examples.some((prefix) => relative.startsWith(prefix))
 }

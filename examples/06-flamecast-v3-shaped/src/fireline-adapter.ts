@@ -1,8 +1,7 @@
 import {
-  createManagedAgentClient,
-  createManagedAgentLaunchRequest,
+  Agent,
+  Fireline,
 } from '@fireline/client/managed-agent'
-import type { ManagedAgentLaunchHandle } from '@fireline/client/managed-agent'
 import type { FlamecastRunIntent, FlamecastRunSummary } from './framework-boundary.js'
 import { createGeneratedHarnessAgent } from './generated-harness.js'
 
@@ -10,39 +9,41 @@ export async function runFlamecastCharacterization(
   intent: FlamecastRunIntent,
 ): Promise<FlamecastRunSummary> {
   const clientRequestId = stableClientRequestId(intent)
-  const client = createManagedAgentClient({
-    launchControlStreamUrl: intent.controlStreamUrl,
+  const fireline = new Fireline({
+    endpoint: intent.endpoint,
     requestedBy: intent.requestedBy,
     defaults: {
-      stopReason: 'flamecast-shaped characterization complete',
+      wait: {
+        until: 'session_ready',
+        timeoutMs: 60_000,
+      },
     },
   })
-  const handle = await client.launch(
-    createManagedAgentLaunchRequest({
-      name: 'flamecast-v3-shaped',
-      agent: await createGeneratedHarnessAgent({
-        revision: clientRequestId,
-        composition: intent.composition,
-      }),
-      sandbox: {
-        provider: 'local',
-        fsBackend: 'streamFs',
-        env: {
-          FLAMECAST_WORKSPACE_ID: intent.workspaceId,
-          FLAMECAST_SCENE_COUNT: String(intent.composition.sceneCount),
-          FLAMECAST_TONE: intent.composition.tone,
-        },
-        labels: {
-          example: '06-flamecast-v3-shaped',
-          mode: 'black-box-characterization',
-          framework: 'flamecast-v3-shaped',
-        },
+  const agent = new Agent({
+    id: 'flamecast-v3-shaped',
+    entrypoint: await createGeneratedHarnessAgent({
+      revision: clientRequestId,
+      composition: intent.composition,
+    }),
+    sandbox: {
+      provider: 'local',
+      fsBackend: 'streamFs',
+      env: {
+        FLAMECAST_WORKSPACE_ID: intent.workspaceId,
+        FLAMECAST_SCENE_COUNT: String(intent.composition.sceneCount),
+        FLAMECAST_TONE: intent.composition.tone,
       },
-      middleware: {
-        kind: 'middleware',
-        chain: [],
+      labels: {
+        example: '06-flamecast-v3-shaped',
+        mode: 'black-box-characterization',
+        framework: 'flamecast-v3-shaped',
       },
-      clientRequestId,
+    },
+    middleware: {
+      kind: 'middleware',
+      chain: [],
+    },
+    defaults: {
       runtime: {
         name: 'flamecast-v3-shaped',
         provider: 'local',
@@ -52,45 +53,69 @@ export async function runFlamecastCharacterization(
           workspaceId: intent.workspaceId,
         },
       },
-      startSession: {
-        stateStream: sessionStateStream(intent),
-        create: true,
-        cwd: '/',
-        mcpServers: [],
-        prompt: 'prepare flamecast composition runtime',
-      },
       wait: {
         until: 'session',
         timeoutMs: 60_000,
       },
-    }),
-    {
-      idempotencyKey: clientRequestId,
-      wait: false,
     },
-  )
-
-  const row = await handle.waitUntil('session_ready', { timeoutMs: 60_000 })
+  })
 
   const events = [
-    `appended ${handle.requestEnvelope?.type}`,
-    `observed managed-agent launch row ${row.launchId}`,
+    `created agent ${agent.id}`,
+    `resolved endpoint ${intent.endpoint}`,
   ]
+  let session:
+    | Awaited<ReturnType<Fireline['session']>>
+    | undefined
   try {
     let followUpSent = false
+    let followUpStopReason: string | undefined
+    let sessionStatus: string | undefined
+    let requiredActions: readonly string[] = []
     let followUpError: unknown
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy: intent.requestedBy,
+      prompt: 'prepare flamecast composition runtime',
+      cwd: '/',
+      mcpServers: [],
+      advanced: {
+        startSession: {
+          stateStream: sessionStateStream(intent),
+          create: true,
+        },
+        request: {
+          clientRequestId,
+        },
+      },
+    })
+    const ready = session.current()
+    sessionStatus = ready.status
+    requiredActions = ready.requiredActions.map((action) => action.type)
+    events.push(`opened session ${ready.sessionId ?? 'pending'}`)
+    if (requiredActions.length > 0) {
+      events.push(`session requires actions: ${requiredActions.join(', ')}`)
+    }
     try {
-      followUpSent = await attachAndMaybePrompt({
-        handle,
-        clientName: 'flamecast-v3-shaped-consumer',
-        followUpPrompt: intent.followUpPrompt ?? 'complete the flamecast characterization run',
-        events,
-      })
+      const result = await session.chat(
+        intent.followUpPrompt ?? 'complete the flamecast characterization run',
+      )
+      followUpSent = true
+      followUpStopReason = result.stopReason
+      const afterChat = session.current()
+      sessionStatus = afterChat.status
+      requiredActions = afterChat.requiredActions.map((action) => action.type)
+      events.push(`sent session chat to ${result.sessionId}`)
+      if (requiredActions.length > 0) {
+        events.push(`session requires actions after chat: ${requiredActions.join(', ')}`)
+      }
     } catch (error) {
       followUpError = error
-      events.push(`ACP follow-up failed: ${error instanceof Error ? error.message : String(error)}`)
+      events.push(
+        `session chat failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
-    const stop = await handle.stop({
+    const stop = await session.stop({
       clientRequestId,
       reason: 'flamecast-shaped characterization complete',
       wait: { until: 'terminal', timeoutMs: 60_000 },
@@ -100,28 +125,21 @@ export async function runFlamecastCharacterization(
     if (followUpError) throw followUpError
 
     return {
-      launchId: row.launchId,
-      clientRequestId: row.clientRequestId,
-      launchStatus: row.status,
-      runtime: row.runtime
-        ? {
-            runtimeId: row.runtime.runtimeId,
-            acpUrl: row.runtime.acp.url,
-            stateUrl: row.runtime.state.url,
-          }
-        : undefined,
-      session: row.startSession
-        ? {
-            acpSessionId: row.startSession.acpSessionId,
-            followUpSent,
-          }
-        : undefined,
+      launchId: session.launchId,
+      clientRequestId,
+      session: {
+        sessionId: session.current().sessionId,
+        status: sessionStatus,
+        followUpSent,
+        stopReason: followUpStopReason,
+        requiredActions,
+      },
       stopStatus: stop.row?.status ?? 'unknown',
       events,
     }
   } finally {
-    handle.close()
-    client.close()
+    session?.close()
+    fireline.close()
   }
 }
 
@@ -148,35 +166,4 @@ function sessionStateStream(intent: FlamecastRunIntent): string {
 function safeIdPart(value: string): string {
   const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
   return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
-}
-
-async function attachAndMaybePrompt(options: {
-  readonly handle: ManagedAgentLaunchHandle
-  readonly clientName: string
-  readonly followUpPrompt: string
-  readonly events: string[]
-}): Promise<boolean> {
-  const sessionId = options.handle.current()?.startSession?.acpSessionId
-  if (!sessionId) {
-    options.events.push('skipped ACP follow-up because launch row lacked coordinates')
-    return false
-  }
-
-  const acp = await options.handle.connectBrowserAcp({
-    clientName: options.clientName,
-    wait: { until: 'session_ready', timeoutMs: 60_000 },
-    onSessionUpdate(notification) {
-      options.events.push(`acp update ${JSON.stringify(notification).slice(0, 160)}`)
-    },
-  })
-  try {
-    await acp.connection.prompt({
-      sessionId,
-      prompt: [{ type: 'text', text: options.followUpPrompt }],
-    })
-    options.events.push(`sent ACP follow-up to ${sessionId}`)
-    return true
-  } finally {
-    await acp.close()
-  }
 }

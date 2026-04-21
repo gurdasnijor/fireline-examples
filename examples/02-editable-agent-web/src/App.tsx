@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createEditableLaunch,
   stopEditableLaunch,
-  type EditableAcpConnection,
   type BrainPlacement,
   type EditableLaunchResult,
+  type EditableSessionSnapshot,
   type FilesystemPlacement,
   type MiddlewareChoice,
 } from './fireline.js'
@@ -19,18 +19,18 @@ const defaultAgentCode = `export default async function handle(ctx) {
 
 const defaultControlStream = envValue(import.meta.env.VITE_FIRELINE_CONTROL_STREAM) ?? 'fireline-examples-control'
 const defaultStreamsPort = envValue(import.meta.env.VITE_FIRELINE_STREAMS_PORT) ?? '7474'
-const derivedLocalControlStreamUrl =
+const derivedLocalEndpoint =
   `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${defaultControlStream}`
-const defaultControlStreamUrl =
-  envValue(import.meta.env.VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL) ?? derivedLocalControlStreamUrl
+const defaultEndpoint =
+  envValue(import.meta.env.VITE_FIRELINE_ENDPOINT) ?? derivedLocalEndpoint
 const daemonDefaultControlStream = 'fireline-v3-dev-daemon'
-const daemonDefaultControlStreamUrl =
+const daemonDefaultEndpoint =
   `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${daemonDefaultControlStream}`
 const localStreamsHealthUrl = `http://127.0.0.1:${defaultStreamsPort}/healthz`
 const localDaemonCommand =
   `FIRELINE_CONTROL_STREAM=${defaultControlStream} fireline-v3-dev --state-stream ${defaultControlStream}`
 const shellDerivation =
-  `export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`
+  `export FIRELINE_ENDPOINT="http://127.0.0.1:\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`
 const viteHandoffCommand =
   'FIRELINE_CONTROL_STREAM=<daemon-stream> fireline-v3-dev --state-stream <daemon-stream> -- pnpm run dev:editable-agent-web'
 
@@ -41,7 +41,7 @@ interface LogEntry {
 }
 
 export function App() {
-  const [controlStreamUrl, setControlStreamUrl] = useState(defaultControlStreamUrl)
+  const [endpoint, setEndpoint] = useState(defaultEndpoint)
   const [daemonStatus, setDaemonStatus] = useState('Checking local fireline-v3-dev...')
   const [recoveryHint, setRecoveryHint] = useState<string | undefined>()
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
@@ -51,52 +51,50 @@ export function App() {
   const [initialPrompt, setInitialPrompt] = useState('Say hello from the editable agent.')
   const [chatPrompt, setChatPrompt] = useState('Can you respond to a second prompt?')
   const [result, setResult] = useState<EditableLaunchResult | undefined>()
+  const [snapshot, setSnapshot] = useState<EditableSessionSnapshot | undefined>()
   const [status, setStatus] = useState('Idle')
   const [logs, setLogs] = useState<readonly LogEntry[]>([])
   const [busy, setBusy] = useState(false)
-  const acp = useRef<EditableAcpConnection | undefined>(undefined)
+  const resultRef = useRef<EditableLaunchResult | undefined>(undefined)
+  const subscription = useRef<{ unsubscribe(): void } | undefined>(undefined)
 
-  const launch = result?.row
-  const acpSessionId = launch?.startSession?.acpSessionId
-  const canChat = Boolean(acp.current && acpSessionId && !busy)
+  const canChat = Boolean(result && snapshot?.sessionId && !busy)
   const canStop = Boolean(result && !busy)
-  const coordinates = useMemo(() => launch ? JSON.stringify({
-    launchId: launch.launchId,
-    clientRequestId: launch.clientRequestId,
-    status: launch.status,
-    controlStreamUrl,
-    envelope: result && {
-      type: result.envelope.type,
-      key: result.envelope.key,
-    },
-    runtime: launch.runtime && {
-      runtimeId: launch.runtime.runtimeId,
-      acpUrl: launch.runtime.acp.url,
-      state: launch.runtime.state,
-    },
-    startSession: launch.startSession,
-  }, null, 2) : 'No launch yet.', [launch])
+  const coordinates = useMemo(() => snapshot ? JSON.stringify({
+    endpoint,
+    launchId: snapshot.launchId,
+    sessionId: snapshot.sessionId,
+    status: snapshot.status,
+    requiredActions: snapshot.requiredActions,
+  }, null, 2) : 'No session yet.', [endpoint, snapshot])
 
   useEffect(() => {
     let cancelled = false
-    void probeLocalDaemon(controlStreamUrl).then((status) => {
+    void probeLocalDaemon(endpoint).then((status) => {
       if (!cancelled) setDaemonStatus(status)
     })
     return () => {
       cancelled = true
     }
-  }, [controlStreamUrl])
+  }, [endpoint])
+
+  useEffect(() => () => {
+    closeLaunchResources({ updateState: false })
+  }, [])
+
+  useEffect(() => {
+    resultRef.current = result
+  }, [result])
 
   async function run() {
     await withBusy(async () => {
-      await closeAcp()
-      result?.close()
-      setResult(undefined)
+      closeLaunchResources()
+      setSnapshot(undefined)
       setLogs([])
-      addLog('launch', 'Creating managed-agent launch and waiting for session coordinates.')
+      addLog('launch', 'Creating Fireline session and sending the initial prompt.')
       setRecoveryHint(undefined)
       const next = await createEditableLaunch({
-        controlStreamUrl,
+        endpoint,
         agentCode,
         initialPrompt,
         brainPlacement,
@@ -104,45 +102,45 @@ export function App() {
         middleware,
       })
       setResult(next)
-      addLog('launch', `Launch ${next.row.launchId} reached ${next.row.status}.`)
-      if (next.row.runtime?.acp.url) {
-        acp.current = await next.connectBrowserAcp({
-          clientName: 'fireline-examples-editable-agent-web',
-          onSessionUpdate(notification) {
-            addLog('session/update', summarizeUpdate(notification))
-          },
-        })
-        addLog('acp', 'Connected to the runtime ACP endpoint.')
-      } else {
-        addLog('acp', 'No runtime ACP URL returned.')
+      setSnapshot(next.current())
+      subscription.current = next.subscribe((current) => {
+        setSnapshot(current)
+      })
+      const current = next.current()
+      addLog('session', `Launch ${current.launchId ?? '(pending)'} reached ${current.status ?? 'unknown'}.`)
+      if (current.sessionId) {
+        addLog('session', `Session ${current.sessionId} is ready on ${endpoint}.`)
       }
+      addLog('chat', summarizeChatResult('Initial prompt', next.initialResponse))
     }, 'Running')
   }
 
   async function sendPrompt() {
-    if (!acp.current || !acpSessionId) return
+    if (!result || !snapshot?.sessionId) return
     await withBusy(async () => {
       addLog('user', chatPrompt)
-      const response = await acp.current!.connection.prompt({
-        sessionId: acpSessionId,
-        prompt: [{ type: 'text', text: chatPrompt }],
+      const response = await result.session.chat(chatPrompt, {
+        wait: {
+          until: 'session_ready',
+          timeoutMs: 60_000,
+        },
       })
-      addLog('prompt/result', `stopReason=${response.stopReason}`)
+      setSnapshot(result.current())
+      addLog('chat', summarizeChatResult('Follow-up prompt', response))
     }, 'Sending prompt')
   }
 
   async function stopLaunch() {
     if (!result) return
     await withBusy(async () => {
-      await closeAcp()
-      addLog('stop', `Appending launch_stop for ${result.row.launchId}.`)
+      addLog('stop', `Stopping launch ${snapshot?.launchId ?? '(pending)'}.`)
       const stopped = await stopEditableLaunch({
         launch: result,
         reason: 'Stopped from editable-agent-web UI',
       })
-      result.close()
-      setResult(undefined)
-      addLog('stop', `Launch ${stopped.row.launchId} reached ${stopped.row.status}.`)
+      setSnapshot(stopped.snapshot)
+      closeLaunchResources()
+      addLog('stop', `Launch ${stopped.snapshot.launchId ?? '(pending)'} reached ${stopped.snapshot.status ?? 'unknown'}.`)
     }, 'Stopping')
   }
 
@@ -155,7 +153,7 @@ export function App() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       addLog('error', message)
-      const recovery = explainLaunchError(error, controlStreamUrl)
+      const recovery = explainLaunchError(error, endpoint)
       if (recovery) {
         setRecoveryHint(recovery)
         addLog('recovery', recovery)
@@ -174,9 +172,14 @@ export function App() {
     }])
   }
 
-  async function closeAcp() {
-    await acp.current?.close()
-    acp.current = undefined
+  function closeLaunchResources(options: { updateState?: boolean } = {}) {
+    subscription.current?.unsubscribe()
+    subscription.current = undefined
+    resultRef.current?.close()
+    resultRef.current = undefined
+    if (options.updateState !== false) {
+      setResult(undefined)
+    }
   }
 
   return (
@@ -193,10 +196,10 @@ export function App() {
         <div className="control-grid">
           <div className="stream-config">
             <label>
-              Launch/control stream URL
+              Fireline endpoint
               <input
-                value={controlStreamUrl}
-                onChange={(event) => setControlStreamUrl(event.target.value)}
+                value={endpoint}
+                onChange={(event) => setEndpoint(event.target.value)}
                 aria-describedby="stream-config-help"
               />
             </label>
@@ -205,14 +208,14 @@ export function App() {
             </p>
             {recoveryHint && <p className="recovery-hint">{recoveryHint}</p>}
             <div className="stream-actions">
-              <button type="button" onClick={() => setControlStreamUrl(defaultControlStreamUrl)}>
+              <button type="button" onClick={() => setEndpoint(defaultEndpoint)}>
                 Use local default
               </button>
-              <button type="button" onClick={() => setControlStreamUrl(daemonDefaultControlStreamUrl)}>
+              <button type="button" onClick={() => setEndpoint(daemonDefaultEndpoint)}>
                 Use daemon default
               </button>
               <button type="button" onClick={() => void navigator.clipboard?.writeText(shellDerivation)}>
-                Copy derivation
+                Copy endpoint
               </button>
             </div>
             <code className="command-line">{shellDerivation}</code>
@@ -300,15 +303,15 @@ async function probeLocalDaemon(controlStreamUrl: string): Promise<string> {
     if (!streamName) return `Detected local streams on ${localStreamsHealthUrl}.`
     const streamProbe = await fetch(controlStreamUrl, { method: 'GET', cache: 'no-store' })
     if (streamProbe.ok) {
-      return `Detected local streams on ${localStreamsHealthUrl}; ${streamName} is readable.`
+      return `Detected local streams on ${localStreamsHealthUrl}; endpoint ${streamName} is readable.`
     }
     if (streamProbe.status === 404) {
       return [
-        `Detected local streams on ${localStreamsHealthUrl}, but ${streamName} is not readable yet.`,
-        'If Run returns 404, reuse the exact launch/control URL exported by the daemon or restart with the matching --state-stream.',
+        `Detected local streams on ${localStreamsHealthUrl}, but endpoint ${streamName} is not readable yet.`,
+        'If Run returns 404, reuse the exact FIRELINE_ENDPOINT exported by the daemon or restart with the matching --state-stream.',
       ].join(' ')
     }
-    return `Detected local streams on ${localStreamsHealthUrl}; stream probe returned HTTP ${streamProbe.status}.`
+    return `Detected local streams on ${localStreamsHealthUrl}; endpoint probe returned HTTP ${streamProbe.status}.`
   } catch {
     return `Start local Fireline with: ${localDaemonCommand}`
   }
@@ -319,10 +322,10 @@ function explainLaunchError(error: unknown, controlStreamUrl: string): string | 
   if (!/404|Stream not found/i.test(message)) return undefined
   const missingStream = streamNameFromMessage(message) ?? streamNameFromUrl(controlStreamUrl) ?? '<stream>'
   return [
-    `Launch/control stream ${missingStream} was not found by durable streams.`,
+    `Fireline endpoint ${missingStream} was not found by durable streams.`,
     'This usually means editable-agent-web is pointed at a stream the reused daemon is not watching.',
-    `Use the exact FIRELINE_LAUNCH_CONTROL_STREAM_URL printed/exported by fireline-v3-dev, or restart through: ${viteHandoffCommand}.`,
-    `For the daemon default stream, try ${daemonDefaultControlStreamUrl}.`,
+    `Use the exact FIRELINE_ENDPOINT printed/exported by fireline-v3-dev, or restart through: ${viteHandoffCommand}.`,
+    `For the daemon default stream, try ${daemonDefaultEndpoint}.`,
   ].join(' ')
 }
 
@@ -370,13 +373,24 @@ function Choice(props: {
   )
 }
 
-function summarizeUpdate(notification: unknown): string {
-  if (!notification || typeof notification !== 'object') return String(notification)
-  const update = 'update' in notification ? notification.update : undefined
-  if (!update || typeof update !== 'object') return JSON.stringify(notification)
-  const kind = 'sessionUpdate' in update ? String(update.sessionUpdate) : 'update'
-  if ('content' in update && update.content && typeof update.content === 'object' && 'text' in update.content) {
-    return `${kind}: ${String(update.content.text)}`
+function summarizeChatResult(label: string, response: {
+  readonly sessionId: string
+  readonly stopReason?: string
+  readonly response: Record<string, unknown>
+}): string {
+  return [
+    `${label}: session ${response.sessionId}.`,
+    `stopReason=${response.stopReason ?? 'unknown'}.`,
+    `response=${summarizePayload(response.response)}`,
+  ].join(' ')
+}
+
+function summarizePayload(value: unknown): string {
+  try {
+    const json = JSON.stringify(value)
+    if (!json) return 'null'
+    return json.length > 220 ? `${json.slice(0, 217)}...` : json
+  } catch {
+    return String(value)
   }
-  return `${kind}: ${JSON.stringify(update)}`
 }

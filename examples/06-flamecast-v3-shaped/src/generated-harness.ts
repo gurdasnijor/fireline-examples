@@ -1,4 +1,4 @@
-import { inlineJsBundleAgent } from '@fireline/client/managed-agent'
+import { acp } from '@fireline/client/managed-agent'
 import type { FlamecastComposition } from './framework-boundary.js'
 
 export interface GeneratedHarnessOptions {
@@ -7,7 +7,7 @@ export interface GeneratedHarnessOptions {
 }
 
 export async function createGeneratedHarnessAgent(options: GeneratedHarnessOptions) {
-  return await inlineJsBundleAgent({
+  return await acp.inlineJsBundle({
     entrypoint: 'adapter-entry.mjs',
     files: [
       {

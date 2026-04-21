@@ -5,9 +5,9 @@ variable, binary, and endpoint used by this discovery repo.
 
 ## Package Refs
 
-- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
+- `@fireline/client`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7`
 - `@fireline/runtime`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd`
-- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`
+- `@fireline/state`: `git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7`
 - `@agentclientprotocol/sdk`: `0.19.0` for the local ACP stdio agent used by
   `examples/17-acp-registry-chat`.
 
@@ -19,16 +19,12 @@ npm package names.
 ## Fireline Imports
 
 - `@fireline/client/managed-agent`
-  - `createManagedAgentClient`
-  - `createManagedAgentLaunchRequest`
-  - `inlineJsBundleAgent`
-  - `jsModuleAgent`
-  - `acpStdioAgent`
-  - `ManagedAgentClient`
-  - `ManagedAgentLaunchHandle`
-  - `ManagedAgentLaunchWaitOptions`
-  - `ManagedAgentHeaderProvider`
-  - `ManagedAgentStopResult`
+  - `Fireline`
+  - `Agent`
+  - `acp`
+  - `ManagedAgentSessionHandle`
+  - `ManagedAgentSessionSnapshot`
+  - `ManagedAgentChatResult`
 - `@fireline/client/spec`
   - `inlineBundleArtifact`
   - `jsModuleAgentForm`
@@ -57,11 +53,12 @@ npm package names.
 
 Examples do not import `@fireline/client/launch-control`, runtime internals,
 private package source, or managed-agent helpers from the root
-`@fireline/client` barrel. Normal ergonomic examples in the mono-oet.29.3.32
-cutover lanes use `@fireline/client/managed-agent` for request construction,
-launch/wait, ACP follow-up, and stop. Direct `@fireline/client/spec` usage
-remains in lower-level protocol/runtime characterization examples, not in the
-normal managed-agent cutover paths.
+`@fireline/client` barrel. Normal ergonomic examples in the `mono-v396`
+cutover lanes use `@fireline/client/managed-agent` for `new Fireline({
+endpoint })`, `new Agent(...)`, `fireline.session(...)`, `session.chat(...)`,
+`session.respond(...)`, `session.stop(...)`, and `fireline.run(...)`. Direct
+Tier 3 usage remains in lower-level protocol/runtime characterization examples,
+not in the normal managed-agent cutover paths.
 
 ## Framework Imports
 

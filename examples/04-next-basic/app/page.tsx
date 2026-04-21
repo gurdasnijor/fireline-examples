@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { runInlineLaunch } from './run-inline-launch'
 
 export default function Page() {
-  const [controlStreamUrl, setControlStreamUrl] = useState('')
+  const [endpoint, setEndpoint] = useState(process.env.NEXT_PUBLIC_FIRELINE_ENDPOINT ?? '')
   const [prompt, setPrompt] = useState('Hello from straightforward Next.')
   const [busy, setBusy] = useState(false)
   const [output, setOutput] = useState('No launch yet.')
@@ -13,7 +13,7 @@ export default function Page() {
     setBusy(true)
     try {
       const result = await runInlineLaunch({
-        controlStreamUrl,
+        endpoint,
         prompt,
         example: '04-next-basic',
       })
@@ -27,14 +27,14 @@ export default function Page() {
 
   return (
     <main>
-      <p className="eyebrow">Discovery, not canonical</p>
+      <p className="eyebrow">Tier 1 managed-agent path</p>
       <h1>Next-shaped Fireline app</h1>
       <section className="controls">
         <label>
-          Launch/control stream URL
+          Fireline endpoint
           <input
-            value={controlStreamUrl}
-            onChange={(event) => setControlStreamUrl(event.target.value)}
+            value={endpoint}
+            onChange={(event) => setEndpoint(event.target.value)}
             placeholder="http://127.0.0.1:7474/v1/stream/fireline-examples-control"
           />
         </label>

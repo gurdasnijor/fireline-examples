@@ -23,7 +23,7 @@
     "dev:tanstack-shaped": "vite --config examples/03-tanstack-shaped-app/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "smoke:inline-js-local": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-examples-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; export FIRELINE_LAUNCH_CONTROL_STREAM_URL=${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-http://127.0.0.1:${STREAMS_PORT}/v1/stream/${CONTROL_STREAM}}; fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/01-inline-js-local/run.ts'",
-    "dev:editable-agent-web:vite": "VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL=\"${VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL:-${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-}}\" VITE_FIRELINE_STREAMS_PORT=\"${VITE_FIRELINE_STREAMS_PORT:-${FIRELINE_STREAMS_PORT:-}}\" VITE_FIRELINE_CONTROL_STREAM=\"${VITE_FIRELINE_CONTROL_STREAM:-${FIRELINE_CONTROL_STREAM:-${FIRELINE_DAEMON_STATE_STREAM:-}}}\" vite --config examples/02-editable-agent-web/vite.config.ts",
+    "dev:editable-agent-web:vite": "VITE_FIRELINE_ENDPOINT=\"${VITE_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-}}}\" VITE_FIRELINE_STREAMS_PORT=\"${VITE_FIRELINE_STREAMS_PORT:-${FIRELINE_STREAMS_PORT:-}}\" VITE_FIRELINE_CONTROL_STREAM=\"${VITE_FIRELINE_CONTROL_STREAM:-${FIRELINE_CONTROL_STREAM:-${FIRELINE_DAEMON_STATE_STREAM:-}}}\" vite --config examples/02-editable-agent-web/vite.config.ts",
     "smoke:curl-shell-raw-http": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-curl-shell-raw-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- sh examples/07-curl-shell-raw-http/run.sh'",
     "smoke:deno": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-deno-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- deno run --node-modules-dir=manual --allow-net=127.0.0.1 --allow-env=FIRELINE_LAUNCH_CONTROL_STREAM_URL,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV examples/16-deno/main.ts'",
     "smoke:flamecast-shaped": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-flamecast-shaped-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- tsx examples/06-flamecast-v3-shaped/src/run.ts'",
@@ -38,9 +38,9 @@
     "smoke:bun": "sh -c 'CONTROL_STREAM=${FIRELINE_CONTROL_STREAM:-fireline-bun-control}; STREAMS_PORT=${FIRELINE_STREAMS_PORT:-7474}; FIRELINE_STREAMS_PORT=\"$STREAMS_PORT\" FIRELINE_CONTROL_STREAM=\"$CONTROL_STREAM\" fireline-v3-dev --state-stream \"$CONTROL_STREAM\" -- bun examples/14-bun/src/run.ts'"
   },
   "dependencies": {
-    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798",
+    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7",
     "@fireline/runtime": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-96489bb3b55124c2d313282e723a775d7fe8c9dd",
-    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798",
+    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7",
     "@agentclientprotocol/sdk": "0.19.0"
   },
   "devDependencies": {

@@ -9,8 +9,8 @@ The example has three boundaries:
 - `src/framework-boundary.ts`: product-facing intent and summary types. This
   file has no Fireline imports.
 - `src/fireline-adapter.ts`: the only layer that imports Fireline packages,
-  builds the launch request, and uses `@fireline/client/managed-agent` for
-  launch, session-ready wait, ACP follow-up, and stop.
+  creates `new Fireline({ endpoint })` and `new Agent(...)`, then uses
+  `fireline.session(...)`, `session.chat(...)`, and `session.stop(...)`.
 - `src/generated-harness.ts`: simulates a generated multi-file harness bundle
   with `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
@@ -34,8 +34,7 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-    FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
+  env FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}" \
     FLAMECAST_WORKSPACE_ID="$FLAMECAST_WORKSPACE_ID" \
     FLAMECAST_RUN_ID="$FLAMECAST_RUN_ID" \
     FLAMECAST_ATTEMPT_ID="$FLAMECAST_ATTEMPT_ID" \
@@ -44,11 +43,9 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
       "$FIRELINE_EXAMPLES_ROOT/examples/06-flamecast-v3-shaped/src/run.ts"
 ```
 
-The adapter accepts `FIRELINE_LAUNCH_CONTROL_STREAM_URL` when the application
-already has the exact launch/control stream URL. Otherwise it treats
-`FIRELINE_DURABLE_STREAMS_URL` as the durable streams append base ending in
-`/v1/stream` and appends `/<FIRELINE_CONTROL_STREAM>`. For local dev without
-that base URL, it derives
+The adapter accepts `FIRELINE_ENDPOINT` as the normal Tier 1 connection input.
+If it is not set, the local example falls back to
+`FIRELINE_DURABLE_STREAMS_URL + FIRELINE_CONTROL_STREAM`, and finally
 `http://127.0.0.1:<FIRELINE_STREAMS_PORT>/v1/stream/<FIRELINE_CONTROL_STREAM>`.
 
 `FLAMECAST_RUN_ID` and `FLAMECAST_ATTEMPT_ID` are product coordinates. The
@@ -56,12 +53,13 @@ example builds `clientRequestId` and `idempotencyKey` from them, so retries of
 the same attempt should reuse the same values. Start a new attempt by changing
 `FLAMECAST_ATTEMPT_ID`.
 
-Expected output is a JSON summary with launch id, runtime ACP URL, ACP session
-id, follow-up status, and stop status. The example does not call the legacy HTTP
-launch endpoint, does not import the legacy launch-control subpath, does not
-import Fireline repo internals, and does not import real Flamecast v3 modules.
-It uses `createManagedAgentLaunchRequest` and `inlineJsBundleAgent` from
-`@fireline/client/managed-agent` for request construction.
+Expected output is a JSON summary with launch id, session id, session status,
+follow-up status, any required-action types, and stop status. The example does
+not call the legacy HTTP launch endpoint, does not import the legacy
+launch-control subpath, does not import Fireline repo internals, and does not
+import real Flamecast v3 modules. It uses the Tier 1 managed-agent surface:
+`new Fireline({ endpoint })`, `new Agent(...)`, `fireline.session(...)`,
+`session.chat(...)`, and `session.stop(...)`.
 
 ## Reviewer Reproduce
 
@@ -92,8 +90,7 @@ FIRELINE_PORT=4591 \
 FIRELINE_STREAMS_PORT=7691 \
 pnpm --dir "$EX" exec fireline-v3-dev \
   --state-stream fireline-flamecast-shaped-fresh -- \
-  env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7691/v1/stream" \
-    FIRELINE_CONTROL_STREAM="fireline-flamecast-shaped-fresh" \
+  env FIRELINE_ENDPOINT="http://127.0.0.1:7691/v1/stream/fireline-flamecast-shaped-fresh" \
     FLAMECAST_WORKSPACE_ID="workspace-characterization" \
     FLAMECAST_RUN_ID="fresh-daemon-run-001" \
     FLAMECAST_ATTEMPT_ID="attempt-1" \
@@ -121,8 +118,7 @@ In another shell:
 
 ```sh
 export EX=/Users/gnijor/gurdasnijor/fireline-examples
-env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7692/v1/stream" \
-  FIRELINE_CONTROL_STREAM="fireline-flamecast-shaped-reuse" \
+env FIRELINE_ENDPOINT="http://127.0.0.1:7692/v1/stream/fireline-flamecast-shaped-reuse" \
   FLAMECAST_WORKSPACE_ID="workspace-characterization" \
   FLAMECAST_RUN_ID="reuse-daemon-run-001" \
   FLAMECAST_ATTEMPT_ID="attempt-1" \
@@ -148,7 +144,7 @@ Historical pre-managed-agent evidence from 2026-04-19:
   `session.followUpSent: true`, `stopStatus: "stopped"`.
 
 Validated 2026-04-20 managed-agent cutover evidence against
-`fireline-client-artifact-e1e80ebf80285aa3bff04ab7f7d27ae018135798`:
+`fireline-client-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7`:
 
 - Fresh daemon on `4736`/`7736`: launch
   `6f8c7aba-78e9-4b1b-83a9-352c3379c911`, `clientRequestId`

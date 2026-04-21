@@ -38,13 +38,13 @@ declare module '@tanstack/react-router' {
 }
 
 function TanStackDiscoveryPage() {
-  const [controlStreamUrl, setControlStreamUrl] = useState(
-    import.meta.env.VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL ?? ''
+  const [endpoint, setEndpoint] = useState(
+    import.meta.env.VITE_FIRELINE_ENDPOINT ?? ''
   )
   const [prompt, setPrompt] = useState('Hello from TanStack Router + Query.')
   const mutation = useMutation({
     mutationFn: () => runInlineLaunch({
-      controlStreamUrl,
+      endpoint,
       prompt,
       example: '03-tanstack-shaped-app',
     }),
@@ -52,14 +52,14 @@ function TanStackDiscoveryPage() {
 
   return (
     <main>
-      <p className="eyebrow">Discovery, not canonical</p>
+      <p className="eyebrow">Tier 1 managed-agent path</p>
       <h1>TanStack-shaped Fireline app</h1>
       <section className="controls">
         <label>
-          Launch/control stream URL
+          Fireline endpoint
           <input
-            value={controlStreamUrl}
-            onChange={(event) => setControlStreamUrl(event.target.value)}
+            value={endpoint}
+            onChange={(event) => setEndpoint(event.target.value)}
             placeholder="http://127.0.0.1:7474/v1/stream/fireline-examples-control"
           />
         </label>

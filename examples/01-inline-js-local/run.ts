@@ -1,6 +1,7 @@
 import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
+  Agent,
+  Fireline,
+  acp,
 } from '@fireline/client/managed-agent'
 import {
   budget,
@@ -9,9 +10,8 @@ import {
 } from '@fireline/client/middleware'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { launchAndStopManagedAgent } from '../shared/managed-agent-launch.js'
 
-const controlStreamUrl = requiredEnv('FIRELINE_LAUNCH_CONTROL_STREAM_URL')
+const endpoint = requiredEnv('FIRELINE_ENDPOINT')
 const outputRoot = process.env.FIRELINE_EXAMPLE_OUTPUT_ROOT ??
   join(process.cwd(), 'inline-js-local-output')
 const runId = Date.now()
@@ -80,115 +80,74 @@ console.log(JSON.stringify({ matrix: summaries }, null, 2))
 
 async function runCase(entry: MatrixCase) {
   const clientRequestId = `inline-js-local-${entry.name}-${runId}`
-  const stateStream = clientRequestId
   const outputDir = join(outputRoot, entry.name)
   const outputFile = join(outputDir, 'agent-output.txt')
   await mkdir(outputDir, { recursive: true })
 
-  const request = createManagedAgentLaunchRequest({
-    name: `inline-js-local-${entry.name}`,
-    agent: await inlineJsBundleAgent({
-      entrypoint: 'agent.mjs',
-      files: [{
-        path: 'agent.mjs',
-        mediaType: 'text/javascript',
-        content: agentSource({ entry, outputFile }),
-      }],
-      provenance: {
-        producer: 'fireline-examples-discovery',
-        source: 'examples/01-inline-js-local',
-        revision: entry.name,
-      },
-    }),
-    sandbox: {
-      provider: 'local',
-      fsBackend: entry.fsBackend,
-      env: {
-        FIRELINE_EXAMPLE_CASE: entry.name,
-      },
-      labels: {
-        example: '01-inline-js-local',
-        mode: 'discovery',
-        matrix: entry.name,
-        fsBackend: entry.fsBackend,
-      },
-    },
-    middleware: {
-      kind: 'middleware',
-      chain: entry.middleware,
-    },
-    clientRequestId,
-    runtime: {
-      name: `inline-js-local-${entry.name}`,
-      provider: 'local',
-      labels: {
-        example: '01-inline-js-local',
-        matrix: entry.name,
-      },
-    },
-    startSession: {
-      stateStream,
-      create: true,
-      cwd: process.cwd(),
-      mcpServers: [],
-      prompt: `ping from external fireline-examples case ${entry.name}`,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
-    },
-  })
-
-  const launch = await launchAndStopManagedAgent({
-    controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
+  const fireline = new Fireline({
+    endpoint,
     requestedBy: 'examples/01-inline-js-local',
-    stopReason: `matrix case ${entry.name} complete`,
-    timeoutMs: 60_000,
   })
 
-  const fileContents = await readFile(outputFile, 'utf8')
-
-  return {
-    case: entry.name,
-    fsBackend: entry.fsBackend,
-    middlewareKinds: entry.middleware.map((middleware) => middleware.kind),
-    launchId: launch.row.launchId,
-    clientRequestId: launch.row.clientRequestId,
-    status: launch.row.status,
-    controlStreamUrl,
-    envelope: {
-      type: launch.envelope?.type,
-      key: launch.envelope?.key,
-    },
-    stop: {
-      status: launch.stop.row?.status,
-      envelope: {
-        type: launch.stop.envelope.type,
-        key: launch.stop.envelope.key,
+  try {
+    const agent = new Agent({
+      id: `inline-js-local-${entry.name}`,
+      entrypoint: await acp.inlineJsBundle({
+        entrypoint: 'agent.mjs',
+        files: [{
+          path: 'agent.mjs',
+          mediaType: 'text/javascript',
+          content: agentSource({ entry, outputFile }),
+        }],
+        provenance: {
+          producer: 'fireline-examples-discovery',
+          source: 'examples/01-inline-js-local',
+          revision: entry.name,
+        },
+      }),
+      sandbox: {
+        provider: 'local',
+        fsBackend: entry.fsBackend,
+        env: {
+          FIRELINE_EXAMPLE_CASE: entry.name,
+        },
+        labels: {
+          example: '01-inline-js-local',
+          mode: 'discovery',
+          matrix: entry.name,
+          fsBackend: entry.fsBackend,
+          tier: 'managed-agent',
+        },
       },
-    },
-    runtime: launch.row.runtime
-      ? {
-          runtimeId: launch.row.runtime.runtimeId,
-          name: launch.row.runtime.name,
-          provider: launch.row.runtime.provider,
-          status: launch.row.runtime.status,
-          acpUrl: launch.row.runtime.acp.url,
-          state: launch.row.runtime.state,
-        }
-      : undefined,
-    session: launch.row.startSession
-      ? {
-          acpSessionId: launch.row.startSession.acpSessionId,
-          requestedStateStream: stateStream,
-        }
-      : undefined,
-    localFs: {
-      outputFile,
-      contents: fileContents,
-    },
+      middleware: entry.middleware,
+      defaults: {
+        cwd: process.cwd(),
+      },
+    })
+
+    const result = await fireline.run(agent, {
+      prompt: `ping from external fireline-examples case ${entry.name}`,
+      idempotencyKey: clientRequestId,
+      requestedBy: 'examples/01-inline-js-local',
+    })
+    const fileContents = await readFile(outputFile, 'utf8')
+
+    return {
+      case: entry.name,
+      fsBackend: entry.fsBackend,
+      middlewareKinds: entry.middleware.map((middleware) => middleware.kind),
+      endpoint,
+      launchId: result.launchId,
+      sessionId: result.sessionId,
+      stopReason: result.stopReason,
+      response: result.response,
+      localFs: {
+        outputFile,
+        contents: fileContents,
+      },
+    }
+  } finally {
+    fireline.close()
   }
 }
 
@@ -220,7 +179,7 @@ export default async function handle(ctx) {
 function requiredEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(`${name} is required. Configure the durable launch/control stream URL.`)
+    throw new Error(`${name} is required. Configure the Fireline endpoint.`)
   }
   return value
 }

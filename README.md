@@ -26,33 +26,32 @@ Integration policy:
 Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
-  JS local matrix through `@fireline/client/managed-agent` lifecycle helpers.
-  Request construction uses `createManagedAgentLaunchRequest` and
-  `inlineJsBundleAgent` from the managed-agent subpath.
+  JS local matrix through the Tier 1 managed-agent surface:
+  `new Fireline({ endpoint })`, `new Agent(...)`, and `fireline.run(...)`.
 - `examples/02-editable-agent-web` is a TypeScript/TSX app-shaped discovery
-  example for the Tier 1 `@fireline/client/managed-agent` lifecycle helper. It
-  lets a user edit inline agent code, launch through a managed-agent handle,
-  inspect launch/session/runtime coordinates, send a follow-up ACP prompt
-  through the handle, and stop the launch through the same handle.
+  example for the Tier 1 `@fireline/client/managed-agent` app API. It lets a
+  user edit inline agent code, start a session with `fireline.session(...)`,
+  send prompts through `session.chat(...)`, inspect `SessionSnapshot`
+  coordinates, and stop through `session.stop(...)`.
 - `examples/03-tanstack-shaped-app`, `examples/04-next-basic`, and
   `examples/05-next-open-cloudflare` are framework-shaped TypeScript discovery
-  examples. They keep Fireline calls package-shaped and use
-  `@fireline/client/managed-agent` for launch/wait/stop while recording
-  framework seams instead of canonizing product examples. Request construction
-  uses the managed-agent request helpers.
+  examples. They keep Fireline calls package-shaped and use the Tier 1
+  managed-agent surface for `new Fireline({ endpoint })`, `new Agent(...)`,
+  and `fireline.run(...)` while recording framework seams instead of
+  canonizing product examples.
 - `examples/06-flamecast-v3-shaped` is a black-box product-consumer
   characterization. It is not real Flamecast v3 code. It keeps a framework
   boundary separate from the Fireline adapter, generates a multi-file inline
-  harness bundle, and uses `@fireline/client/managed-agent` for
-  launch/wait/ACP follow-up/stop. Request construction uses the managed-agent
-  request helpers.
+  harness bundle, and uses the Tier 1 managed-agent surface for
+  `new Fireline({ endpoint })`, `new Agent(...)`, `fireline.session(...)`,
+  `session.chat(...)`, and `session.stop(...)`.
 - `examples/07-curl-shell-raw-http` is a shell/curl raw Durable Streams HTTP
   consumer. It builds the launch/stop envelopes locally, appends them with
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
   packages.
 - `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
-  consumer using `@fireline/client/managed-agent` for launch observation and
-  stop. It uses managed-agent request and inline bundle builders. It uses
+  consumer using the Tier 1 managed-agent surface for session lifecycle. It uses
+  `new Fireline({ endpoint })`, `new Agent(...)`, and session helpers. It uses
   explicit `pnpm dlx wrangler@4.83.0` commands and documents the Wrangler
   `--var` behavior required for custom scratch ports.
 - `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
@@ -62,34 +61,35 @@ Current checkpoint:
   first-class `fireline.launch` rows over plain HTTP.
 - `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
-  tenant checks, idempotency, and managed-agent launch/observe/stop calls.
+  tenant checks, idempotency, and Tier 1 `Fireline` / `Agent` / session calls.
 - `examples/12-vercel-function-node` is a Vercel Functions Node-runtime shape.
-  It uses `@fireline/client/managed-agent` inside a Node function for
-  launch/observe/stop and managed-agent request construction.
+  It uses the Tier 1 managed-agent surface inside a Node function.
 - `examples/13-vercel-edge-runtime` is a Vercel Edge Runtime shape. It bundles
-  an Edge handler that uses `@fireline/client/managed-agent` and
-  managed-agent request builders, then runs locally in `@edge-runtime/vm`.
+  an Edge handler that uses the Tier 1 managed-agent surface, then runs
+  locally in `@edge-runtime/vm`.
 - `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
-  package-shaped Fireline refs, and uses the managed-agent launch handle.
+  package-shaped Fireline refs, and uses the Tier 1 managed-agent surface.
 - `examples/16-deno` is a Deno package-consumer shape. It uses documented
   `@fireline/client/managed-agent` through Deno's Node/npm compatibility layer.
 - `examples/17-acp-registry-chat` resolves a safe ACP registry fixture row
   with `acpRegistry(...)` from `@fireline/client`, launches the resulting command
-  distribution through `@fireline/client/managed-agent`, attaches to the
-  returned ACP session, sends a follow-up prompt, and stops the launch. It
+  distribution through the Tier 1 managed-agent surface, sends a follow-up
+  prompt, and stops the session. It
   deliberately avoids
   binary registry installs, launcher env metadata, retired launch-control
   surfaces, and hand-rolled lifecycle primitives.
 - `examples/18-middleware-stack` is a focused middleware-stack consumer. It
   builds a normal stream-native launch with `trace(...)`,
-  `contextInjection(...)`, and `budget(...)`, then launches and stops through
-  `@fireline/client/managed-agent`. It deliberately avoids `memory()`,
+  `contextInjection(...)`, and `budget(...)`, then runs through the Tier 1
+  managed-agent surface. It deliberately avoids `memory()`,
   approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
   hand-rolled lifecycle primitives.
 
 Surface posture:
 
 - Tier 1 canonical TypeScript app API:
+  `new Fireline({ endpoint })`, `new Agent(...)`, `fireline.session(...)`,
+  `session.chat/respond/stop`, and `fireline.run(...)` from
   `@fireline/client/managed-agent`.
 - Tier 2 protocol/runtime reference:
   raw Durable Streams HTTP plus the `@fireline/runtime` / `fireline-v3-dev`
@@ -116,8 +116,8 @@ releases.
 
 Run the baseline smoke from a scratch working directory so durable state does
 not fan out under this repo. The app-facing configuration is the full
-launch/control stream URL; the local runtime setup only makes sure the dev
-daemon watches the same configured control stream.
+Fireline endpoint; the local runtime setup only makes sure the dev daemon
+watches the same configured control stream.
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
@@ -125,7 +125,7 @@ export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet.29.3.1-state
 export FIRELINE_PORT=4485
 export FIRELINE_STREAMS_PORT=7585
 export FIRELINE_CONTROL_STREAM=fireline-examples-control
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
+export FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream/${FIRELINE_CONTROL_STREAM}"
 export FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_STATE_DIR/inline-js-local-output"
 mkdir -p "$FIRELINE_STATE_DIR"
 cd "$FIRELINE_STATE_DIR"
@@ -134,7 +134,7 @@ FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
 pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
   --state-stream "$FIRELINE_CONTROL_STREAM" -- \
-  env FIRELINE_LAUNCH_CONTROL_STREAM_URL="$FIRELINE_LAUNCH_CONTROL_STREAM_URL" \
+  env FIRELINE_ENDPOINT="$FIRELINE_ENDPOINT" \
     FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_EXAMPLE_OUTPUT_ROOT" \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsx \
       "$FIRELINE_EXAMPLES_ROOT/examples/01-inline-js-local/run.ts"
@@ -146,7 +146,7 @@ package-shaped baseline after PR #210.
 
 Run the editable-agent web app with a package-shaped Fireline runtime. The
 local dev command starts Vite as a child of `fireline-v3-dev` so the app
-receives the daemon's exact `FIRELINE_LAUNCH_CONTROL_STREAM_URL`:
+receives the daemon's exact `FIRELINE_ENDPOINT`:
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
@@ -158,20 +158,20 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web
 ```
 
 Open `http://127.0.0.1:5173/` and click **Run**. The app pre-fills the
-launch/control stream URL from the daemon handoff and uses
-`@fireline/client/managed-agent` for inline agent request construction, launch
-waiting, ACP attachment, and stop.
+endpoint from the daemon handoff and uses `@fireline/client/managed-agent` for
+`new Fireline({ endpoint })`, `new Agent(...)`, `fireline.session(...)`,
+`session.chat(...)`, and `session.stop(...)`.
 If you intentionally run the private Vite child script separately, it falls back to
 `http://127.0.0.1:7474/v1/stream/fireline-examples-control`, probes the local
 streams health endpoint, and shows a copyable one-line derivation:
 
 ```sh
-export FIRELINE_LAUNCH_CONTROL_STREAM_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-examples-control}"
+export FIRELINE_ENDPOINT="http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream/${FIRELINE_CONTROL_STREAM:-fireline-examples-control}"
 ```
 
 If a prior daemon is already running on the selected ports, the same command
 reuses it through `fireline-v3-dev`. The wrapper creates/verifies the
-launch/control stream, then exports the exact URL to the Vite app:
+endpoint, then exports the exact value to the Vite app:
 
 ```sh
 export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
@@ -179,8 +179,8 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web --port 5193
 ```
 
 Open `http://127.0.0.1:5193/` and click **Run**. If the UI shows
-`Stream not found`, the selected launch/control URL does not match the reused
-daemon. Paste the exact `FIRELINE_LAUNCH_CONTROL_STREAM_URL` printed/exported
+`Stream not found`, the selected endpoint does not match the reused
+daemon. Paste the exact `FIRELINE_ENDPOINT` printed/exported
 by `fireline-v3-dev`, click **Use daemon default**, or restart with the
 matching `--state-stream`.
 
@@ -193,10 +193,10 @@ pnpm run dev:editable-agent-web --port 5192
 ```
 
 The app gives `@fireline/client/managed-agent` the configured launch/control
-stream URL and uses the returned handle for launch observation, ACP connection,
-and stop. It does not call `/v1/launches`, use
-`@fireline/client/launch-control`, or import managed-agent helpers from the
-root `@fireline/client` barrel.
+endpoint and uses the Tier 1 `Fireline` and `Agent` surface for session
+lifecycle. It does not call `/v1/launches`, use
+`@fireline/client/launch-control`, rely on bridge helpers, or import
+managed-agent helpers from the root `@fireline/client` barrel.
 
 Managed-agent cutover note: examples 08, 11, 12, 13, 14, 16, 17, and 18 use
 `@fireline/client/managed-agent` for normal app lifecycle consumption, including

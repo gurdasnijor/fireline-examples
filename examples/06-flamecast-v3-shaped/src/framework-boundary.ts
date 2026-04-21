@@ -5,7 +5,7 @@ export interface FlamecastComposition {
 }
 
 export interface FlamecastRunIntent {
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly composition: FlamecastComposition
   readonly workspaceId: string
   readonly runId: string
@@ -17,24 +17,20 @@ export interface FlamecastRunIntent {
 export interface FlamecastRunSummary {
   readonly launchId: string
   readonly clientRequestId?: string
-  readonly launchStatus: string
-  readonly runtime?: {
-    readonly runtimeId: string
-    readonly acpUrl: string
-    readonly stateUrl?: string
-  }
   readonly session?: {
-    readonly acpSessionId: string
+    readonly sessionId?: string
+    readonly status?: string
     readonly followUpSent: boolean
+    readonly stopReason?: string
+    readonly requiredActions: readonly string[]
   }
   readonly stopStatus: string
   readonly events: readonly string[]
 }
 
 export function createFlamecastIntentFromEnv(env: NodeJS.ProcessEnv): FlamecastRunIntent {
-  const controlStreamUrl = requiredEnv(env, 'FIRELINE_LAUNCH_CONTROL_STREAM_URL')
   return {
-    controlStreamUrl,
+    endpoint: resolveEndpoint(env),
     workspaceId: env.FLAMECAST_WORKSPACE_ID ?? 'local-flamecast-shaped-workspace',
     runId: env.FLAMECAST_RUN_ID ?? `local-${Date.now()}`,
     attemptId: env.FLAMECAST_ATTEMPT_ID ?? 'attempt-1',
@@ -49,31 +45,22 @@ export function createFlamecastIntentFromEnv(env: NodeJS.ProcessEnv): FlamecastR
 }
 
 export function renderSummary(summary: FlamecastRunSummary): string {
-  return JSON.stringify({
-    example: '06-flamecast-v3-shaped',
-    launchId: summary.launchId,
-    clientRequestId: summary.clientRequestId,
-    launchStatus: summary.launchStatus,
-    runtime: summary.runtime,
-    session: summary.session,
-    stopStatus: summary.stopStatus,
-    events: summary.events,
-  }, null, 2)
+  return JSON.stringify(
+    {
+      example: '06-flamecast-v3-shaped',
+      launchId: summary.launchId,
+      clientRequestId: summary.clientRequestId,
+      session: summary.session,
+      stopStatus: summary.stopStatus,
+      events: summary.events,
+    },
+    null,
+    2,
+  )
 }
 
-function requiredEnv(env: NodeJS.ProcessEnv, name: string): string {
-  if (name === 'FIRELINE_LAUNCH_CONTROL_STREAM_URL') {
-    return resolveLaunchControlStreamUrl(env)
-  }
-  const value = env[name]
-  if (!value) {
-    throw new Error(`${name} is required. Configure the durable launch/control stream URL.`)
-  }
-  return value
-}
-
-function resolveLaunchControlStreamUrl(env: NodeJS.ProcessEnv): string {
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) return env.FIRELINE_LAUNCH_CONTROL_STREAM_URL
+function resolveEndpoint(env: NodeJS.ProcessEnv): string {
+  if (env.FIRELINE_ENDPOINT) return env.FIRELINE_ENDPOINT
 
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? 'fireline-flamecast-shaped-control'
   if (env.FIRELINE_DURABLE_STREAMS_URL) {
