@@ -59,8 +59,8 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4601 \
 FIRELINE_STREAMS_PORT=7701 \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream fireline-server-wrapper-fresh -- \
+fireline runtime dev \
+  --launch-control-stream fireline-server-wrapper-fresh -- \
   env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7701/v1/stream" \
     FIRELINE_CONTROL_STREAM="fireline-server-wrapper-fresh" \
     APP_AUTH_TOKEN="server-wrapper-demo-token" \
@@ -83,8 +83,8 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4602 \
 FIRELINE_STREAMS_PORT=7702 \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream fireline-server-wrapper-reuse
+fireline runtime dev \
+  --launch-control-stream fireline-server-wrapper-reuse
 ```
 
 In another shell:

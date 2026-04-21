@@ -50,8 +50,8 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4612 \
 FIRELINE_STREAMS_PORT=7712 \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream fireline-vercel-function-fresh -- \
+fireline runtime dev \
+  --launch-control-stream fireline-vercel-function-fresh -- \
   env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7712/v1/stream" \
     FIRELINE_CONTROL_STREAM="fireline-vercel-function-fresh" \
     VERCEL_FUNCTION_RUN_ID="fresh-daemon-run-001" \
@@ -71,8 +71,8 @@ cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
 FIRELINE_PORT=4613 \
 FIRELINE_STREAMS_PORT=7713 \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream fireline-vercel-function-reuse
+fireline runtime dev \
+  --launch-control-stream fireline-vercel-function-reuse
 ```
 
 In another shell:

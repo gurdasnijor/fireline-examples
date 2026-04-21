@@ -52,32 +52,21 @@ a Fireline bead or be closed as an intentional boundary.
    append, launch collection observation, direct browser ACP attachment, and
    request-builder teaching from normal ergonomic examples.
 
-7. Local runtime/bootstrap discovery is still uneven across examples.
+7. Local runtime/bootstrap discovery now has one contract.
 
-   Historical pre-#349 evidence made the public
-   `pnpm run dev:editable-agent-web` command start through the old runtime dev
-   wrapper and inject the exported `FIRELINE_ENDPOINT` into Vite. Fireline PR
-   #349 deleted that wrapper before the `mono-ug3b` replacement landed, so
-   current docs should treat fresh/reuse runtime recipes as rerun-needed. The
-   private Vite child script still derives
-   `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when run on its
-   own, probes the local streams health endpoint, and shows a copyable
-   derivation for custom ports or stream names. On `Stream not found`/404, the
-   UI names the missing stream and shows restart or exact-URL recovery
-   instructions. Other Tier 1 examples still require the app-facing
-   `FIRELINE_ENDPOINT` and a local runtime dev process to point at the same
-   durable stream. This is intentionally explicit in the discovery repo, but a
-   normal external consumer should not have to assemble that alignment by hand.
-   Follow-up bead candidate: endpoint/bootstrap discovery for local apps.
+   Current examples use native `fireline runtime dev` as the local dev entry.
+   The runtime starts or reuses the local services, ensures the launch/control
+   stream, and injects the full appendable stream URL as `FIRELINE_ENDPOINT`
+   into the child process. Tier 1 code passes that value directly to
+   `new Fireline({ endpoint })`.
 
    `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
    blocker: the old runtime dev wrapper could reuse an existing daemon, export
    an endpoint for its default daemon stream, and then
-   fail append with `HTTP Error 404 ... Stream not found:
-   fireline-v3-dev-daemon`. Fireline PR #291 / `mono-oet.29.3.22` fixed that
+   fail append with `HTTP Error 404 ... Stream not found` for the default
+   daemon stream. Fireline PR #291 / `mono-oet.29.3.22` fixed that
    launcher/stream mismatch by creating and verifying the exported stream
-   before child startup. That evidence is historical until `mono-ug3b` lands.
-   The examples branch keeps diagnostics and recovery guidance for genuinely
+   before child startup. The examples branch keeps diagnostics and recovery guidance for genuinely
    stale port/process/store reuse.
 
 8. Stream-native stop is usable, and managed-agent hides it for normal ergonomic examples.
@@ -244,8 +233,8 @@ a Fireline bead or be closed as an intentional boundary.
    endpoint, leaving the browser to depend on fallback derivation
    rather than the daemon's exported URL. Historical fresh and prior-daemon
    runs injected a daemon endpoint into the Vite environment and launch/stop
-   completed. This evidence must be rerun after `mono-ug3b` restores the
-   runtime dev implementation. Older evidence logged
+   completed. Current reruns should use native `fireline runtime dev` and its
+   `FIRELINE_ENDPOINT` child-env contract. Older evidence logged
    `Symbol(liveQueryInternal)` durable-state/TanStack DB warnings while
    processing `fireline.runtime_instance`; that needs repro against current
    published managed-agent artifacts before being treated as still open.
@@ -410,9 +399,8 @@ a Fireline bead or be closed as an intentional boundary.
 - Missing Fireline/public support: published package refs or documented git
   artifact refs are still needed for normal external consumers. This branch now
   uses documented git artifact refs; public npm remains gated.
-- Missing Fireline/public support: local stream-native bootstrap still needs a
-  replacement runtime-dev env handoff or equivalent control-stream alignment
-  after `mono-ug3b`. Historical example 02 evidence owned that handoff, but
+- Missing Fireline/public support: local stream-native bootstrap now has the
+  native `fireline runtime dev` env handoff. Historical example 02 evidence owned that handoff, but
   stale processes or mismatched stream stores can still leave reviewers with a
   timeout or `Stream not found`; the example surfaces recovery instructions
   instead of leaving the raw failure alone.

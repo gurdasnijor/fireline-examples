@@ -38,8 +38,8 @@ cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     ACP_REGISTRY_CHAT_RUN_ID="registry-chat-fresh" \
@@ -83,8 +83,8 @@ mkdir -p "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM"
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM"
 ```
 
 In a second shell:
@@ -99,8 +99,8 @@ cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:${FIRELINE_STREAMS_PORT}/v1/stream" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     ACP_REGISTRY_CHAT_RUN_ID="registry-chat-reuse" \

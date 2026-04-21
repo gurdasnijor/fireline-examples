@@ -7,7 +7,7 @@ launch HTTP route.
 
 The flow is:
 
-1. derive `FIRELINE_LAUNCH_CONTROL_STREAM_URL` from explicit config, a durable
+1. derive `FIRELINE_ENDPOINT` from explicit config, a durable
    streams base URL, or local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`;
 2. build a JSON `fireline.launch_request` envelope with a local inline JS
    module agent bundle;
@@ -27,7 +27,7 @@ The script derives these defaults when they are not set:
 
 - `FIRELINE_CONTROL_STREAM=fireline-python-raw-control`
 - `FIRELINE_STREAMS_PORT=7474`
-- `FIRELINE_LAUNCH_CONTROL_STREAM_URL=http://127.0.0.1:$FIRELINE_STREAMS_PORT/v1/stream/$FIRELINE_CONTROL_STREAM`
+- `FIRELINE_ENDPOINT=http://127.0.0.1:$FIRELINE_STREAMS_PORT/v1/stream/$FIRELINE_CONTROL_STREAM`
 - `FIRELINE_PYTHON_RAW_RUN_ID=<utc timestamp>-<pid>`
 - `FIRELINE_PYTHON_RAW_LAUNCH_ID=python-raw-$FIRELINE_PYTHON_RAW_RUN_ID`
 - `FIRELINE_PYTHON_RAW_CLIENT_REQUEST_ID=launch:python-raw:$FIRELINE_PYTHON_RAW_RUN_ID`
@@ -71,7 +71,7 @@ export FIRELINE_STATE_DIR=/tmp/fireline-mono-oet-29-3-8-reuse-state
 export FIRELINE_EXAMPLE_OUTPUT_ROOT=/tmp/fireline-mono-oet-29-3-8-reuse-output
 export FIRELINE_LOG=/tmp/fireline-mono-oet-29-3-8-reuse.log
 rm -rf "$FIRELINE_STATE_DIR" "$FIRELINE_EXAMPLE_OUTPUT_ROOT"
-future-runtime-dev-after-mono-ug3b --state-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
+fireline runtime dev --launch-control-stream "$FIRELINE_CONTROL_STREAM" -- sh -c \
   'python3 examples/09-python-raw-http/run.py && FIRELINE_PYTHON_RAW_RUN_ID=reuse-second python3 examples/09-python-raw-http/run.py' \
   > "$FIRELINE_LOG" 2>&1
 code=$?
@@ -89,7 +89,7 @@ paths under the configured `/tmp/fireline-mono-oet-29-3-8-*` output root.
 To point at a provisioned stream instead, set the exact stream URL:
 
 ```sh
-FIRELINE_LAUNCH_CONTROL_STREAM_URL='https://streams.example.com/v1/stream/app-launch-control' \
+FIRELINE_ENDPOINT='https://streams.example.com/v1/stream/app-launch-control' \
   python3 examples/09-python-raw-http/run.py
 ```
 

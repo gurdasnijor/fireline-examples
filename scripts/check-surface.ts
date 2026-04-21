@@ -74,6 +74,15 @@ const sharedHelperBans = [
   '../../shared/run-inline-fireline.js',
 ] as const
 
+const staleSurfaceBans = [
+  'fireline-v3-dev',
+  'FIRELINE_V3_DEV',
+  '--state-stream',
+  'VITE_FIRELINE_STREAMS_PORT',
+  'VITE_FIRELINE_CONTROL_STREAM',
+  'FIRELINE_LAUNCH_CONTROL_STREAM_URL',
+] as const
+
 const managedAgentSpecifier = '@fireline/client/managed-agent'
 const managedAgentLifecycleBans = new Set([
   '@fireline/client/events',
@@ -86,6 +95,14 @@ for await (const file of walk(root)) {
   if (!isCheckedFile(file)) continue
   const text = await readFile(file, 'utf8')
   const relative = file.replace(root.pathname, '')
+
+  if (!relative.startsWith('scripts/check-surface')) {
+    for (const stale of staleSurfaceBans) {
+      if (text.includes(stale)) {
+        violations.push(`${relative}: stale Fireline dev surface ${stale}`)
+      }
+    }
+  }
 
   for (const specifier of importSpecifiers(text)) {
     if (specifier.includes('../fireline') || specifier.includes('..\\/fireline')) {

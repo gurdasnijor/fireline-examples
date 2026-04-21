@@ -17,8 +17,8 @@ export FIRELINE_CONTROL_STREAM=fireline-worker-direct-control
 mkdir -p "$FIRELINE_STATE_DIR"
 cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM"
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM"
 ```
 
 Run the Worker in another shell:

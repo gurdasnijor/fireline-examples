@@ -112,8 +112,8 @@ func run() error {
 }
 
 func deriveStreamURL(controlStream string) string {
-	if exact := os.Getenv("FIRELINE_LAUNCH_CONTROL_STREAM_URL"); exact != "" {
-		return exact
+	if endpoint := os.Getenv("FIRELINE_ENDPOINT"); endpoint != "" {
+		return endpoint
 	}
 	if base := os.Getenv("FIRELINE_DURABLE_STREAMS_URL"); base != "" {
 		return strings.TrimRight(base, "/") + "/" + controlStream

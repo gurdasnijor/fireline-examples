@@ -12,8 +12,8 @@ stream_next_offset() {
   awk 'tolower($1) == "stream-next-offset:" { print $2 }' "$1" | tr -d '\r'
 }
 
-if [ "${FIRELINE_LAUNCH_CONTROL_STREAM_URL:-}" ]; then
-  STREAM_URL=$FIRELINE_LAUNCH_CONTROL_STREAM_URL
+if [ "${FIRELINE_ENDPOINT:-}" ]; then
+  STREAM_URL=$FIRELINE_ENDPOINT
 elif [ "${FIRELINE_DURABLE_STREAMS_URL:-}" ]; then
   STREAM_BASE=${FIRELINE_DURABLE_STREAMS_URL%/}
   STREAM_URL="$STREAM_BASE/$CONTROL_STREAM"

@@ -5,14 +5,11 @@ Base: `main` at `67be9728f9cb74a92abd0cea19557b9612c8477e`
 
 ## Runtime Dev Status
 
-This document records accepted historical evidence from the pre-#349 runtime
-dev path. Fireline #349 deleted the JS runtime-dev orchestration, and native
-`fireline runtime dev` remains blocked on `mono-ug3b`.
+This document records accepted historical evidence from the pre-native
+runtime-dev path. Current reruns should use native `fireline runtime dev`.
 
-Do not use this file as a current runnable recipe for starting runtime dev.
-After `mono-ug3b` lands with native runtime dev artifacts, rerun this sweep
-against that command and replace the historical evidence below with current
-commands and artifacts.
+Do not use the historical artifact paths below as current runnable recipes.
+Use `fireline runtime dev` for new fresh-daemon and prior-daemon reuse sweeps.
 
 ## Static Checks
 
@@ -32,7 +29,7 @@ Result: all passed.
 Owned runtime/server surface audit:
 
 ```sh
-rg -n "Discovery-only|Tier 3|until.*cutover|until.*land|not a public|not a Fireline API wrapper|launch-handle|launch-control|retired|FIRELINE_LAUNCH_CONTROL_STREAM_URL|createManagedAgentClient|createManagedAgentLaunchRequest|ManagedAgentLaunchHandle|launchAgent|launchControlStreamUrl|bridge env|bridge vocabulary" \
+rg -n "Discovery-only|Tier 3|until.*cutover|until.*land|not a public|not a Fireline API wrapper|launch-handle|launch-control|retired|FIRELINE_ENDPOINT legacy alias|createManagedAgentClient|createManagedAgentLaunchRequest|ManagedAgentLaunchHandle|launchAgent|launchControlStreamUrl|bridge env|bridge vocabulary" \
   examples/08-cloudflare-worker-direct \
   examples/11-server-worker-wrapper \
   examples/12-vercel-function-node \
@@ -66,11 +63,10 @@ runtime-dev entrypoint.
 The historical Vercel Edge bundle build log was at
 `/tmp/fireline-examples-runtime-e2e-edge-build.log`.
 
-## Rerun Plan After mono-ug3b
+## Rerun Plan
 
-When native runtime dev is available, rerun the same fresh-daemon and
-prior-daemon reuse scenarios for examples 08, 11, 12, 13, 14, 16, 17, and 18.
-The runtime dev command must inject:
+Rerun the same fresh-daemon and prior-daemon reuse scenarios for examples 08,
+11, 12, 13, 14, 16, 17, and 18. The runtime dev command must inject:
 
 ```sh
 FIRELINE_ENDPOINT=<full appendable launch/control stream URL>
@@ -78,7 +74,7 @@ FIRELINE_ENDPOINT=<full appendable launch/control stream URL>
 
 The examples should pass that value directly to `new Fireline({ endpoint })`
 or expose it to the browser as the app-facing endpoint value. Do not re-add
-`fireline-v3-dev` recipes or temporary binary wrappers to synthesize the
+deleted JS runtime-dev recipes or temporary binary wrappers to synthesize the
 endpoint.
 
 ## Notes

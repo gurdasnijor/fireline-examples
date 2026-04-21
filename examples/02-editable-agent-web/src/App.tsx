@@ -17,22 +17,8 @@ const defaultAgentCode = `export default async function handle(ctx) {
 }
 `
 
-const defaultControlStream = envValue(import.meta.env.VITE_FIRELINE_CONTROL_STREAM) ?? 'fireline-examples-control'
-const defaultStreamsPort = envValue(import.meta.env.VITE_FIRELINE_STREAMS_PORT) ?? '7474'
-const derivedLocalEndpoint =
-  `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${defaultControlStream}`
-const defaultEndpoint =
-  envValue(import.meta.env.VITE_FIRELINE_ENDPOINT) ?? derivedLocalEndpoint
-const daemonDefaultControlStream = 'fireline-v3-dev-daemon'
-const daemonDefaultEndpoint =
-  `http://127.0.0.1:${defaultStreamsPort}/v1/stream/${daemonDefaultControlStream}`
-const localStreamsHealthUrl = `http://127.0.0.1:${defaultStreamsPort}/healthz`
-const localDaemonCommand =
-  `FIRELINE_CONTROL_STREAM=${defaultControlStream} fireline-v3-dev --state-stream ${defaultControlStream}`
-const shellDerivation =
-  `export FIRELINE_ENDPOINT="http://127.0.0.1:\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/\${FIRELINE_CONTROL_STREAM:-${defaultControlStream}}"`
-const viteHandoffCommand =
-  'FIRELINE_CONTROL_STREAM=<daemon-stream> fireline-v3-dev --state-stream <daemon-stream> -- pnpm run dev:editable-agent-web'
+const defaultEndpoint = envValue(import.meta.env.VITE_FIRELINE_ENDPOINT) ?? ''
+const localDevCommand = 'pnpm run dev:editable-agent-web'
 
 interface LogEntry {
   readonly at: string
@@ -42,7 +28,7 @@ interface LogEntry {
 
 export function App() {
   const [endpoint, setEndpoint] = useState(defaultEndpoint)
-  const [daemonStatus, setDaemonStatus] = useState('Checking local fireline-v3-dev...')
+  const [daemonStatus, setDaemonStatus] = useState('Checking Fireline endpoint...')
   const [recoveryHint, setRecoveryHint] = useState<string | undefined>()
   const [brainPlacement, setBrainPlacement] = useState<BrainPlacement>('inline-js-local')
   const [filesystemPlacement, setFilesystemPlacement] = useState<FilesystemPlacement>('local')
@@ -70,7 +56,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false
-    void probeLocalDaemon(endpoint).then((status) => {
+    void probeLocalEndpoint(endpoint).then((status) => {
       if (!cancelled) setDaemonStatus(status)
     })
     return () => {
@@ -204,21 +190,18 @@ export function App() {
               />
             </label>
             <p id="stream-config-help">
-              {daemonStatus} Default stream: <code>{defaultControlStream}</code>.
+              {daemonStatus}
             </p>
             {recoveryHint && <p className="recovery-hint">{recoveryHint}</p>}
             <div className="stream-actions">
               <button type="button" onClick={() => setEndpoint(defaultEndpoint)}>
-                Use local default
+                Use injected endpoint
               </button>
-              <button type="button" onClick={() => setEndpoint(daemonDefaultEndpoint)}>
-                Use daemon default
-              </button>
-              <button type="button" onClick={() => void navigator.clipboard?.writeText(shellDerivation)}>
+              <button type="button" onClick={() => void navigator.clipboard?.writeText(defaultEndpoint)}>
                 Copy endpoint
               </button>
             </div>
-            <code className="command-line">{shellDerivation}</code>
+            <code className="command-line">{localDevCommand}</code>
           </div>
           <label>
             Brain placement
@@ -292,28 +275,29 @@ export function App() {
   )
 }
 
-async function probeLocalDaemon(controlStreamUrl: string): Promise<string> {
+async function probeLocalEndpoint(endpoint: string): Promise<string> {
+  if (!endpoint.trim()) {
+    return `No endpoint injected. Start this app with: ${localDevCommand}.`
+  }
   try {
-    await fetch(localStreamsHealthUrl, {
-      method: 'GET',
-      mode: 'no-cors',
-      cache: 'no-store',
-    })
-    const streamName = streamNameFromUrl(controlStreamUrl)
-    if (!streamName) return `Detected local streams on ${localStreamsHealthUrl}.`
-    const streamProbe = await fetch(controlStreamUrl, { method: 'GET', cache: 'no-store' })
+    const endpointUrl = new URL(endpoint)
+    const healthUrl = new URL('/healthz', endpointUrl.origin)
+    const streamProbe = await fetch(endpoint, { method: 'GET', cache: 'no-store' })
+    const streamName = streamNameFromUrl(endpoint)
     if (streamProbe.ok) {
-      return `Detected local streams on ${localStreamsHealthUrl}; endpoint ${streamName} is readable.`
+      return `Endpoint ${streamName ?? endpointUrl.href} is readable.`
     }
     if (streamProbe.status === 404) {
       return [
-        `Detected local streams on ${localStreamsHealthUrl}, but endpoint ${streamName} is not readable yet.`,
-        'If Run returns 404, reuse the exact FIRELINE_ENDPOINT exported by the daemon or restart with the matching --state-stream.',
+        `Endpoint ${streamName ?? endpointUrl.href} is not readable yet.`,
+        `Restart with ${localDevCommand} so fireline runtime dev exports an appendable FIRELINE_ENDPOINT.`,
       ].join(' ')
     }
-    return `Detected local streams on ${localStreamsHealthUrl}; endpoint probe returned HTTP ${streamProbe.status}.`
-  } catch {
-    return `Start local Fireline with: ${localDaemonCommand}`
+    return `Endpoint probe returned HTTP ${streamProbe.status}. Health endpoint: ${healthUrl.href}.`
+  } catch (error) {
+    return error instanceof Error
+      ? `Endpoint probe failed: ${error.message}. Start this app with: ${localDevCommand}.`
+      : `Endpoint probe failed. Start this app with: ${localDevCommand}.`
   }
 }
 
@@ -324,8 +308,7 @@ function explainLaunchError(error: unknown, controlStreamUrl: string): string | 
   return [
     `Fireline endpoint ${missingStream} was not found by durable streams.`,
     'This usually means editable-agent-web is pointed at a stream the reused daemon is not watching.',
-    `Use the exact FIRELINE_ENDPOINT printed/exported by fireline-v3-dev, or restart through: ${viteHandoffCommand}.`,
-    `For the daemon default stream, try ${daemonDefaultEndpoint}.`,
+    `Restart through ${localDevCommand} so fireline runtime dev exports an appendable FIRELINE_ENDPOINT.`,
   ].join(' ')
 }
 

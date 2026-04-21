@@ -39,7 +39,7 @@ export default {
           config,
           localDaemonCommand:
             `FIRELINE_CONTROL_STREAM=${config.controlStream} ` +
-            `fireline-v3-dev --state-stream ${config.controlStream}`,
+            `fireline runtime dev --launch-control-stream ${config.controlStream}`,
           endpointDerivation:
             `export FIRELINE_ENDPOINT="http://127.0.0.1:` +
             `\${FIRELINE_STREAMS_PORT:-${defaultStreamsPort}}/v1/stream/` +
