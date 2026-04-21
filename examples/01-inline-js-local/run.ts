@@ -165,7 +165,7 @@ export default async function handle(ctx) {
     "case=${entry.name}",
     "fsBackend=${entry.fsBackend}",
     "middleware=${entry.middleware.map((middleware) => middleware.kind).join(',') || 'none'}",
-    "prompt=" + ctx.prompt[0].text,
+    "prompt=" + (ctx.prompt.find((block) => block.type === "text")?.text ?? ""),
     "env=" + process.env.FIRELINE_EXAMPLE_CASE,
   ].join("\\n")
   await mkdir(dirname(outputFile), { recursive: true })

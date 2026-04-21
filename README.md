@@ -50,10 +50,9 @@ Current checkpoint:
   `curl`, and observes backing `fireline.launch` rows without Fireline helper
   packages.
 - `examples/08-cloudflare-worker-direct` is a direct Cloudflare Worker
-  consumer using the Tier 1 managed-agent surface for session lifecycle. It uses
-  `new Fireline({ endpoint })`, `new Agent(...)`, and session helpers. It uses
-  explicit `pnpm dlx wrangler@4.83.0` commands and documents the Wrangler
-  `--var` behavior required for custom scratch ports.
+  consumer kept as Tier 3 escape-hatch evidence until its Worker-safe cutover
+  lands. It uses explicit `pnpm dlx wrangler@4.83.0` commands and documents
+  the Wrangler `--var` behavior required for custom scratch ports.
 - `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
   `examples/15-go-raw-http` are raw Durable Streams HTTP consumers. They do
   not import Fireline packages, crates, or SDKs; they build
@@ -61,27 +60,29 @@ Current checkpoint:
   first-class `fireline.launch` rows over plain HTTP.
 - `examples/11-server-worker-wrapper` is a server/Worker boundary pattern. The
   app-facing layer has no Fireline imports; the server wrapper owns auth,
-  tenant checks, idempotency, and Tier 1 `Fireline` / `Agent` / session calls.
+  tenant checks, idempotency, and a Tier 3 escape-hatch Fireline adapter until
+  its Tier 1 cutover lands.
 - `examples/12-vercel-function-node` is a Vercel Functions Node-runtime shape.
-  It uses the Tier 1 managed-agent surface inside a Node function.
+  It remains Tier 3 escape-hatch evidence until its function adapter moves to
+  `Fireline` / `Agent` / session helpers.
 - `examples/13-vercel-edge-runtime` is a Vercel Edge Runtime shape. It bundles
-  an Edge handler that uses the Tier 1 managed-agent surface, then runs
-  locally in `@edge-runtime/vm`.
+  an Edge handler that remains Tier 3 escape-hatch evidence, then runs locally
+  in `@edge-runtime/vm`.
 - `examples/14-bun` is a Bun runtime shape. It runs with `bun`, uses the root
-  package-shaped Fireline refs, and uses the Tier 1 managed-agent surface.
-- `examples/16-deno` is a Deno package-consumer shape. It uses documented
-  `@fireline/client/managed-agent` through Deno's Node/npm compatibility layer.
+  package-shaped Fireline refs, and remains Tier 3 escape-hatch evidence until
+  its runtime-specific adapter moves to the Tier 1 API.
+- `examples/16-deno` is a Deno package-consumer shape. It remains Tier 3
+  escape-hatch evidence through Deno's Node/npm compatibility layer.
 - `examples/17-acp-registry-chat` resolves a safe ACP registry fixture row
   with `acpRegistry(...)` from `@fireline/client`, launches the resulting command
-  distribution through the Tier 1 managed-agent surface, sends a follow-up
-  prompt, and stops the session. It
-  deliberately avoids
+  distribution through a Tier 3 escape-hatch adapter, sends a follow-up
+  prompt, and stops the session. It deliberately avoids
   binary registry installs, launcher env metadata, retired launch-control
   surfaces, and hand-rolled lifecycle primitives.
 - `examples/18-middleware-stack` is a focused middleware-stack consumer. It
-  builds a normal stream-native launch with `trace(...)`,
-  `contextInjection(...)`, and `budget(...)`, then runs through the Tier 1
-  managed-agent surface. It deliberately avoids `memory()`,
+  builds a middleware stack with `trace(...)`, `contextInjection(...)`, and
+  `budget(...)`, then runs through a Tier 3 escape-hatch adapter until the
+  middleware slice moves to the Tier 1 API. It deliberately avoids `memory()`,
   approval gates, launch-control HTTP, `/v1/launches`, Fireline internals, and
   hand-rolled lifecycle primitives.
 
@@ -192,16 +193,11 @@ FIRELINE_PORT=5537 FIRELINE_STREAMS_PORT=8574 \
 pnpm run dev:editable-agent-web --port 5192
 ```
 
-The app gives `@fireline/client/managed-agent` the configured launch/control
-endpoint and uses the Tier 1 `Fireline` and `Agent` surface for session
-lifecycle. It does not call `/v1/launches`, use
-`@fireline/client/launch-control`, rely on bridge helpers, or import
-managed-agent helpers from the root `@fireline/client` barrel.
-
-Managed-agent cutover note: examples 08, 11, 12, 13, 14, 16, 17, and 18 use
-`@fireline/client/managed-agent` for normal app lifecycle consumption, including
-`createManagedAgentLaunchRequest`, `inlineJsBundleAgent`, `jsModuleAgent`, and
-`acpStdioAgent` where applicable.
+The app gives `@fireline/client/managed-agent` the configured Fireline endpoint
+and uses the Tier 1 `Fireline` and `Agent` surface for session lifecycle. It
+does not call `/v1/launches`, use `@fireline/client/launch-control`, rely on
+bridge helpers, or import managed-agent helpers from the root
+`@fireline/client` barrel.
 
 Reviewer reproduce: fresh daemon runnable path:
 
@@ -236,7 +232,7 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run dev:editable-agent-web --port 5193
 
 Open `http://127.0.0.1:5193/`, click **Run**, then click **Stop**. With
 Fireline PR #291 or newer, `fireline-v3-dev` creates/verifies the exported
-launch/control stream before starting Vite, so the reused-daemon path should
+endpoint before starting Vite, so the reused-daemon path should
 reach a running launch and then `stopped`.
 
 If a stale daemon or stream store from an older run is still bound to the same
@@ -370,7 +366,7 @@ pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec fireline-v3-dev \
     pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec deno run \
       --node-modules-dir=manual \
       --allow-net=127.0.0.1 \
-      --allow-env=FIRELINE_LAUNCH_CONTROL_STREAM_URL,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
+      --allow-env=FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
       "$FIRELINE_EXAMPLES_ROOT/examples/16-deno/main.ts"
 ```
 

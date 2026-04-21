@@ -145,33 +145,31 @@ violations.
 
 ## Environment Variables
 
-- `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: read by examples 01-03 and passed into
-  the Next-shaped examples as `controlStreamUrl`. Example 06 accepts it as the
-  highest-precedence exact launch/control stream append target. The
-  `dev:editable-agent-web` script maps this daemon handoff to
-  `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL` when Vite is run as a
-  `fireline-v3-dev` child.
-- `VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL`: optional Vite dev/build seed for
-  examples 02-03. Example 02's public dev command starts through
-  `fireline-v3-dev`, so this value should normally be injected from
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`. The private Vite child script still
-  defaults to `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when
-  this is not set, and exposes mismatch recovery guidance when a reused daemon
-  does not watch that stream.
+- `FIRELINE_ENDPOINT`: canonical app-facing endpoint for Tier 1 examples. It
+  is the full Durable Streams stream URL passed to `new Fireline({ endpoint })`
+  in examples 01-06.
+- `VITE_FIRELINE_ENDPOINT`: optional Vite dev/build seed for examples 02-03.
+  Example 02's public dev command starts through `fireline-v3-dev`, so this
+  value should normally be injected from the daemon's `FIRELINE_ENDPOINT`
+  handoff. The private Vite child script still defaults to
+  `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when this is not
+  set, and exposes mismatch recovery guidance when a reused daemon does not
+  watch that stream.
+- `NEXT_PUBLIC_FIRELINE_ENDPOINT`: optional browser-exposed endpoint seed for
+  examples 04-05.
 - `VITE_FIRELINE_STREAMS_PORT`: optional example 02 Vite seed for deriving the
-  launch/control stream URL when the local streams server is not on `7474`.
+  Fireline endpoint when the local streams server is not on `7474`.
 - `VITE_FIRELINE_CONTROL_STREAM`: optional example 02 Vite seed for deriving
-  the launch/control stream URL when the local control stream name is not
+  the Fireline endpoint when the local control stream name is not
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
-  in `/v1/stream`. Examples 06, 08, 11-14, 16, and 17 append
-  `/<FIRELINE_CONTROL_STREAM>` to this base when the exact launch/control
-  stream URL is not provided.
+  in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this
+  base when `FIRELINE_ENDPOINT` is not provided. Some Tier 3 escape-hatch
+  examples still use the same derivation until their own cutover lands.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
-  URL. Examples 06, 08, 11-14, 16, and 17 also use it to derive the
-  launch/control stream URL when `FIRELINE_LAUNCH_CONTROL_STREAM_URL` is not
-  set.
+  URL. Example 06 also uses it to derive `FIRELINE_ENDPOINT` when an exact
+  endpoint is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
   daemon on the default port.
 - `FIRELINE_STREAMS_PORT`: set in scratch smoke recipes to avoid reusing
@@ -212,7 +210,7 @@ violations.
 - `FLAMECAST_SCENE_COUNT`: optional example-only scene count.
 - `FLAMECAST_TONE`: optional `brief` or `detailed` example-only tone.
 - `FLAMECAST_REQUESTED_BY`: optional `requestedBy` override for the
-  `fireline.launch_request` and `fireline.launch_stop` envelopes.
+  Flamecast-shaped session run.
 - `FLAMECAST_FOLLOW_UP_PROMPT`: optional ACP follow-up prompt for
   `examples/06-flamecast-v3-shaped`.
 - `APP_AUTH_TOKEN`: example-only server/Worker bearer token expected by
@@ -274,17 +272,18 @@ violations.
 
 ## Endpoints
 
-- `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` is passed to
-  `@fireline/client/managed-agent` by examples 01, 03, 04, 05, and 06. The
-  helper owns launch append, launch observation, ACP attachment, and stop
-  append for those examples.
-- Lower-level examples pass `${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` to
-  `DurableStream` by `@fireline/client/events`; `appendLaunchRequest` appends
-  the `fireline.launch_request` envelope and `appendLaunchStop` appends the
-  `fireline.launch_stop` envelope through that package.
-- `GET ${FIRELINE_LAUNCH_CONTROL_STREAM_URL}` and the stream subscription
-  endpoints used internally by `@fireline/state` observe
-  `collections.launches`.
+- `${FIRELINE_ENDPOINT}` is passed to `new Fireline({ endpoint })` by examples
+  01, 03, 04, 05, and 06. Example 02 receives the same endpoint as
+  `VITE_FIRELINE_ENDPOINT`.
+- Tier 2 raw/language-native examples pass explicit Durable Streams HTTP URLs
+  to their own local HTTP clients. They build and append stream rows directly
+  because raw protocol reference is the point of those examples.
+- Tier 3 escape-hatch examples may still derive a stream URL from
+  `FIRELINE_DURABLE_STREAMS_URL`, `FIRELINE_CONTROL_STREAM`, and
+  `FIRELINE_STREAMS_PORT` until their own cutover lands. That is not the
+  normal TypeScript app path.
+- Stream subscription endpoints are used internally by the managed-agent
+  package and by explicit Tier 3 evidence paths.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned in
   `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` and
   `examples/17-acp-registry-chat` for follow-up prompts.
@@ -333,32 +332,30 @@ construction.
 - `src/generated-harness.ts` produces a multi-file inline bundle with
   `adapter-entry.mjs`, `runtime-shim.mjs`, `user-harness.mjs`, and
   `framework-boundary.mjs`.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`; builds a stable
+- The runnable smoke derives `FIRELINE_ENDPOINT` from the exact env value when
+  provided; otherwise from `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream`
+  append base plus `FIRELINE_CONTROL_STREAM`; otherwise from local
+  `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`; builds a stable
   `clientRequestId` / `idempotencyKey` from `FLAMECAST_WORKSPACE_ID`,
-  `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; launches through
-  `@fireline/client/managed-agent`; waits for `session_ready`; attaches through
-  the managed-agent handle; sends one follow-up prompt; stops through the same
-  handle; and observes the stopped row.
+  `FLAMECAST_RUN_ID`, and `FLAMECAST_ATTEMPT_ID`; opens a Fireline session;
+  sends one follow-up prompt with `session.chat(...)`; and stops with
+  `session.stop(...)`.
 - The example deliberately does not import real Flamecast v3 modules.
 
-`examples/07-curl-shell-raw-http` exercises the T1 raw Durable Streams HTTP
+`examples/07-curl-shell-raw-http` exercises the Tier 2 raw Durable Streams HTTP
 surface with shell, curl, and small local envelope helpers. It builds
 `fireline.launch_request` and `fireline.launch_stop` envelopes without
 Fireline package imports, appends them with raw HTTP `POST`, and observes
 first-class `fireline.launch` rows with raw HTTP `GET`.
 
 `examples/08-cloudflare-worker-direct` exercises a direct Cloudflare Worker
-consumer shape:
+consumer shape as Tier 3 escape-hatch evidence:
 
-- `src/worker.ts` imports Worker-safe `@fireline/client/managed-agent` for
-  request construction, launch, observation, and stop.
+- `src/worker.ts` imports Worker-safe managed-agent primitives for request
+  construction, launch, observation, and stop until its Tier 1 cutover lands.
 - `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
-  `FIRELINE_STREAMS_PORT` so the Worker derives a usable launch/control stream
-  URL when `fireline-v3-dev` is running with the matching `--state-stream`.
+  `FIRELINE_STREAMS_PORT` so the Worker derives a usable stream endpoint when
+  `fireline-v3-dev` is running with the matching `--state-stream`.
 - Custom scratch ports or stream names must be passed with Wrangler `--var`
   flags; shell environment variables alone do not override local `[vars]`.
 - `POST /launch` returns the managed-agent launch row.
@@ -374,69 +371,59 @@ consumer shape:
   actor, tenant, and launch intent types.
 - `src/server-worker-wrapper.ts` is the Fireline boundary. It validates a
   bearer token, checks tenant/scope policy, derives a stable
-  `clientRequestId` / idempotency key, launches through managed-agent, stops
-  through managed-agent, and returns an app-facing summary.
+  `clientRequestId` / idempotency key, and remains Tier 3 escape-hatch
+  evidence until its Tier 1 cutover lands.
 - `src/generated-worker-agent.ts` creates a generated multi-file inline bundle
   with `worker-entry.mjs` and `tenant-policy.mjs`.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`.
+- The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
+  as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
+  from local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
 
 `examples/12-vercel-function-node` exercises a Vercel Functions Node runtime
 shape:
 
 - `api/fireline-launch.ts` is a Vercel-style Node handler using
   `IncomingMessage` / `ServerResponse` types.
-- The handler imports `@fireline/client/managed-agent` for request
-  construction and lifecycle flow.
+- The handler remains Tier 3 escape-hatch evidence until its Tier 1 cutover
+  lands.
 - `src/run-local.ts` starts a local Node HTTP server around the handler and
   sends one request for E2E validation.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`.
+- The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
+  as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
+  from local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
 
 `examples/13-vercel-edge-runtime` exercises a Vercel Edge Runtime shape:
 
 - `src/edge.ts` is an Edge handler with `config.runtime = "edge"` and no Node
   built-in imports.
-- The handler imports Worker-safe `@fireline/client/managed-agent` for request
-  construction and lifecycle flow.
+- The handler remains Tier 3 escape-hatch evidence until its Tier 1 cutover
+  lands.
 - `src/run-local.ts` loads the bundled handler into `@edge-runtime/vm` and
   dispatches one `POST /api/fireline-launch` request for E2E validation.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`.
+- The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
+  as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
+  from local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
 - The example deliberately avoids root `@fireline/client`, Node built-ins,
   `/v1/launches`, and `@fireline/client/launch-control` in the Edge handler.
 
 `examples/14-bun` exercises a Bun runtime shape:
 
-- `src/launch.ts` imports `@fireline/client/managed-agent` for request
-  construction and lifecycle flow.
+- `src/launch.ts` remains Tier 3 escape-hatch evidence until its Tier 1
+  cutover lands.
 - `src/run.ts` is executed by `bun` and invokes the launch handler with a
   Fetch `Request`.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`.
+- The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
+  as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
+  from local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
 
 `examples/16-deno` exercises a Deno package-consumer shape:
 
-- `main.ts` imports `@fireline/client/managed-agent` for request construction
-  and lifecycle flow.
+- `main.ts` remains Tier 3 escape-hatch evidence until its Tier 1 cutover
+  lands.
 - It runs with Deno's Node/npm compatibility using `--node-modules-dir=manual`.
-- The runnable smoke derives the launch/control stream URL from exact
-  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`; otherwise from
-  `FIRELINE_DURABLE_STREAMS_URL` as the `/v1/stream` append base plus
-  `FIRELINE_CONTROL_STREAM`; otherwise from local `FIRELINE_STREAMS_PORT` plus
-  `FIRELINE_CONTROL_STREAM`.
+- The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
+  as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
+  from local `FIRELINE_STREAMS_PORT` plus `FIRELINE_CONTROL_STREAM`.
 - The Deno command requires `--allow-net=127.0.0.1` and an explicit
   `--allow-env` list including Fireline example env vars and `NODE_ENV`.
 
@@ -472,12 +459,12 @@ surface with only Python stdlib HTTP and JSON modules. It builds
 Fireline package imports, appends them with raw HTTP `POST`, and observes
 first-class `fireline.launch` rows with raw HTTP `GET`.
 
-`examples/10-rust-raw-http` exercises the T3 Rust raw Durable Streams HTTP
+`examples/10-rust-raw-http` exercises the Tier 2 Rust raw Durable Streams HTTP
 surface with `reqwest`, `tokio`, and `serde_json`, but no Fireline crates. It
 uses the same envelope shape and launch-row observation path as the Python
 example, keeping Fireline as an HTTP service boundary.
 
-`examples/15-go-raw-http` exercises the T9 Go raw Durable Streams HTTP surface
+`examples/15-go-raw-http` exercises the Tier 2 Go raw Durable Streams HTTP surface
 with only Go standard library HTTP, JSON, crypto, and filesystem packages. It
 uses the same envelope shape and launch-row observation path as the Python and
 Rust examples, keeping Fireline as an HTTP service boundary and avoiding any
@@ -485,39 +472,25 @@ Fireline Go SDK or source imports.
 
 ## Managed-Agent Cutover Checkpoint
 
-After Fireline #228, #231, #233, #237, #242, #245, and the
-mono-oet.29.3.32 helper lane, examples 01, 03, 04, 05, and 06 are being moved
-from direct stream-native lifecycle composition to `@fireline/client/managed-agent`:
+Examples 01-06 are the current Tier 1 TypeScript app baseline. They use
+`new Fireline({ endpoint })`, `new Agent(...)`, `fireline.run(...)` for
+one-shot runs, and `fireline.session(...)` plus `session.chat(...)` /
+`session.stop(...)` for session flows.
 
-- Build a launch request with `createManagedAgentLaunchRequest(...)` and
-  managed-agent agent helpers such as `inlineJsBundleAgent(...)`.
-- Launch with `createManagedAgentClient(...).launch(...)`.
-- Wait with the returned managed-agent handle.
-- Use `handle.connectBrowserAcp(...)` for browser ACP attachment once the
-  managed-agent launch row reaches `session_ready`.
-- Stop with `handle.stop(...)` and observe the managed-agent launch row reach
-  a terminal state.
-
-Raw and deliberately lower-level examples continue to use stream-native or raw
-HTTP primitives when that is the point of the example.
-
-`examples/06-flamecast-v3-shaped`, `examples/11-server-worker-wrapper`,
-`examples/12-vercel-function-node`, `examples/13-vercel-edge-runtime`,
-`examples/14-bun`, `examples/16-deno`, `examples/17-acp-registry-chat`, and
-`examples/18-middleware-stack` are being moved toward managed-agent lifecycle
-consumption with larger generated harness, runtime-specific,
-registry-resolution, or middleware-stack shapes. They are characterization
-evidence for product consumer boundaries, not a promise that direct
-`@fireline/client/spec` builder imports should return to normal app examples.
+Raw and deliberately lower-level examples continue to use raw HTTP primitives
+when that is the point of the example. Examples 08, 11, 12, 13, 14, 16, 17,
+and 18 are explicitly Tier 3 escape-hatch evidence until their own slices move
+to the Tier 1 API. They are characterization evidence for product consumer
+boundaries, not a promise that bridge/request-builder imports should return to
+normal app examples.
 
 Validated `mono-oet.29.3.1` behavior:
 
 - Launch rows now use bare launch ids only in observed target rows. The old
   `launch:<id>` compatibility matcher was removed from the examples.
 - Stream-native stop was validated in examples 01 and 02 before the
-  managed-agent cutover. Example 01 now reaches stop through
-  `ManagedAgentLaunchHandle.stop(...)`; example 02 remains the editable
-  lower-level browser path.
+  managed-agent cutover. Examples 01-06 now teach the session/run helpers
+  instead of direct stream row composition.
 
 Current `@fireline/state` observation rough edge: lower-level examples that
 observe `collections.launches` directly can still log

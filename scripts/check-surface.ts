@@ -24,7 +24,7 @@ const tier2Examples = [
   'examples/15-go-raw-http/',
 ] as const
 
-const currentTier1Examples = [
+const tier1Examples = [
   'examples/01-inline-js-local/',
   'examples/02-editable-agent-web/',
   'examples/03-tanstack-shaped-app/',
@@ -33,7 +33,7 @@ const currentTier1Examples = [
   'examples/06-flamecast-v3-shaped/',
 ] as const
 
-const bridgeTier1Examples = [
+const tier3EscapeHatchExamples = [
   'examples/08-cloudflare-worker-direct/',
   'examples/11-server-worker-wrapper/',
   'examples/12-vercel-function-node/',
@@ -44,16 +44,13 @@ const bridgeTier1Examples = [
   'examples/18-middleware-stack/',
 ] as const
 
-const bridgeNameBans = [
+const normalPathVocabularyBans = [
   'createManagedAgentClient',
   'createManagedAgentLaunchRequest',
   'launchAgent(',
   'launchAgent<',
   'ManagedAgentLaunchHandle',
   'launchControlStreamUrl',
-  'FIRELINE_LAUNCH_CONTROL_STREAM_URL',
-  'VITE_FIRELINE_LAUNCH_CONTROL_STREAM_URL',
-  'NEXT_PUBLIC_FIRELINE_LAUNCH_CONTROL_STREAM_URL',
 ] as const
 
 const tier3SpecifierBans = [
@@ -72,16 +69,6 @@ const sharedHelperBans = [
   '../shared/managed-agent-launch.js',
   '../../shared/managed-agent-launch',
   '../../shared/managed-agent-launch.js',
-] as const
-
-const targetShapeTokens = [
-  'new Fireline(',
-  'new Agent(',
-  '.session(',
-  '.chat(',
-  '.respond(',
-  '.stop(',
-  '.run(',
 ] as const
 
 const managedAgentSpecifier = '@fireline/client/managed-agent'
@@ -126,11 +113,11 @@ for await (const file of walk(root)) {
       violations.push(`${relative}: private Fireline subpath ${specifier}`)
     }
     if (
-      isBridgeTier1Example(relative) &&
+      isTier3EscapeHatchExample(relative) &&
       managedAgentLifecycleBans.has(specifier)
     ) {
       violations.push(
-        `${relative}: current Tier 1 bridge examples should use @fireline/client/managed-agent for lifecycle flow instead of ${specifier}`,
+        `${relative}: Tier 3 escape-hatch examples should not use direct lifecycle subpath ${specifier}`,
       )
     }
     if (
@@ -151,7 +138,7 @@ for await (const file of walk(root)) {
   }
 }
 
-for (const exampleDir of currentTier1Examples) {
+for (const exampleDir of tier1Examples) {
   const files = await collectCheckedFiles(new URL(exampleDir, root))
   let aggregate = ''
   let sawManagedAgentImport = false
@@ -161,9 +148,9 @@ for (const exampleDir of currentTier1Examples) {
     const relative = file.replace(root.pathname, '')
     aggregate += `\n${text}`
 
-    for (const bridgeName of bridgeNameBans) {
+    for (const bridgeName of normalPathVocabularyBans) {
       if (text.includes(bridgeName)) {
-        violations.push(`${relative}: current Tier 1 example must not use bridge or old endpoint vocabulary ${bridgeName}`)
+        violations.push(`${relative}: Tier 1 example must not use bridge vocabulary ${bridgeName}`)
       }
     }
 
@@ -189,12 +176,22 @@ for (const exampleDir of currentTier1Examples) {
   }
 
   if (!sawManagedAgentImport) {
-    violations.push(`${exampleDir}: current Tier 1 example must import ${managedAgentSpecifier}`)
+    violations.push(`${exampleDir}: Tier 1 example must import ${managedAgentSpecifier}`)
   }
 
-  if (!targetShapeTokens.some((token) => aggregate.includes(token))) {
+  if (!aggregate.includes('new Fireline(')) {
+    violations.push(`${exampleDir}: Tier 1 example must construct new Fireline({ endpoint })`)
+  }
+  if (!aggregate.includes('new Agent(')) {
+    violations.push(`${exampleDir}: Tier 1 example must construct new Agent(...)`)
+  }
+  const hasRunFlow = aggregate.includes('.run(')
+  const hasSessionFlow = aggregate.includes('.session(') &&
+    (aggregate.includes('.chat(') || aggregate.includes('.respond(')) &&
+    aggregate.includes('.stop(')
+  if (!hasRunFlow && !hasSessionFlow) {
     violations.push(
-      `${exampleDir}: current Tier 1 example must use Fireline/Agent/session/chat/respond/stop/run target vocabulary`,
+      `${exampleDir}: Tier 1 example must use fireline.run(...) or fireline.session(...) with session.chat/respond/stop`,
     )
   }
 }
@@ -296,6 +293,6 @@ function isNodeBuiltinSpecifier(specifier: string): boolean {
   ].includes(bare)
 }
 
-function isBridgeTier1Example(relative: string): boolean {
-  return bridgeTier1Examples.some((prefix) => relative.startsWith(prefix))
+function isTier3EscapeHatchExample(relative: string): boolean {
+  return tier3EscapeHatchExamples.some((prefix) => relative.startsWith(prefix))
 }

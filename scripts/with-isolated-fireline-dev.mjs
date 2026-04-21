@@ -61,6 +61,9 @@ const resolvedFirelinePort = firelinePort || process.env.FIRELINE_PORT || '5540'
 const resolvedStreamsPort = streamsPort || process.env.FIRELINE_STREAMS_PORT || '8580'
 const resolvedControlStream =
   controlStream || process.env.FIRELINE_CONTROL_STREAM || `fireline-v396-${safeLabel}`
+const derivedEndpoint =
+  process.env.FIRELINE_ENDPOINT ??
+  `http://127.0.0.1:${resolvedStreamsPort}/v1/stream/${resolvedControlStream}`
 
 if (!reuse) {
   await rm(resolvedStateDir, { recursive: true, force: true })
@@ -74,12 +77,9 @@ const env = {
   FIRELINE_PORT: resolvedFirelinePort,
   FIRELINE_STREAMS_PORT: resolvedStreamsPort,
   FIRELINE_CONTROL_STREAM: resolvedControlStream,
-  FIRELINE_LAUNCH_CONTROL_STREAM_URL:
-    process.env.FIRELINE_LAUNCH_CONTROL_STREAM_URL ??
-    `http://127.0.0.1:${resolvedStreamsPort}/v1/stream/${resolvedControlStream}`,
   FIRELINE_DURABLE_STREAMS_URL:
     process.env.FIRELINE_DURABLE_STREAMS_URL ?? `http://127.0.0.1:${resolvedStreamsPort}/v1/stream`,
-  FIRELINE_ENDPOINT: process.env.FIRELINE_ENDPOINT ?? `http://127.0.0.1:${resolvedFirelinePort}`,
+  FIRELINE_ENDPOINT: derivedEndpoint,
   FIRELINE_EXAMPLE_ARTIFACT_ROOT: artifactDir,
 }
 
@@ -94,7 +94,6 @@ await writeFile(
       FIRELINE_PORT: env.FIRELINE_PORT,
       FIRELINE_STREAMS_PORT: env.FIRELINE_STREAMS_PORT,
       FIRELINE_CONTROL_STREAM: env.FIRELINE_CONTROL_STREAM,
-      FIRELINE_LAUNCH_CONTROL_STREAM_URL: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
       FIRELINE_DURABLE_STREAMS_URL: env.FIRELINE_DURABLE_STREAMS_URL,
       FIRELINE_ENDPOINT: env.FIRELINE_ENDPOINT,
     },
