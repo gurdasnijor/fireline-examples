@@ -3,6 +3,11 @@
 Date: 2026-04-20
 Base: `main` at `014f3fd`
 
+Companion docs:
+
+- [README.md](README.md) has the first-read example order.
+- [API_SURFACE.md](API_SURFACE.md) has the per-example label taxonomy.
+
 ## Summary
 
 The v396 example set is functionally cut over to the Tier 1 managed-agent API

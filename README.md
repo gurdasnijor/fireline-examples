@@ -23,6 +23,32 @@ Integration policy:
 - Keep runnable examples on package-shaped Fireline refs. Do not switch this
   repo to Fireline source-tree imports to make local development easier.
 
+Read examples in this order:
+
+1. **First-read:** `examples/01-inline-js-local` is the smallest runnable
+   Tier 1 command-line shape for `new Fireline({ endpoint })`,
+   `new Agent(...)`, and `fireline.run(...)`.
+2. **First-read:** `examples/02-editable-agent-web` is the primary browser
+   app shape for `fireline.session(...)`, `session.chat(...)`, and
+   `session.stop(...)`.
+3. **First-read:** `examples/03-tanstack-shaped-app` shows a small
+   Vite/TanStack app using the same Tier 1 package surface.
+4. **First-read:** `examples/04-next-basic` is the smallest Next app shape.
+5. **Advanced reference:** use `examples/05-next-open-cloudflare`,
+   `examples/06-flamecast-v3-shaped`, `examples/08-cloudflare-worker-direct`,
+   `examples/11-server-worker-wrapper`, `examples/12-vercel-function-node`,
+   `examples/13-vercel-edge-runtime`, `examples/14-bun`,
+   `examples/16-deno`, `examples/17-acp-registry-chat`, and
+   `examples/18-middleware-stack` after the first-read examples.
+6. **Tier 2 protocol reference:** use `examples/07-curl-shell-raw-http`,
+   `examples/09-python-raw-http`, `examples/10-rust-raw-http`, and
+   `examples/15-go-raw-http` only when you need the raw Durable Streams
+   protocol shape without Fireline helper packages.
+
+See [API_SURFACE.md](API_SURFACE.md) for the full per-example label taxonomy
+and [EXAMPLES_IDIOMATICITY_AUDIT.md](EXAMPLES_IDIOMATICITY_AUDIT.md) for the
+reasoning behind the ordering.
+
 Current checkpoint:
 
 - `examples/01-inline-js-local` is TypeScript-authored and launches an inline
