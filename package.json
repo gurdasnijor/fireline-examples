@@ -8,6 +8,8 @@
     "check": "pnpm run typecheck && pnpm run check:surface",
     "check:deno": "deno check --node-modules-dir=manual examples/16-deno/main.ts",
     "check:surface": "tsx scripts/check-surface.ts",
+    "check:surface:v396": "tsx scripts/check-surface-v396.ts",
+    "with:isolated-fireline": "node scripts/with-isolated-fireline-dev.mjs",
     "build:editable-agent-web": "vite build --config examples/02-editable-agent-web/vite.config.ts",
     "build:next-basic": "next build examples/04-next-basic",
     "build:next-open-cloudflare": "next build examples/05-next-open-cloudflare",
