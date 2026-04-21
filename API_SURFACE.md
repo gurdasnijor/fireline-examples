@@ -164,8 +164,8 @@ violations.
   `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
   in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this
-  base when `FIRELINE_ENDPOINT` is not provided. Some Tier 3 escape-hatch
-  examples still use the same derivation until their own cutover lands.
+  base when `FIRELINE_ENDPOINT` is not provided. Runtime-shaped Tier 1 examples
+  use the same derivation when an exact endpoint is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline-v3-dev --state-stream` process with the full control stream
   URL. Example 06 also uses it to derive `FIRELINE_ENDPOINT` when an exact
@@ -273,17 +273,16 @@ violations.
 ## Endpoints
 
 - `${FIRELINE_ENDPOINT}` is passed to `new Fireline({ endpoint })` by examples
-  01, 03, 04, 05, and 06. Example 02 receives the same endpoint as
+  01-06 and 08/11/12/13/14/16/17/18. Example 02 receives the same endpoint as
   `VITE_FIRELINE_ENDPOINT`.
 - Tier 2 raw/language-native examples pass explicit Durable Streams HTTP URLs
   to their own local HTTP clients. They build and append stream rows directly
   because raw protocol reference is the point of those examples.
-- Tier 3 escape-hatch examples may still derive a stream URL from
+- Runtime-shaped Tier 1 examples may derive a stream URL from
   `FIRELINE_DURABLE_STREAMS_URL`, `FIRELINE_CONTROL_STREAM`, and
-  `FIRELINE_STREAMS_PORT` until their own cutover lands. That is not the
-  normal TypeScript app path.
+  `FIRELINE_STREAMS_PORT` when an exact `FIRELINE_ENDPOINT` is not provided.
 - Stream subscription endpoints are used internally by the managed-agent
-  package and by explicit Tier 3 evidence paths.
+  package.
 - `ws://127.0.0.1:<runtime-port>/acp` is the runtime ACP endpoint returned in
   `LaunchRow.runtime.acp.url` and used by `examples/02-editable-agent-web` and
   `examples/17-acp-registry-chat` for follow-up prompts.
@@ -349,10 +348,10 @@ Fireline package imports, appends them with raw HTTP `POST`, and observes
 first-class `fireline.launch` rows with raw HTTP `GET`.
 
 `examples/08-cloudflare-worker-direct` exercises a direct Cloudflare Worker
-consumer shape as Tier 3 escape-hatch evidence:
+consumer shape with the Tier 1 managed-agent API:
 
-- `src/worker.ts` imports Worker-safe managed-agent primitives for request
-  construction, launch, observation, and stop until its Tier 1 cutover lands.
+- `src/worker.ts` imports Worker-safe `Fireline` / `Agent` / session helpers
+  for launch, response, and stop.
 - `wrangler.toml` uses local defaults for `FIRELINE_CONTROL_STREAM` and
   `FIRELINE_STREAMS_PORT` so the Worker derives a usable stream endpoint when
   `fireline-v3-dev` is running with the matching `--state-stream`.
@@ -371,8 +370,8 @@ consumer shape as Tier 3 escape-hatch evidence:
   actor, tenant, and launch intent types.
 - `src/server-worker-wrapper.ts` is the Fireline boundary. It validates a
   bearer token, checks tenant/scope policy, derives a stable
-  `clientRequestId` / idempotency key, and remains Tier 3 escape-hatch
-  evidence until its Tier 1 cutover lands.
+  `clientRequestId` / idempotency key, and runs the Tier 1 managed-agent
+  session flow.
 - `src/generated-worker-agent.ts` creates a generated multi-file inline bundle
   with `worker-entry.mjs` and `tenant-policy.mjs`.
 - The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
@@ -384,8 +383,7 @@ shape:
 
 - `api/fireline-launch.ts` is a Vercel-style Node handler using
   `IncomingMessage` / `ServerResponse` types.
-- The handler remains Tier 3 escape-hatch evidence until its Tier 1 cutover
-  lands.
+- The handler uses the Tier 1 managed-agent session flow.
 - `src/run-local.ts` starts a local Node HTTP server around the handler and
   sends one request for E2E validation.
 - The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
@@ -396,8 +394,7 @@ shape:
 
 - `src/edge.ts` is an Edge handler with `config.runtime = "edge"` and no Node
   built-in imports.
-- The handler remains Tier 3 escape-hatch evidence until its Tier 1 cutover
-  lands.
+- The handler uses the Tier 1 managed-agent session flow.
 - `src/run-local.ts` loads the bundled handler into `@edge-runtime/vm` and
   dispatches one `POST /api/fireline-launch` request for E2E validation.
 - The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
@@ -408,8 +405,7 @@ shape:
 
 `examples/14-bun` exercises a Bun runtime shape:
 
-- `src/launch.ts` remains Tier 3 escape-hatch evidence until its Tier 1
-  cutover lands.
+- `src/launch.ts` uses the Tier 1 managed-agent session flow.
 - `src/run.ts` is executed by `bun` and invokes the launch handler with a
   Fetch `Request`.
 - The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
@@ -418,8 +414,7 @@ shape:
 
 `examples/16-deno` exercises a Deno package-consumer shape:
 
-- `main.ts` remains Tier 3 escape-hatch evidence until its Tier 1 cutover
-  lands.
+- `main.ts` uses the Tier 1 managed-agent session flow.
 - It runs with Deno's Node/npm compatibility using `--node-modules-dir=manual`.
 - The runnable smoke derives a stream endpoint from `FIRELINE_DURABLE_STREAMS_URL`
   as the `/v1/stream` append base plus `FIRELINE_CONTROL_STREAM`; otherwise
@@ -435,20 +430,18 @@ shape:
 - The registry row is an inline fixture catalog with a supported `command`
   distribution. It points at `registry-agent.mjs`, a local ACP stdio agent.
 - The example decorates the resolved registry agent with local sandbox labels
-  and trace/context/budget middleware, launches through
-  managed-agent, attaches to the returned ACP session through the launch
-  handle, sends a follow-up prompt, stops through managed-agent, and observes
+  and trace/context/budget middleware, launches through a Tier 1 Fireline
+  session, sends a follow-up prompt, stops the session, and observes
   `stopped`.
 - The example deliberately avoids binary registry install/cache, launcher env
   metadata, retired launch-control surfaces, and hand-rolled lifecycle primitives.
 
 `examples/18-middleware-stack` exercises the focused middleware-stack slice:
 
-- `src/run.ts` imports `@fireline/client/managed-agent`,
-  `@fireline/client/middleware`, and the shared managed-agent launch helper.
-- It serializes `trace(...)`, `contextInjection(...)`, and `budget(...)` into a
-  normal `agentDefinition(...)`, then launches, observes, and stops through
-  managed-agent.
+- `src/run.ts` imports `@fireline/client/managed-agent` and
+  `@fireline/client/middleware`.
+- It applies `trace(...)`, `contextInjection(...)`, and `budget(...)` around a
+  Tier 1 `Fireline` / `Agent` session flow.
 - The example deliberately avoids `memory()`, approval gates,
   webhook/Telegram subscribers, launch-control HTTP, `/v1/launches`, Fireline
   internals, and hand-rolled lifecycle primitives.
@@ -472,17 +465,15 @@ Fireline Go SDK or source imports.
 
 ## Managed-Agent Cutover Checkpoint
 
-Examples 01-06 are the current Tier 1 TypeScript app baseline. They use
-`new Fireline({ endpoint })`, `new Agent(...)`, `fireline.run(...)` for
-one-shot runs, and `fireline.session(...)` plus `session.chat(...)` /
-`session.stop(...)` for session flows.
+Examples 01-06 and 08/11/12/13/14/16/17/18 are the current Tier 1 managed-agent
+baseline. They use `new Fireline({ endpoint })`, `new Agent(...)`,
+`fireline.run(...)` for one-shot runs, and `fireline.session(...)` plus
+`session.chat(...)` / `session.stop(...)` for session flows.
 
 Raw and deliberately lower-level examples continue to use raw HTTP primitives
-when that is the point of the example. Examples 08, 11, 12, 13, 14, 16, 17,
-and 18 are explicitly Tier 3 escape-hatch evidence until their own slices move
-to the Tier 1 API. They are characterization evidence for product consumer
-boundaries, not a promise that bridge/request-builder imports should return to
-normal app examples.
+when that is the point of the example. They are characterization evidence for
+protocol boundaries, not a promise that bridge/request-builder imports should
+return to normal app examples.
 
 Validated `mono-oet.29.3.1` behavior:
 
@@ -492,10 +483,8 @@ Validated `mono-oet.29.3.1` behavior:
   managed-agent cutover. Examples 01-06 now teach the session/run helpers
   instead of direct stream row composition.
 
-Current `@fireline/state` observation rough edge: lower-level examples that
-observe `collections.launches` directly can still log
-`Cannot read properties of undefined (reading 'Symbol(liveQueryInternal)')`
-while processing runtime instance rows. The managed-agent examples avoid
-teaching direct state observation, while stream-native characterization
-examples keep any workaround logged as substrate friction rather than hiding it
-as canonical app shape.
+`@fireline/state` live observation rough edge: this needs repro against the
+current published managed-agent artifacts before being treated as an open
+substrate gap. The Tier 1 examples no longer teach direct state observation;
+raw protocol examples keep any state-observation workaround documented as
+discovery friction rather than canonical app shape.

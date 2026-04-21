@@ -86,21 +86,18 @@ a Fireline bead or be closed as an intentional boundary.
    `session.stop(...)`, so normal app examples no longer assemble the stop
    envelope and observation loop directly.
 
-9. `@fireline/state` launch row identity is fixed, but live observation is not.
+9. `@fireline/state` live observation needs repro against current artifacts.
 
    Fireline PR #245 fixed the duplicate bare/prefixed launch row shape. The
    examples now match exact bare `launchId` values, and the `mono-oet.29.3.1`
    smoke observed one target row per validated launch.
 
-   Remaining substrate gap: live `@fireline/state` subscriptions still throw
-   from `@durable-streams/state`/TanStack DB while processing
-   `fireline.runtime_instance` rows:
-   `Cannot read properties of undefined (reading 'Symbol(liveQueryInternal)')`.
-   A long-lived DB created before runtime rows can miss the later materialized
-   launch result. The shared helper therefore waits by taking fresh
-   `createFirelineDB(...).preload()` snapshots and reading
-   `collections.launches`. This is explicitly non-canonical discovery glue and
-   is tracked as Fireline follow-up `mono-oet.29.3.2`.
+   Earlier evidence logged `Symbol(liveQueryInternal)` failures while direct
+   state observers processed `fireline.runtime_instance` rows. After #293 and
+   the managed-agent cutover, normal examples no longer teach direct
+   `@fireline/state` launch observation. Treat this as needs-repro against the
+   current published managed-agent artifacts before reopening it as a substrate
+   gap.
 
 10. Browser ACP attachment is hidden from the normal editable-agent flow.
 
@@ -134,10 +131,10 @@ a Fireline bead or be closed as an intentional boundary.
    secret handling around stream append.
 
    `examples/11-server-worker-wrapper` demonstrates the consumer-authored
-   pattern without changing Fireline. It is still Tier 3 escape-hatch evidence
-   until that slice moves to the Tier 1 `Fireline` / `Agent` / session API. It
-   does not solve framework-specific bundling constraints for every runtime,
-   and it is not a public helper API.
+   pattern without changing Fireline. It uses the Tier 1 `Fireline` / `Agent` /
+   session API at the Fireline boundary, but it does not solve
+   framework-specific bundling constraints for every runtime and it is not a
+   public helper API.
 
 14. Next/Turbopack and NodeNext TypeScript disagree on import style.
 
@@ -193,11 +190,13 @@ a Fireline bead or be closed as an intentional boundary.
 20. Runtime close noise is still visible even on successful runs.
 
    Both fresh-daemon and prior-daemon reuse scenarios completed with
-   `followUpSent: true` and `stopStatus: "stopped"`, but logs still showed the
-   known `Symbol(liveQueryInternal)` durable-state/TanStack DB error while
-   processing `fireline.runtime_instance` rows. The runtime also logged ACP
-   websocket reset/closed warnings during teardown. These did not fail the
-   example, but they remain non-happy-path reviewer noise.
+   `followUpSent: true` and `stopStatus: "stopped"`. Older logs showed
+   `Symbol(liveQueryInternal)` durable-state/TanStack DB errors while
+   processing `fireline.runtime_instance` rows; that needs repro against
+   current published managed-agent artifacts before being treated as still
+   open. The runtime also logged ACP websocket reset/closed warnings during
+   teardown. These did not fail the example, but they remain non-happy-path
+   reviewer noise.
 
 21. Server/Worker wrapper is a pattern, not a hidden Fireline abstraction.
 
@@ -222,12 +221,11 @@ a Fireline bead or be closed as an intentional boundary.
    `fireline.launch_request` and `fireline.launch_stop` envelopes, poll/read
    stream rows, and filter `fireline.launch` records themselves.
 
-23. Direct Cloudflare Worker usage is package-shaped Tier 3 evidence until its cutover lands.
+23. Direct Cloudflare Worker usage is package-shaped Tier 1 managed-agent evidence.
 
    `examples/08-cloudflare-worker-direct` proves the direct Worker shape can be
-   expressed without Next.js, OpenNext, launch-control HTTP, or Fireline source
-   internals. This remains escape-hatch evidence until the Worker-safe slice
-   moves to the Tier 1 `Fireline` / `Agent` / session API.
+   expressed with the Tier 1 `Fireline` / `Agent` / session API and without
+   Next.js, OpenNext, launch-control HTTP, or Fireline source internals.
 
    `mono-oet.29.3.21.3` retro smoke passed both quality-bar scenarios:
    fresh scratch daemon on `5544`/`8581` with Wrangler on `8787`, and
@@ -245,16 +243,16 @@ a Fireline bead or be closed as an intentional boundary.
    rather than the daemon's exported URL. The dev command now wraps Vite with
    `fireline-v3-dev`; fresh and prior-daemon runs injected
    `http://127.0.0.1:<streams-port>/v1/stream/fireline-v3-dev-daemon` into the
-   Vite environment and launch/stop completed. Both evidence runs still logged
-   the known `Symbol(liveQueryInternal)` durable-state/TanStack DB warning while
-   processing `fireline.runtime_instance`; TL1 tracks that under
-   `mono-oet.29.3.24`.
+   Vite environment and launch/stop completed. Older evidence logged
+   `Symbol(liveQueryInternal)` durable-state/TanStack DB warnings while
+   processing `fireline.runtime_instance`; that needs repro against current
+   published managed-agent artifacts before being treated as still open.
 
 25. Editable-agent-web now uses the Tier 1 managed-agent session surface.
 
    `mono-4rv` restores the accepted `mono-oet.29.3.32.1` cutover on main:
    `examples/02-editable-agent-web` no longer imports Tier 3 spec builders,
-   direct state observation, shared stream-launch helpers, or direct
+   direct state observation, removed stream lifecycle helpers, or direct
    `@fireline/client/acp-browser` for the normal app lifecycle. The app now
    creates `new Fireline({ endpoint })`, creates `new Agent(...)`, starts with
    `fireline.session(...)`, sends prompts through `session.chat(...)`, observes
@@ -264,11 +262,11 @@ a Fireline bead or be closed as an intentional boundary.
    graph restoration. Successful runs still can print known ACP websocket
    close/reset teardown warnings after the UI flow has completed.
 
-26. Vercel Functions Node remains Tier 3 escape-hatch evidence.
+26. Vercel Functions Node uses the Tier 1 managed-agent API.
 
    `examples/12-vercel-function-node` validates the Node serverless case that
-   can run Fireline package refs in a Node function. The handler remains
-   escape-hatch evidence until that slice moves to the Tier 1 API.
+   can run Fireline package refs in a Node function using the Tier 1
+   `Fireline` / `Agent` / session API.
 
    This is useful for Vercel Functions and other Node serverless handlers, but
    it is still a discovery example, not a stable high-level SDK.
@@ -278,34 +276,30 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed warnings can appear after the example has already returned
    `ok: true`, `session_ready`, and `stopped`.
 
-27. Vercel Edge Runtime remains Tier 3 escape-hatch evidence and still needs bundling.
+27. Vercel Edge Runtime uses the Tier 1 managed-agent API and still needs bundling.
 
    `examples/13-vercel-edge-runtime` validates an Edge handler that avoids Node
    built-ins and root `@fireline/client`, then runs locally in
-   `@edge-runtime/vm`. The WIP handler uses Worker-safe
-   `@fireline/client/managed-agent` for request construction and lifecycle
-   flow.
+   `@edge-runtime/vm`. The handler uses Worker-safe
+   `@fireline/client/managed-agent` for the Tier 1 session flow.
 
    This is useful for Vercel Edge-style handlers and other Web Runtime
    consumers, but it still requires the app to derive an endpoint, bundle the
-   handler for the Edge runtime, and choose a stable `clientRequestId`. It is
-   still discovery evidence, not a stable high-level SDK.
+   handler for the Edge runtime, and choose a stable `clientRequestId`.
 
    Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
    still print the same ACP websocket reset/closed teardown warnings seen in
    other inline JS module examples; TL1 tracks that separately under
    `mono-oet.29.3.24`.
 
-28. Bun can resolve package-shaped refs, but remains Tier 3 escape-hatch evidence.
+28. Bun can resolve package-shaped refs and run the Tier 1 managed-agent API.
 
    `examples/14-bun` validates a Bun process that imports package-shaped
-   Fireline refs. Its runtime adapter remains escape-hatch evidence until that
-   slice moves to the Tier 1 API.
+   Fireline refs with the Tier 1 `Fireline` / `Agent` / session API.
 
    This proves the current git artifact package refs are usable from Bun
    without Fireline source imports, but it still requires the app to derive an
-   endpoint and choose a stable `clientRequestId`. It is
-   still discovery evidence, not a stable high-level SDK.
+   endpoint and choose a stable `clientRequestId`.
 
    Fresh-daemon and prior-daemon reuse E2E both passed. Successful runs can
    still print the same ACP websocket reset/closed teardown warnings seen in
@@ -356,12 +350,12 @@ a Fireline bead or be closed as an intentional boundary.
    reset/closed teardown warnings tracked separately under
    `mono-oet.29.3.24`.
 
-32. Middleware stack evidence is package-shaped, but only the conservative stack is runnable today.
+32. Middleware stack evidence is Tier 1, but only the conservative stack is runnable today.
 
    `examples/18-middleware-stack` validates the current external-consumer
    middleware path with `trace(...)`, `contextInjection(...)`, and `budget(...)`
-   from `@fireline/client/middleware`. It remains Tier 3 escape-hatch evidence
-   until that slice moves to the Tier 1 API.
+   from `@fireline/client/middleware` around the Tier 1 managed-agent session
+   flow.
 
    This slice intentionally does not use `memory()` because the host-side
    MCP/proxy backing is not part of this examples bead. It also avoids approval
@@ -378,12 +372,11 @@ a Fireline bead or be closed as an intentional boundary.
 
 33. Managed-agent cutover removes direct spec builders from normal target examples.
 
-   `examples/01-inline-js-local`, `examples/03-tanstack-shaped-app`,
-   `examples/04-next-basic`, `examples/05-next-open-cloudflare`, and
-   `examples/06-flamecast-v3-shaped` now use `new Fireline({ endpoint })`,
-   `new Agent(...)`, `fireline.run(...)`, `fireline.session(...)`,
-   `session.chat(...)`, and `session.stop(...)`. These target paths no longer import
-   `@fireline/client/spec`, `@fireline/client/events`, `@fireline/state`, or
+   Examples 01-06 and 08/11/12/13/14/16/17/18 now use
+   `new Fireline({ endpoint })`, `new Agent(...)`, `fireline.run(...)`,
+   `fireline.session(...)`, `session.chat(...)`, and `session.stop(...)`.
+   These target paths no longer import `@fireline/client/spec`,
+   `@fireline/client/events`, `@fireline/state`, or
    `@fireline/client/acp-browser` directly.
 
    Fresh-daemon E2E passed for `examples/01-inline-js-local`: all five matrix
@@ -401,8 +394,8 @@ a Fireline bead or be closed as an intentional boundary.
    `mono-oet.29.3.24`; interrupting the long-lived prior-daemon process also
    prints expected stream-read shutdown noise.
 
-   Examples 08, 11, 12, 13, 14, 16, 17, and 18 are tracked separately as Tier
-   3 escape-hatch evidence until their own slices move to the Tier 1 API.
+   Examples 08, 11, 12, 13, 14, 16, 17, and 18 are also current Tier 1
+   managed-agent examples after the v396 cutover.
 
    Fresh-daemon and prior-daemon reuse E2E passed for Worker, Edge,
    Server/Worker wrapper, Vercel Node Function, Bun, Deno, ACP registry chat,
@@ -428,9 +421,10 @@ a Fireline bead or be closed as an intentional boundary.
 - Already fixed Fireline gap: managed-agent request and agent builders landed
   in `mono-oet.29.3.32.4`, so normal app examples can avoid direct Tier 3
   spec-builder imports for lifecycle flow.
-- Missing Fireline/state cleanup: live `collections.launches` observation
-  should deliver runtime/result/stop updates without fresh-DB preload snapshots.
-  Tracked by `mono-oet.29.3.2`.
+- Needs repro: older live `collections.launches` observation evidence showed
+  durable-state/TanStack DB warnings, but this should be retested against the
+  current published managed-agent artifacts before it is treated as an open
+  Fireline/state gap.
 - Already fixed Fireline gap: launching an editable inline agent and attaching
   a chat session is now narrower through managed-agent lifecycle helpers.
   `mono-4rv` restores that example 02 cutover on main.
@@ -476,8 +470,9 @@ a Fireline bead or be closed as an intentional boundary.
 - Endpoint/bootstrap discovery for local stream-native browser apps.
 - Stop/session lifecycle convenience remains blocked until the lower-level
   materialized launch model is intentionally wrapped.
-- Canonical `@fireline/state` live-update behavior for launch rows
-  (`mono-oet.29.3.2`).
+- Repro current `@fireline/state` live-update behavior for launch rows against
+  the current published managed-agent artifacts before reopening
+  `mono-oet.29.3.2`.
 - Server/Worker stream append pattern for framework apps that need auth,
   idempotency, tenant policy, or secrets.
 - PM browser QA for the managed-agent cutover examples after fresh/reuse E2E.
