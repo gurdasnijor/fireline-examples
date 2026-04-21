@@ -170,7 +170,7 @@ violations.
 - `next dev` through the Next framework scripts
 - `next build` through the Next framework scripts
 - `opennextjs-cloudflare build` through `pnpm run build:opennext-cloudflare`
-- future runtime dev command from `@fireline/runtime` after `mono-ug3b`
+- `fireline runtime dev` from `@fireline/runtime`
 - `fireline` via the `@fireline/runtime` shim
 - `fireline-streams` via the `@fireline/runtime` shim
 - `bun`
@@ -180,27 +180,20 @@ violations.
 
 - `FIRELINE_ENDPOINT`: canonical app-facing endpoint for Tier 1 examples. It
   is the full Durable Streams stream URL passed to `new Fireline({ endpoint })`
-  in examples 01-06.
+  in examples 01-06 and injected into child processes by
+  `fireline runtime dev`.
 - `VITE_FIRELINE_ENDPOINT`: optional Vite dev/build seed for examples 02-03.
-  Example 02's public runtime-dev wrapper is blocked on `mono-ug3b`; once the
-  replacement command lands, it should inject the daemon's `FIRELINE_ENDPOINT`
-  handoff. The private Vite child script still defaults to
-  `http://127.0.0.1:7474/v1/stream/fireline-examples-control` when this is not
-  set, and exposes mismatch recovery guidance when a reused daemon does not
-  watch that stream.
+  Public dev commands should receive `FIRELINE_ENDPOINT` from
+  `fireline runtime dev`; private Vite child scripts expose this value to the
+  browser bundle.
 - `NEXT_PUBLIC_FIRELINE_ENDPOINT`: optional browser-exposed endpoint seed for
   examples 04-05.
-- `VITE_FIRELINE_STREAMS_PORT`: optional example 02 Vite seed for deriving the
-  Fireline endpoint when the local streams server is not on `7474`.
-- `VITE_FIRELINE_CONTROL_STREAM`: optional example 02 Vite seed for deriving
-  the Fireline endpoint when the local control stream name is not
-  `fireline-examples-control`.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
   in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this
   base when `FIRELINE_ENDPOINT` is not provided. Runtime-shaped Tier 1 examples
   use the same derivation when an exact endpoint is not provided.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
-  future local runtime dev process with the full control stream
+  local `fireline runtime dev` process with the full control stream
   URL. Example 06 also uses it to derive `FIRELINE_ENDPOINT` when an exact
   endpoint is not set.
 - `FIRELINE_PORT`: set in scratch smoke recipes to avoid reusing another local
@@ -229,9 +222,6 @@ violations.
 - `CARGO_TARGET_DIR`: reviewer-recipe scratch target directory for
   `examples/10-rust-raw-http`, set under `/tmp` so Cargo output does not land
   in the repo.
-- `FIRELINE_V3_DEV`: historical example-only dev-script override for local
-  evidence runs before package artifacts were refreshed. Do not use this as a
-  current reviewer recipe while `mono-ug3b` is open.
 - `FLAMECAST_WORKSPACE_ID`: example-only product workspace coordinate passed
   through the Flamecast-shaped adapter into the generated runtime shim.
 - `FLAMECAST_RUN_ID`: example-only product run coordinate. Reuse it for retries

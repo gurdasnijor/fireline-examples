@@ -104,9 +104,9 @@ async fn main() -> Result<(), DynError> {
 }
 
 fn derive_stream_url(control_stream: &str) -> String {
-    if let Ok(exact) = env::var("FIRELINE_LAUNCH_CONTROL_STREAM_URL") {
-        if !exact.is_empty() {
-            return exact;
+    if let Ok(endpoint) = env::var("FIRELINE_ENDPOINT") {
+        if !endpoint.is_empty() {
+            return endpoint;
         }
     }
 

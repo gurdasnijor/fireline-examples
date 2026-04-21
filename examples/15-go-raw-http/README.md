@@ -23,8 +23,8 @@ cd "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_EXAMPLE_OUTPUT_ROOT" \
@@ -51,8 +51,8 @@ mkdir -p "$FIRELINE_STATE_DIR"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM"
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM"
 ```
 
 In a second shell, reuse it:
@@ -67,8 +67,8 @@ export FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_STATE_DIR/output"
 FIRELINE_STATE_DIR="$FIRELINE_STATE_DIR" \
 FIRELINE_PORT="$FIRELINE_PORT" \
 FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
-future-runtime-dev-after-mono-ug3b \
-  --state-stream "$FIRELINE_CONTROL_STREAM" -- \
+fireline runtime dev \
+  --launch-control-stream "$FIRELINE_CONTROL_STREAM" -- \
   env FIRELINE_STREAMS_PORT="$FIRELINE_STREAMS_PORT" \
     FIRELINE_CONTROL_STREAM="$FIRELINE_CONTROL_STREAM" \
     FIRELINE_EXAMPLE_OUTPUT_ROOT="$FIRELINE_EXAMPLE_OUTPUT_ROOT" \
@@ -80,7 +80,7 @@ the Go program returns the same JSON shape as the fresh-daemon run.
 
 ## Configuration
 
-- `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: exact Durable Streams append/read URL.
+- `FIRELINE_ENDPOINT`: exact Durable Streams append/read URL.
 - `FIRELINE_DURABLE_STREAMS_URL`: base URL ending in `/v1/stream`; the example
   appends `/<FIRELINE_CONTROL_STREAM>`.
 - `FIRELINE_CONTROL_STREAM`: control stream name. Defaults to

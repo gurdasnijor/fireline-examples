@@ -116,8 +116,7 @@ Surface posture:
   `session.chat/respond/stop`, and `fireline.run(...)` from
   `@fireline/client/managed-agent`.
 - Tier 2 protocol/runtime reference:
-  raw Durable Streams HTTP plus the `@fireline/runtime` command path after the
-  `mono-ug3b` runtime-dev replacement lands.
+  raw Durable Streams HTTP plus the `@fireline/runtime` command path.
 - Tier 3 primitive escape hatch:
   `@fireline/client/spec`, `@fireline/client/events`, `@fireline/state`, and
   `@fireline/client/acp-browser`.
@@ -138,12 +137,10 @@ The package refs are immutable git artifact refs from Fireline's pre-npm
 artifact channel. They are package-shaped reviewer refs, not public npm
 releases.
 
-Local runtime-dev recipes are temporarily blocked on Fireline `mono-ug3b`.
-Fireline PR #349 deleted the old local runtime dev wrapper before the
-replacement implementation landed, so this repo should not teach copy-paste
-daemon commands as current reviewer recipes. Until `mono-ug3b` lands, use the
-static checks and framework builds below for local validation, and treat older
-fresh/reuse runtime evidence as historical evidence only.
+Local runtime-dev recipes use the native `fireline runtime dev` command from
+`@fireline/runtime`. That command starts or reuses the local runtime services,
+ensures the launch/control stream, and injects `FIRELINE_ENDPOINT` into the
+child process. Examples pass that value directly to `new Fireline({ endpoint })`.
 
 Framework-shaped checks:
 

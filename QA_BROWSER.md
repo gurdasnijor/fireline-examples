@@ -30,11 +30,10 @@ Result: all passed.
 
 ## Browser Runtime Evidence
 
-Status: historical evidence from before Fireline PR #349 deleted
-`scripts/fireline-v3-dev.mjs`. These results remain useful as accepted browser
-cutover evidence, but the daemon commands below are intentionally not presented
-as current reviewer recipes. Rerun browser QA after `mono-ug3b` restores the
-runtime dev implementation and publish a fresh command set then.
+Status: historical evidence from before the native `fireline runtime dev`
+command landed. These results remain useful as accepted browser cutover
+evidence, but current reviewer recipes should use the native runtime-dev
+command.
 
 Browser automation used local Google Chrome through a temporary Playwright
 driver under `/tmp/fireline-examples-browser-qa-tools`. The driver filled the
@@ -100,8 +99,7 @@ session `jsmod-b6b31864-a790-4cdd-927d-6cad1303509b`, stop reason
 
 ## Browser Notes
 
-- Rerun needed: after `mono-ug3b`, rerun browser QA with the replacement
-  runtime dev command and update this file with current copy-paste commands.
+- Rerun target: use native `fireline runtime dev` for current browser QA.
 - Page runtime exceptions: none in all six browser runs.
 - Failed requests: only `net::ERR_ABORTED` stream POST/long-poll requests after
   session cleanup/teardown.

@@ -96,9 +96,9 @@ def main() -> None:
 
 
 def derive_stream_url(control_stream: str) -> str:
-    exact = os.environ.get("FIRELINE_LAUNCH_CONTROL_STREAM_URL")
-    if exact:
-        return exact
+    endpoint = os.environ.get("FIRELINE_ENDPOINT")
+    if endpoint:
+        return endpoint
 
     durable_streams_base = os.environ.get("FIRELINE_DURABLE_STREAMS_URL")
     if durable_streams_base:
