@@ -3,11 +3,11 @@
 Discovery-only Deno example. It validates that Deno can resolve Fireline's
 package-shaped TypeScript surfaces from the repo `node_modules` install:
 
-1. derive the launch/control stream URL from deployment environment;
-2. build a launch request with managed-agent builders;
-3. launch through `@fireline/client/managed-agent`;
-4. observe launch state through the managed-agent launch handle;
-5. stop through the managed-agent launch handle;
+1. derive the Fireline endpoint from deployment environment;
+2. build an `Agent` with `acp.inlineJsBundle(...)`;
+3. open a session through `fireline.session(...)`;
+4. wait for `session_ready` and read the session snapshot;
+5. stop through `session.stop(...)`;
 6. print a compact JSON result.
 
 This is not a public Deno SDK. It is an external consumer shape for Deno's
@@ -17,11 +17,12 @@ or the retired launch-control client subpath.
 
 ## Files
 
-- `main.ts`: Deno script using `@fireline/client/managed-agent` and
-  managed-agent builders.
+- `main.ts`: Deno script using `new Fireline({ endpoint })`, `new Agent(...)`,
+  `fireline.session(...)`, and `session.stop(...)`.
 
-The script uses managed-agent request and inline bundle builders instead of
-Tier 3 spec/events/state subpaths for normal lifecycle flow.
+The script uses `acp.inlineJsBundle(...)` only for the inline agent fixture.
+Normal lifecycle flow stays on `fireline.session(...)` and `session.stop(...)`
+instead of launch-handle APIs or Tier 3 spec/events/state subpaths.
 
 ## Reviewer Reproduce
 
@@ -82,7 +83,7 @@ env FIRELINE_DURABLE_STREAMS_URL="http://127.0.0.1:7717/v1/stream" \
   pnpm --dir "$EX" exec deno run \
     --node-modules-dir=manual \
     --allow-net=127.0.0.1 \
-    --allow-env=FIRELINE_LAUNCH_CONTROL_STREAM_URL,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
+    --allow-env=FIRELINE_ENDPOINT,FIRELINE_DURABLE_STREAMS_URL,FIRELINE_STREAMS_PORT,FIRELINE_CONTROL_STREAM,DENO_EXAMPLE_TENANT_ID,DENO_EXAMPLE_RUN_ID,DENO_EXAMPLE_ATTEMPT_ID,DENO_EXAMPLE_PROMPT,NODE_ENV \
     "$EX/examples/16-deno/main.ts"
 ```
 

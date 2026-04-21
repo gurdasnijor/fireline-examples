@@ -1,17 +1,16 @@
 import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
+  acp,
+  Agent,
+  Fireline,
+  type ManagedAgentSessionHandle,
+  type ManagedAgentSessionSnapshot,
+  type ManagedAgentStopResult,
 } from '@fireline/client/managed-agent'
-import {
-  launchManagedAgent,
-  stopManagedAgent,
-  type ManagedAgentLaunchRow,
-} from '../../shared/managed-agent-launch.js'
 
 export const config = { runtime: 'edge' }
 
 interface VercelEdgeEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -30,10 +29,11 @@ interface LaunchBody {
 
 interface LaunchConfig {
   readonly controlStream: string
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly requestedBy: string
 }
 
+type SessionSnapshot = ManagedAgentSessionSnapshot
 type FetchEventWithRequest = Event & {
   readonly request: Request
   respondWith(response: Promise<Response> | Response): void
@@ -54,14 +54,13 @@ export async function handleVercelEdgeRequest(
   try {
     const url = new URL(request.url)
     if (request.method === 'GET' && url.pathname === '/') {
-      const derived = deriveConfig(env)
       return jsonResponse({
         example: '13-vercel-edge-runtime',
         runtime: 'vercel-edge',
         routes: {
           launchAndStop: 'POST /api/fireline-launch',
         },
-        config: derived,
+        config: deriveConfig(env),
       })
     }
     if (request.method === 'POST' && url.pathname === '/api/fireline-launch') {
@@ -83,12 +82,71 @@ export async function runVercelEdgeLaunch(options: {
   readonly env: VercelEdgeEnv
   readonly body?: LaunchBody
 }) {
-  const launchInput = normalizeLaunchInput(options.env, options.body ?? {})
-  const derived = deriveConfig(options.env)
-  const clientRequestId = stableClientRequestId(launchInput)
-  const request = createManagedAgentLaunchRequest({
-    name: 'vercel-edge-runtime',
-    agent: await createAgent(clientRequestId, launchInput),
+  const input = normalizeLaunchInput(options.env, options.body ?? {})
+  const config = deriveConfig(options.env)
+  const clientRequestId = stableClientRequestId(input)
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    fetch: globalThis.fetch,
+    requestedBy: config.requestedBy,
+  })
+  const agent = await createAgent(clientRequestId, input)
+
+  let session: ManagedAgentSessionHandle | undefined
+  try {
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy: config.requestedBy,
+    })
+    const snapshot = await session.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy: config.requestedBy,
+      reason: 'Vercel Edge Runtime example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
+    return summarizeRun({
+      config,
+      input,
+      launchId: session.launchId,
+      sessionSnapshot: snapshot,
+      stop,
+    })
+  } finally {
+    session?.close()
+    fireline.close()
+  }
+}
+
+async function createAgent(
+  revision: string,
+  input: ReturnType<typeof normalizeLaunchInput>,
+) {
+  return new Agent({
+    id: 'vercel-edge-runtime',
+    entrypoint: await acp.inlineJsBundle({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: `
+          export default async function vercelEdgeRuntimeExample(ctx) {
+            await ctx.session.text("Vercel Edge Runtime example reached Fireline.")
+            await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
+            await ctx.session.complete()
+          }
+        `,
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: 'examples/13-vercel-edge-runtime',
+        revision,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -97,78 +155,23 @@ export async function runVercelEdgeLaunch(options: {
         runtime: 'vercel-edge',
       },
     },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-    clientRequestId,
-    runtime: {
-      name: 'vercel-edge-runtime',
-      provider: 'local',
-      labels: {
-        example: '13-vercel-edge-runtime',
-        tenantId: launchInput.tenantId,
-        runtime: 'vercel-edge',
-      },
-    },
-    startSession: {
-      stateStream: sessionStateStream(launchInput),
-      create: true,
+    defaults: {
+      prompt: input.prompt,
       cwd: '/',
       mcpServers: [],
-      prompt: launchInput.prompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
-    },
-  })
-  const launch = await launchManagedAgent({
-    controlStreamUrl: derived.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
-    requestedBy: derived.requestedBy,
-    fetch: globalThis.fetch,
-    timeoutMs: 60_000,
-  })
-  const stop = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy: derived.requestedBy,
-    reason: 'Vercel Edge Runtime example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
-
-  return summarizeRun({
-    config: derived,
-    input: launchInput,
-    launchEnvelopeKey: launch.handle.requestEnvelope?.key,
-    launchRow: launch.row,
-    stop,
-  })
-}
-
-async function createAgent(
-  revision: string,
-  input: ReturnType<typeof normalizeLaunchInput>,
-) {
-  return await inlineJsBundleAgent({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: `
-        export default async function vercelEdgeRuntimeExample(ctx) {
-          await ctx.session.text("Vercel Edge Runtime example reached Fireline.")
-          await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
-          await ctx.session.complete()
-        }
-      `,
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: 'examples/13-vercel-edge-runtime',
-      revision,
+      runtime: {
+        name: 'vercel-edge-runtime',
+        provider: 'local',
+        labels: {
+          example: '13-vercel-edge-runtime',
+          tenantId: input.tenantId,
+          runtime: 'vercel-edge',
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
     },
   })
 }
@@ -181,43 +184,33 @@ async function readJsonBody(request: Request): Promise<LaunchBody> {
 function summarizeRun(options: {
   readonly config: LaunchConfig
   readonly input: ReturnType<typeof normalizeLaunchInput>
-  readonly launchEnvelopeKey?: string
-  readonly launchRow: ManagedAgentLaunchRow
-  readonly stop: Awaited<ReturnType<typeof stopManagedAgent>>
+  readonly launchId: string
+  readonly sessionSnapshot: SessionSnapshot
+  readonly stop: ManagedAgentStopResult
 }) {
+  const stopRow = options.stop.row ?? options.sessionSnapshot
   return {
     ok: true,
     example: '13-vercel-edge-runtime',
     edgeRuntime: edgeRuntimeVersion(),
     controlStream: options.config.controlStream,
-    controlStreamUrl: options.config.controlStreamUrl,
+    endpoint: options.config.endpoint,
     tenantId: options.input.tenantId,
-    launchId: options.launchRow.launchId,
-    clientRequestId: options.launchRow.clientRequestId,
-    launchEnvelopeKey: options.launchEnvelopeKey,
-    launchStatus: options.launchRow.status,
-    runtime: options.launchRow.runtime
-      ? {
-          runtimeId: options.launchRow.runtime.runtimeId,
-          acpUrl: options.launchRow.runtime.acp.url,
-        }
-      : undefined,
-    session: options.launchRow.startSession
-      ? {
-          acpSessionId: options.launchRow.startSession.acpSessionId,
-        }
-      : undefined,
-    stopId: options.stop.stopId,
-    stopStatus: options.stop.row.status,
+    launchId: options.launchId,
+    sessionId: options.sessionSnapshot.sessionId,
+    sessionStatus: options.sessionSnapshot.status,
+    requiredActions: options.sessionSnapshot.requiredActions.map((action) => action.type),
+    stopId: options.stop.envelope.value.stopId,
+    stopStatus: stopRow.status,
   }
 }
 
 function deriveConfig(env: VercelEdgeEnv): LaunchConfig {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
       requestedBy,
     }
   }
@@ -226,7 +219,7 @@ function deriveConfig(env: VercelEdgeEnv): LaunchConfig {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
     requestedBy,
   }
 }
@@ -250,21 +243,6 @@ function stableClientRequestId(input: ReturnType<typeof normalizeLaunchInput>): 
   ].join(':')
 }
 
-function sessionStateStream(input: ReturnType<typeof normalizeLaunchInput>): string {
-  return [
-    'vercel-edge-runtime',
-    safeIdPart(input.tenantId),
-    safeIdPart(input.runId),
-    safeIdPart(input.attemptId),
-    'session',
-  ].join('-')
-}
-
-function safeIdPart(value: string): string {
-  const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
-  return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
-}
-
 function runtimeEnv(): VercelEdgeEnv {
   return ((globalThis as typeof globalThis & {
     FIRELINE_VERCEL_EDGE_ENV?: VercelEdgeEnv
@@ -273,6 +251,11 @@ function runtimeEnv(): VercelEdgeEnv {
 
 function edgeRuntimeVersion(): string | undefined {
   return (globalThis as typeof globalThis & { EdgeRuntime?: string }).EdgeRuntime
+}
+
+function safeIdPart(value: string): string {
+  const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
+  return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
 }
 
 function trimTrailingSlash(value: string): string {

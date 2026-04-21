@@ -3,23 +3,20 @@ import {
   type ResolveAcpRegistryOptions,
 } from '@fireline/client'
 import {
-  createManagedAgentLaunchRequest,
+  Agent,
+  Fireline,
+  type ManagedAgentSessionHandle,
 } from '@fireline/client/managed-agent'
 import {
   budget,
   contextInjection,
   trace,
 } from '@fireline/client/middleware'
-import {
-  launchManagedAgent,
-  stopManagedAgent,
-  type ManagedAgentLaunchRow,
-} from '../../shared/managed-agent-launch.js'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 interface RegistryChatEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -31,7 +28,7 @@ interface RegistryChatEnv {
 
 interface RegistryChatConfig {
   readonly controlStream: string
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly requestedBy: string
 }
 
@@ -53,9 +50,13 @@ async function runRegistryChat(env: RegistryChatEnv) {
     catalog: registryCatalog(),
     transport: 'command',
   } satisfies ResolveAcpRegistryOptions)
-  const request = createManagedAgentLaunchRequest({
-    name: registryAgentId,
-    agent: registryAgent,
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: config.requestedBy,
+  })
+  const agent = new Agent({
+    id: registryAgentId,
+    entrypoint: registryAgent,
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -78,115 +79,87 @@ async function runRegistryChat(env: RegistryChatEnv) {
         budget({ tokens: 10_000 }),
       ],
     },
-    clientRequestId,
-    runtime: {
-      name: exampleId,
-      provider: 'local',
-      labels: {
-        example: exampleId,
-        registryAgentId,
-      },
-    },
-    startSession: {
-      stateStream: sessionStateStream(input),
-      create: true,
+    defaults: {
+      prompt: input.initialPrompt,
       cwd: process.cwd(),
       mcpServers: [],
-      prompt: input.initialPrompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
+      runtime: {
+        name: exampleId,
+        provider: 'local',
+        labels: {
+          example: exampleId,
+          registryAgentId,
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
     },
   })
 
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
-    requestedBy: config.requestedBy,
-    timeoutMs: 60_000,
-  })
-  const followUp = await promptLaunchedSession({
-    handle: launch.handle,
-    row: launch.row,
-    prompt: input.followUpPrompt,
-  })
-  const stop = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy: config.requestedBy,
-    reason: 'ACP registry chat example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
-
-  return {
-    ok: true,
-    example: exampleId,
-    controlStream: config.controlStream,
-    registry: {
-      agentId: registryAgentId,
-      version: registryAgentVersion,
-      transport: 'command',
-      command: registryAgent.command,
-    },
-    launchId: launch.row.launchId,
-    clientRequestId: launch.row.clientRequestId,
-    launchStatus: launch.row.status,
-    runtime: launch.row.runtime
-      ? {
-          runtimeId: launch.row.runtime.runtimeId,
-          acpUrl: launch.row.runtime.acp.url,
-        }
-      : undefined,
-    session: launch.row.startSession
-      ? {
-          acpSessionId: launch.row.startSession.acpSessionId,
-        }
-      : undefined,
-    followUp,
-    stopId: stop.stopId,
-    stopStatus: stop.row.status,
-  }
-}
-
-async function promptLaunchedSession(options: {
-  readonly handle: Awaited<ReturnType<typeof launchManagedAgent>>['handle']
-  readonly row: ManagedAgentLaunchRow
-  readonly prompt: string
-}) {
-  const acpUrl = options.row.runtime?.acp.url
-  const sessionId = options.row.startSession?.acpSessionId
-  if (!acpUrl || !sessionId) {
-    throw new Error(`Launch ${options.row.launchId} did not expose ACP session coordinates`)
-  }
-  const chunks: string[] = []
-  const acp = await options.handle.connectBrowserAcp({
-    clientName: 'fireline-examples-acp-registry-chat',
-    clientVersion: '0.0.0',
-    onSessionUpdate(notification) {
-      const update = notification.update
-      if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
-        chunks.push(update.content.text)
-      }
-    },
-  })
+  let session: ManagedAgentSessionHandle | undefined
   try {
-    const result = await acp.connection.prompt({
-      sessionId,
-      prompt: textPrompt(options.prompt),
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy: config.requestedBy,
     })
+    const snapshot = await session.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const followUp = await session.chat(input.followUpPrompt)
+    const afterChat = session.current()
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy: config.requestedBy,
+      reason: 'ACP registry chat example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
     return {
-      stopReason: result.stopReason,
-      text: chunks.join(''),
+      ok: true,
+      example: exampleId,
+      controlStream: config.controlStream,
+      endpoint: config.endpoint,
+      registry: {
+        agentId: registryAgentId,
+        version: registryAgentVersion,
+        transport: 'command',
+        command: registryAgent.command,
+      },
+      launchId: session.launchId,
+      sessionId: afterChat.sessionId ?? snapshot.sessionId,
+      sessionStatus: afterChat.status,
+      requiredActions: afterChat.requiredActions.map((action) => action.type),
+      followUp: {
+        stopReason: followUp.stopReason,
+        text: extractResponseText(followUp.response),
+      },
+      stopId: stop.envelope.value.stopId,
+      stopStatus: (stop.row ?? afterChat).status,
     }
   } finally {
-    await acp.close()
+    session?.close()
+    fireline.close()
   }
 }
 
-function textPrompt(text: string) {
-  return [{ type: 'text' as const, text }]
+function extractResponseText(response: Record<string, unknown>): string {
+  const content = response.content
+  if (Array.isArray(content)) {
+    return content
+      .map((entry) => {
+        if (entry && typeof entry === 'object' && 'type' in entry && 'text' in entry) {
+          const textEntry = entry as { type?: unknown; text?: unknown }
+          return textEntry.type === 'text' && typeof textEntry.text === 'string' ? textEntry.text : ''
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join('')
+  }
+  return ''
 }
 
 function registryCatalog() {
@@ -210,10 +183,10 @@ function registryAgentPath(): string {
 
 function deriveConfig(env: RegistryChatEnv): RegistryChatConfig {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
       requestedBy,
     }
   }
@@ -222,7 +195,7 @@ function deriveConfig(env: RegistryChatEnv): RegistryChatConfig {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
     requestedBy,
   }
 }
@@ -245,15 +218,6 @@ function stableClientRequestId(input: ReturnType<typeof normalizeInput>): string
     safeIdPart(input.runId),
     safeIdPart(input.attemptId),
   ].join(':')
-}
-
-function sessionStateStream(input: ReturnType<typeof normalizeInput>): string {
-  return [
-    exampleId,
-    safeIdPart(input.runId),
-    safeIdPart(input.attemptId),
-    'session',
-  ].join('-')
 }
 
 function safeIdPart(value: string): string {

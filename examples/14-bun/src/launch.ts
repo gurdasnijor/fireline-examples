@@ -1,14 +1,12 @@
 import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
+  acp,
+  Agent,
+  Fireline,
+  type ManagedAgentSessionHandle,
 } from '@fireline/client/managed-agent'
-import {
-  launchManagedAgent,
-  stopManagedAgent,
-} from '../../shared/managed-agent-launch.js'
 
 interface BunExampleEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -27,7 +25,7 @@ interface LaunchBody {
 
 interface LaunchConfig {
   readonly controlStream: string
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly requestedBy: string
 }
 
@@ -71,11 +69,74 @@ export async function runBunLaunch(options: {
   readonly body?: LaunchBody
 }) {
   const config = deriveConfig(options.env)
-  const launchInput = normalizeLaunchInput(options.env, options.body ?? {})
-  const clientRequestId = stableClientRequestId(launchInput)
-  const request = createManagedAgentLaunchRequest({
-    name: 'bun',
-    agent: await createAgent(clientRequestId, launchInput),
+  const input = normalizeLaunchInput(options.env, options.body ?? {})
+  const clientRequestId = stableClientRequestId(input)
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: config.requestedBy,
+  })
+  const agent = await createAgent(clientRequestId, input)
+
+  let session: ManagedAgentSessionHandle | undefined
+  try {
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy: config.requestedBy,
+    })
+    const snapshot = await session.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy: config.requestedBy,
+      reason: 'Bun example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
+    return {
+      ok: true,
+      example: '14-bun',
+      controlStream: config.controlStream,
+      endpoint: config.endpoint,
+      launchId: session.launchId,
+      sessionId: snapshot.sessionId,
+      sessionStatus: snapshot.status,
+      requiredActions: snapshot.requiredActions.map((action) => action.type),
+      stopId: stop.envelope.value.stopId,
+      stopStatus: (stop.row ?? snapshot).status,
+    }
+  } finally {
+    session?.close()
+    fireline.close()
+  }
+}
+
+async function createAgent(
+  revision: string,
+  input: ReturnType<typeof normalizeLaunchInput>,
+) {
+  return new Agent({
+    id: 'bun',
+    entrypoint: await acp.inlineJsBundle({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: `
+          export default async function bunExample(ctx) {
+            await ctx.session.text("Bun example reached Fireline.")
+            await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
+            await ctx.session.complete()
+          }
+        `,
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: 'examples/14-bun',
+        revision,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -84,78 +145,33 @@ export async function runBunLaunch(options: {
         runtime: 'bun',
       },
     },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-    clientRequestId,
-    runtime: {
-      name: 'bun',
-      provider: 'local',
-      labels: {
-        example: '14-bun',
-        tenantId: launchInput.tenantId,
-        runtime: 'bun',
-      },
-    },
-    startSession: {
-      stateStream: sessionStateStream(launchInput),
-      create: true,
+    defaults: {
+      prompt: input.prompt,
       cwd: '/',
       mcpServers: [],
-      prompt: launchInput.prompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
+      runtime: {
+        name: 'bun',
+        provider: 'local',
+        labels: {
+          example: '14-bun',
+          tenantId: input.tenantId,
+          runtime: 'bun',
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
     },
   })
-
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
-    requestedBy: config.requestedBy,
-    timeoutMs: 60_000,
-  })
-
-  const stop = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy: config.requestedBy,
-    reason: 'Bun example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
-
-  return {
-    ok: true,
-    example: '14-bun',
-    controlStream: config.controlStream,
-    launchId: launch.row.launchId,
-    clientRequestId: launch.row.clientRequestId,
-    launchStatus: launch.row.status,
-    runtime: launch.row.runtime
-      ? {
-          runtimeId: launch.row.runtime.runtimeId,
-          acpUrl: launch.row.runtime.acp.url,
-        }
-      : undefined,
-    session: launch.row.startSession
-      ? {
-          acpSessionId: launch.row.startSession.acpSessionId,
-        }
-      : undefined,
-    stopId: stop.stopId,
-    stopStatus: stop.row.status,
-  }
 }
 
 function deriveConfig(env: BunExampleEnv): LaunchConfig {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
       requestedBy,
     }
   }
@@ -164,7 +180,7 @@ function deriveConfig(env: BunExampleEnv): LaunchConfig {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
     requestedBy,
   }
 }
@@ -178,44 +194,13 @@ function normalizeLaunchInput(env: BunExampleEnv, body: LaunchBody) {
   }
 }
 
-async function createAgent(
-  revision: string,
-  input: ReturnType<typeof normalizeLaunchInput>,
-) {
-  return await inlineJsBundleAgent({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: `
-        export default async function bunExample(ctx) {
-          await ctx.session.text("Bun example reached Fireline.")
-          await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
-          await ctx.session.complete()
-        }
-      `,
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: 'examples/14-bun',
-      revision,
-    },
-  })
-}
-
 function stableClientRequestId(input: ReturnType<typeof normalizeLaunchInput>): string {
   return `launch:bun:${input.tenantId}:${input.runId}:${input.attemptId}`
 }
 
-function sessionStateStream(input: ReturnType<typeof normalizeLaunchInput>): string {
-  return `bun-${input.tenantId}-${input.runId}-${input.attemptId}`
-    .replace(/[^a-zA-Z0-9_.:-]+/g, '-')
-    .slice(0, 120)
-}
-
 function runtimeEnv(): BunExampleEnv {
   return {
-    FIRELINE_LAUNCH_CONTROL_STREAM_URL: process.env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+    FIRELINE_ENDPOINT: process.env.FIRELINE_ENDPOINT,
     FIRELINE_DURABLE_STREAMS_URL: process.env.FIRELINE_DURABLE_STREAMS_URL,
     FIRELINE_STREAMS_PORT: process.env.FIRELINE_STREAMS_PORT,
     FIRELINE_CONTROL_STREAM: process.env.FIRELINE_CONTROL_STREAM,

@@ -1,10 +1,10 @@
 # 17. ACP Registry Chat
 
 This example resolves an ACP registry row with `acpRegistry(...)` from
-`@fireline/client`, launches the resolved ACP stdio command
-through the stream-native Fireline launch path, attaches to the returned ACP
-session, sends a follow-up prompt, and stops the launch through
-`fireline.launch_stop`.
+`@fireline/client`, launches the resolved ACP stdio command through
+`new Fireline({ endpoint })` and `new Agent(...)`, attaches to the returned
+session, sends a follow-up prompt with `session.chat(...)`, and stops the
+session through `session.stop(...)`.
 
 It intentionally uses a local fixture catalog row whose distribution is
 `command`. That keeps the example inside the currently supported safe slice:
@@ -15,8 +15,10 @@ It intentionally uses a local fixture catalog row whose distribution is
 - no retired HTTP launch endpoint;
 - no hand-rolled lifecycle flow outside managed-agent.
 
-The launch path uses managed-agent request builders. `acpRegistry(...)` remains
-the registry-resolution surface for the local fixture row.
+The launch path stays on `fireline.session(...)` and `session.stop(...)`.
+`acpRegistry(...)` remains the registry-resolution surface for the local
+fixture row, and `acp.inlineJsBundle(...)` is intentionally used only for the
+local fixture agent payload.
 
 The fixture row starts `examples/17-acp-registry-chat/registry-agent.mjs`, a
 small ACP stdio agent that replies to prompts. The registry resolver still
@@ -114,7 +116,7 @@ stream before launching the child command.
 
 ## Configuration
 
-- `FIRELINE_LAUNCH_CONTROL_STREAM_URL`: exact launch/control stream URL. When
+- `FIRELINE_ENDPOINT`: exact Fireline endpoint. When
   set, it takes precedence.
 - `FIRELINE_DURABLE_STREAMS_URL`: durable streams base ending in `/v1/stream`.
   Defaults to `http://127.0.0.1:${FIRELINE_STREAMS_PORT:-7474}/v1/stream`.

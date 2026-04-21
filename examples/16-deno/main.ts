@@ -1,9 +1,11 @@
 import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
+  acp,
+  Agent,
+  Fireline,
+  type ManagedAgentSessionHandle,
+  type ManagedAgentSessionSnapshot,
+  type ManagedAgentStopResult,
 } from '@fireline/client/managed-agent'
-// @ts-expect-error Deno runs this TypeScript source directly.
-import { launchManagedAgent, stopManagedAgent, type ManagedAgentLaunchRow } from '../shared/managed-agent-launch.ts'
 
 declare const Deno: {
   readonly env: {
@@ -12,7 +14,7 @@ declare const Deno: {
 }
 
 interface DenoExampleEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -24,9 +26,11 @@ interface DenoExampleEnv {
 
 interface LaunchConfig {
   readonly controlStream: string
-  readonly controlStreamUrl: string
+  readonly endpoint: string
   readonly requestedBy: string
 }
+
+type SessionSnapshot = ManagedAgentSessionSnapshot
 
 const defaultControlStream = 'fireline-deno-control'
 const defaultStreamsPort = '7474'
@@ -36,12 +40,70 @@ const result = await runDenoExample(readEnv())
 console.log(JSON.stringify(result, null, 2))
 
 async function runDenoExample(env: DenoExampleEnv) {
-  const launchInput = normalizeLaunchInput(env)
+  const input = normalizeLaunchInput(env)
   const config = deriveConfig(env)
-  const clientRequestId = stableClientRequestId(launchInput)
-  const request = createManagedAgentLaunchRequest({
-    name: 'deno-package-consumer',
-    agent: await createAgent(clientRequestId, launchInput),
+  const clientRequestId = stableClientRequestId(input)
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy: config.requestedBy,
+  })
+  const agent = await createAgent(clientRequestId, input)
+
+  let session: ManagedAgentSessionHandle | undefined
+  try {
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy: config.requestedBy,
+    })
+    const snapshot = await session.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy: config.requestedBy,
+      reason: 'Deno package consumer example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
+    return summarizeRun({
+      config,
+      input,
+      launchId: session.launchId,
+      sessionSnapshot: snapshot,
+      stop,
+    })
+  } finally {
+    session?.close()
+    fireline.close()
+  }
+}
+
+async function createAgent(
+  revision: string,
+  input: ReturnType<typeof normalizeLaunchInput>,
+) {
+  return new Agent({
+    id: 'deno-package-consumer',
+    entrypoint: await acp.inlineJsBundle({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: `
+          export default async function denoPackageConsumerExample(ctx) {
+            await ctx.session.text("Deno package consumer example reached Fireline.")
+            await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
+            await ctx.session.complete()
+          }
+        `,
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: 'examples/16-deno',
+        revision,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -50,80 +112,23 @@ async function runDenoExample(env: DenoExampleEnv) {
         runtime: 'deno',
       },
     },
-    middleware: {
-      kind: 'middleware',
-      chain: [],
-    },
-    clientRequestId,
-    runtime: {
-      name: 'deno-package-consumer',
-      provider: 'local',
-      labels: {
-        example: '16-deno',
-        tenantId: launchInput.tenantId,
-        runtime: 'deno',
-      },
-    },
-    startSession: {
-      stateStream: sessionStateStream(launchInput),
-      create: true,
+    defaults: {
+      prompt: input.prompt,
       cwd: '/',
       mcpServers: [],
-      prompt: launchInput.prompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
-    },
-  })
-
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
-    requestedBy: config.requestedBy,
-    fetch,
-    timeoutMs: 60_000,
-  })
-
-  const stop = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy: config.requestedBy,
-    reason: 'Deno package consumer example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
-
-  return summarizeRun({
-    config,
-    input: launchInput,
-    launchEnvelopeKey: launch.handle.requestEnvelope?.key,
-    launchRow: launch.row,
-    stop,
-  })
-}
-
-async function createAgent(
-  revision: string,
-  input: ReturnType<typeof normalizeLaunchInput>,
-) {
-  return await inlineJsBundleAgent({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: `
-        export default async function denoPackageConsumerExample(ctx) {
-          await ctx.session.text("Deno package consumer example reached Fireline.")
-          await ctx.session.text(${JSON.stringify(`tenant=${input.tenantId}`)})
-          await ctx.session.complete()
-        }
-      `,
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: 'examples/16-deno',
-      revision,
+      runtime: {
+        name: 'deno-package-consumer',
+        provider: 'local',
+        labels: {
+          example: '16-deno',
+          tenantId: input.tenantId,
+          runtime: 'deno',
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
     },
   })
 }
@@ -131,40 +136,30 @@ async function createAgent(
 function summarizeRun(options: {
   readonly config: LaunchConfig
   readonly input: ReturnType<typeof normalizeLaunchInput>
-  readonly launchEnvelopeKey?: string
-  readonly launchRow: ManagedAgentLaunchRow
-  readonly stop: Awaited<ReturnType<typeof stopManagedAgent>>
+  readonly launchId: string
+  readonly sessionSnapshot: SessionSnapshot
+  readonly stop: ManagedAgentStopResult
 }) {
+  const stopRow = options.stop.row ?? options.sessionSnapshot
   return {
     ok: true,
     example: '16-deno',
     deno: true,
     controlStream: options.config.controlStream,
-    controlStreamUrl: options.config.controlStreamUrl,
+    endpoint: options.config.endpoint,
     tenantId: options.input.tenantId,
-    launchId: options.launchRow.launchId,
-    clientRequestId: options.launchRow.clientRequestId,
-    launchEnvelopeKey: options.launchEnvelopeKey,
-    launchStatus: options.launchRow.status,
-    runtime: options.launchRow.runtime
-      ? {
-          runtimeId: options.launchRow.runtime.runtimeId,
-          acpUrl: options.launchRow.runtime.acp.url,
-        }
-      : undefined,
-    session: options.launchRow.startSession
-      ? {
-          acpSessionId: options.launchRow.startSession.acpSessionId,
-        }
-      : undefined,
-    stopId: options.stop.stopId,
-    stopStatus: options.stop.row.status,
+    launchId: options.launchId,
+    sessionId: options.sessionSnapshot.sessionId,
+    sessionStatus: options.sessionSnapshot.status,
+    requiredActions: options.sessionSnapshot.requiredActions.map((action) => action.type),
+    stopId: options.stop.envelope.value.stopId,
+    stopStatus: stopRow.status,
   }
 }
 
 function readEnv(): DenoExampleEnv {
   return {
-    FIRELINE_LAUNCH_CONTROL_STREAM_URL: Deno.env.get('FIRELINE_LAUNCH_CONTROL_STREAM_URL'),
+    FIRELINE_ENDPOINT: Deno.env.get('FIRELINE_ENDPOINT'),
     FIRELINE_DURABLE_STREAMS_URL: Deno.env.get('FIRELINE_DURABLE_STREAMS_URL'),
     FIRELINE_STREAMS_PORT: Deno.env.get('FIRELINE_STREAMS_PORT'),
     FIRELINE_CONTROL_STREAM: Deno.env.get('FIRELINE_CONTROL_STREAM'),
@@ -177,10 +172,10 @@ function readEnv(): DenoExampleEnv {
 
 function deriveConfig(env: DenoExampleEnv): LaunchConfig {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
       requestedBy,
     }
   }
@@ -189,7 +184,7 @@ function deriveConfig(env: DenoExampleEnv): LaunchConfig {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
     requestedBy,
   }
 }
@@ -213,21 +208,11 @@ function stableClientRequestId(input: ReturnType<typeof normalizeLaunchInput>): 
   ].join(':')
 }
 
-function sessionStateStream(input: ReturnType<typeof normalizeLaunchInput>): string {
-  return [
-    'deno-package-consumer',
-    safeIdPart(input.tenantId),
-    safeIdPart(input.runId),
-    safeIdPart(input.attemptId),
-    'session',
-  ].join('-')
-}
-
 function safeIdPart(value: string): string {
   const cleaned = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
   return cleaned.replace(/^-+|-+$/g, '') || 'unknown'
 }
 
 function trimTrailingSlash(value: string): string {
-  return value.replace(/\/+$/g, '')
+  return value.replace(/\/+$/, '')
 }

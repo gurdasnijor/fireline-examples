@@ -3,11 +3,11 @@
 Discovery-only Bun example. It models a Bun process that owns the Fireline call
 path for one request:
 
-1. derive the launch/control stream URL from environment;
-2. build a launch request with managed-agent builders;
-3. launch through `@fireline/client/managed-agent`;
-4. observe launch state through the managed-agent launch handle;
-5. stop through the managed-agent launch handle;
+1. derive the Fireline endpoint from environment;
+2. build an `Agent` with `acp.inlineJsBundle(...)`;
+3. open a session through `fireline.session(...)`;
+4. wait for `session_ready` and read the session snapshot;
+5. stop through `session.stop(...)`;
 6. print a compact JSON response.
 
 This is not a Fireline API wrapper. It validates that Bun can resolve and run
@@ -16,12 +16,13 @@ the package-shaped Fireline client artifacts used by the examples repo.
 ## Files
 
 - `src/launch.ts`: Bun-compatible launch handler using the root
-  package-shaped Fireline refs, `@fireline/client/managed-agent`, and
-  managed-agent builders.
+  package-shaped Fireline refs, `new Fireline({ endpoint })`, `new Agent(...)`,
+  `fireline.session(...)`, and `session.stop(...)`.
 - `src/run.ts`: local E2E runner executed by Bun.
 
-The handler uses managed-agent request and inline bundle builders instead of
-Tier 3 spec/events/state subpaths for normal lifecycle flow.
+The handler uses `acp.inlineJsBundle(...)` only for the inline agent fixture.
+Normal lifecycle flow stays on `fireline.session(...)` and `session.stop(...)`
+instead of launch-handle APIs or Tier 3 spec/events/state subpaths.
 
 ## Reviewer Reproduce
 

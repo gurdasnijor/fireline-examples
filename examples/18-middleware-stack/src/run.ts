@@ -1,19 +1,17 @@
 import {
-  createManagedAgentLaunchRequest,
-  inlineJsBundleAgent,
+  acp,
+  Agent,
+  Fireline,
+  type ManagedAgentSessionHandle,
 } from '@fireline/client/managed-agent'
 import {
   budget,
   contextInjection,
   trace,
 } from '@fireline/client/middleware'
-import {
-  launchManagedAgent,
-  stopManagedAgent,
-} from '../../shared/managed-agent-launch.js'
 
 interface MiddlewareStackEnv {
-  readonly FIRELINE_LAUNCH_CONTROL_STREAM_URL?: string
+  readonly FIRELINE_ENDPOINT?: string
   readonly FIRELINE_DURABLE_STREAMS_URL?: string
   readonly FIRELINE_STREAMS_PORT?: string
   readonly FIRELINE_CONTROL_STREAM?: string
@@ -22,6 +20,11 @@ interface MiddlewareStackEnv {
   readonly MIDDLEWARE_STACK_ATTEMPT_ID?: string
   readonly MIDDLEWARE_STACK_PROMPT?: string
 }
+
+type MiddlewareSpec =
+  | ReturnType<typeof trace>
+  | ReturnType<typeof contextInjection>
+  | ReturnType<typeof budget>
 
 const exampleId = '18-middleware-stack'
 const defaultControlStream = 'fireline-middleware-stack-control'
@@ -54,24 +57,72 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
     }),
     budget({ tokens: 10_000 }),
   ] as const
-
-  const agent = await inlineJsBundleAgent({
-    entrypoint: 'agent.mjs',
-    files: [{
-      path: 'agent.mjs',
-      mediaType: 'text/javascript',
-      content: agentSource(input, middlewareChain.map((middleware) => middleware.kind)),
-    }],
-    provenance: {
-      producer: 'fireline-examples-discovery',
-      source: `examples/${exampleId}`,
-      revision: clientRequestId,
-    },
+  const fireline = new Fireline({
+    endpoint: config.endpoint,
+    requestedBy,
   })
+  const agent = await createAgent(clientRequestId, input, middlewareChain)
 
-  const request = createManagedAgentLaunchRequest({
-    name: 'middleware-stack',
-    agent,
+  let session: ManagedAgentSessionHandle | undefined
+  try {
+    session = await fireline.session(agent, {
+      idempotencyKey: clientRequestId,
+      requestedBy,
+    })
+    const snapshot = await session.waitUntil('session_ready', { timeoutMs: 60_000 })
+    const stop = await session.stop({
+      clientRequestId,
+      requestedBy,
+      reason: 'Middleware stack example complete',
+      wait: {
+        until: 'terminal',
+        timeoutMs: 60_000,
+      },
+    })
+
+    return {
+      ok: true,
+      example: exampleId,
+      controlStream: config.controlStream,
+      endpoint: config.endpoint,
+      launchId: session.launchId,
+      sessionId: snapshot.sessionId,
+      sessionStatus: snapshot.status,
+      requiredActions: snapshot.requiredActions.map((action) => action.type),
+      middlewareKinds: middlewareChain.map((middleware) => middleware.kind),
+      traceStreamName: middlewareChain[0].streamName,
+      requestedStateStream: sessionStateStream(input),
+      stop: {
+        stopId: stop.envelope.value.stopId,
+        stopStatus: (stop.row ?? snapshot).status,
+      },
+    }
+  } finally {
+    session?.close()
+    fireline.close()
+  }
+}
+
+async function createAgent(
+  revision: string,
+  input: ReturnType<typeof normalizeInput>,
+  middlewareChain: readonly MiddlewareSpec[],
+) {
+  return new Agent({
+    id: 'middleware-stack',
+    entrypoint: await acp.inlineJsBundle({
+      entrypoint: 'agent.mjs',
+      files: [{
+        path: 'agent.mjs',
+        mediaType: 'text/javascript',
+        content: agentSource(input, middlewareChain.map((middleware) => middleware.kind)),
+      }],
+      provenance: {
+        producer: 'fireline-examples-discovery',
+        source: `examples/${exampleId}`,
+        revision,
+      },
+    }),
     sandbox: {
       provider: 'local',
       fsBackend: 'streamFs',
@@ -84,79 +135,32 @@ async function runMiddlewareStack(env: MiddlewareStackEnv) {
       kind: 'middleware',
       chain: middlewareChain,
     },
-    clientRequestId,
-    runtime: {
-      name: exampleId,
-      provider: 'local',
-      labels: {
-        example: exampleId,
-        tenantId: input.tenantId,
-      },
-    },
-    startSession: {
-      stateStream: sessionStateStream(input),
-      create: true,
+    defaults: {
+      prompt: input.prompt,
       cwd: '/',
       mcpServers: [],
-      prompt: input.prompt,
-    },
-    wait: {
-      until: 'session',
-      timeoutMs: 60_000,
+      runtime: {
+        name: exampleId,
+        provider: 'local',
+        labels: {
+          example: exampleId,
+          tenantId: input.tenantId,
+        },
+      },
+      wait: {
+        until: 'session',
+        timeoutMs: 60_000,
+      },
     },
   })
-
-  const launch = await launchManagedAgent({
-    controlStreamUrl: config.controlStreamUrl,
-    request,
-    idempotencyKey: clientRequestId,
-    requestedBy,
-    timeoutMs: 60_000,
-  })
-
-  const stopped = await stopManagedAgent({
-    handle: launch.handle,
-    clientRequestId,
-    requestedBy,
-    reason: 'Middleware stack example complete',
-    timeoutMs: 60_000,
-  }).finally(() => launch.handle.close())
-
-  return {
-    ok: true,
-    example: exampleId,
-    controlStream: config.controlStream,
-    controlStreamUrl: config.controlStreamUrl,
-    clientRequestId: launch.row.clientRequestId,
-    launchId: launch.row.launchId,
-    launchStatus: launch.row.status,
-    middlewareKinds: middlewareChain.map((middleware) => middleware.kind),
-    traceStreamName: middlewareChain[0].streamName,
-    runtime: launch.row.runtime
-      ? {
-          runtimeId: launch.row.runtime.runtimeId,
-          acpUrl: launch.row.runtime.acp.url,
-        }
-      : undefined,
-    session: launch.row.startSession
-      ? {
-          acpSessionId: launch.row.startSession.acpSessionId,
-          requestedStateStream: sessionStateStream(input),
-        }
-      : undefined,
-    stop: {
-      stopId: stopped.stopId,
-      stopStatus: stopped.row.status,
-    },
-  }
 }
 
 function deriveConfig(env: MiddlewareStackEnv) {
   const controlStream = env.FIRELINE_CONTROL_STREAM ?? defaultControlStream
-  if (env.FIRELINE_LAUNCH_CONTROL_STREAM_URL) {
+  if (env.FIRELINE_ENDPOINT) {
     return {
       controlStream,
-      controlStreamUrl: env.FIRELINE_LAUNCH_CONTROL_STREAM_URL,
+      endpoint: env.FIRELINE_ENDPOINT,
     }
   }
 
@@ -165,7 +169,7 @@ function deriveConfig(env: MiddlewareStackEnv) {
     `http://127.0.0.1:${env.FIRELINE_STREAMS_PORT ?? defaultStreamsPort}/v1/stream`
   return {
     controlStream,
-    controlStreamUrl: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
+    endpoint: `${trimTrailingSlash(durableStreamsBase)}/${encodeURIComponent(controlStream)}`,
   }
 }
 
