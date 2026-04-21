@@ -39,24 +39,25 @@ This branch uses package-shaped git artifact refs, not local `/tmp` tarballs:
 Install and run cheap checks:
 
 ```sh
-export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" install --frozen-lockfile
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run check:surface
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsc --noEmit --pretty false
+cd /Users/gnijor/gurdasnijor/fireline-examples
+pnpm install --frozen-lockfile
+pnpm run check:surface
+pnpm exec tsc --noEmit --pretty false
 ```
 
 Fresh-daemon scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-13/fresh-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4601 \
-FIRELINE_STREAMS_PORT=7701 \
 fireline runtime dev \
+  --port 4601 \
+  --streams-port 7701 \
   --launch-control-stream fireline-server-wrapper-fresh -- \
   env APP_AUTH_TOKEN="server-wrapper-demo-token" \
     APP_TENANT_ID="tenant-alpha" \
@@ -70,15 +71,16 @@ fireline runtime dev \
 Prior-daemon reuse scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-13/reuse-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4602 \
-FIRELINE_STREAMS_PORT=7702 \
 fireline runtime dev \
+  --port 4602 \
+  --streams-port 7702 \
   --launch-control-stream fireline-server-wrapper-reuse -- \
   sh -c 'sleep 300'
 ```
@@ -86,13 +88,14 @@ fireline runtime dev \
 Leave that holder running. In another shell:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-13/reuse-state
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4602 \
-FIRELINE_STREAMS_PORT=7702 \
 fireline runtime dev \
+  --port 4602 \
+  --streams-port 7702 \
   --launch-control-stream fireline-server-wrapper-reuse -- \
   env APP_AUTH_TOKEN="server-wrapper-demo-token" \
     APP_TENANT_ID="tenant-alpha" \
