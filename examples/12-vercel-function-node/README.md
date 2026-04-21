@@ -35,24 +35,25 @@ source imports or local tarballs.
 Cheap checks:
 
 ```sh
-export FIRELINE_EXAMPLES_ROOT=/Users/gnijor/gurdasnijor/fireline-examples
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" install --frozen-lockfile
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" run check:surface
-pnpm --dir "$FIRELINE_EXAMPLES_ROOT" exec tsc --noEmit --pretty false
+cd /Users/gnijor/gurdasnijor/fireline-examples
+pnpm install --frozen-lockfile
+pnpm run check:surface
+pnpm exec tsc --noEmit --pretty false
 ```
 
 Fresh-daemon scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-12/fresh-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4612 \
-FIRELINE_STREAMS_PORT=7712 \
 fireline runtime dev \
+  --port 4612 \
+  --streams-port 7712 \
   --launch-control-stream fireline-vercel-function-fresh -- \
   env VERCEL_FUNCTION_RUN_ID="fresh-daemon-run-001" \
     VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
@@ -63,15 +64,16 @@ fireline runtime dev \
 Prior-daemon reuse scenario:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-12/reuse-state
 rm -rf "$STATE"
 mkdir -p "$STATE"
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4613 \
-FIRELINE_STREAMS_PORT=7713 \
 fireline runtime dev \
+  --port 4613 \
+  --streams-port 7713 \
   --launch-control-stream fireline-vercel-function-reuse -- \
   sh -c 'sleep 300'
 ```
@@ -79,13 +81,14 @@ fireline runtime dev \
 Leave that holder running. In another shell:
 
 ```sh
-export EX=/Users/gnijor/gurdasnijor/fireline-examples
+cd /Users/gnijor/gurdasnijor/fireline-examples
+export EX=$(pwd)
 export STATE=/tmp/fireline-mono-oet-29-3-12/reuse-state
 cd "$STATE"
 FIRELINE_STATE_DIR="$STATE" \
-FIRELINE_PORT=4613 \
-FIRELINE_STREAMS_PORT=7713 \
 fireline runtime dev \
+  --port 4613 \
+  --streams-port 7713 \
   --launch-control-stream fireline-vercel-function-reuse -- \
   env VERCEL_FUNCTION_RUN_ID="reuse-daemon-run-001" \
     VERCEL_FUNCTION_ATTEMPT_ID="attempt-1" \
