@@ -1,7 +1,7 @@
 # Fireline Examples Idiomaticity Audit
 
 Date: 2026-04-20
-Base: `main` at `7e3003d`
+Base: `main` at `014f3fd`
 
 ## Summary
 
@@ -26,9 +26,9 @@ Fireline lifecycle code is on the Tier 1 API.
 | --- | --- | --- | --- | --- | --- |
 | `01-inline-js-local` | Tier 1 idiomatic baseline | High quality | Best minimal CLI example for `Fireline.run`; matrix is useful but more complex than a first-read quickstart. | TL2 example fix | Add a tiny "minimum viable inline run" snippet or split matrix explanation into an appendix. |
 | `02-editable-agent-web` | Tier 1 idiomatic browser app | High quality | Strong one-command dev wrapper and recovery UX. Still exposes endpoint controls because local daemon reuse can drift. | TL2 example fix, TL1 helper/API gap if endpoint discovery should disappear entirely | Keep as primary browser QA example; consider a future helper for browser-local endpoint discovery if PO wants no visible endpoint field. |
-| `03-tanstack-shaped-app` | Tier 1 idiomatic framework shape | Good | Uses shared Tier 1 helper and stays framework-focused. It lacks the same one-command daemon wrapper/recovery polish as example 02. | TL2 example fix | Add a `dev:tanstack-shaped` wrapper or README recipe that injects `FIRELINE_ENDPOINT` through `fireline-v3-dev`. |
-| `04-next-basic` | Tier 1 idiomatic framework shape | Good | Fireline usage is clean, but endpoint entry is manual and Next dev needs framework-specific build validation. | TL2 example fix | Add a Next fresh/reuse reviewer recipe with `NEXT_PUBLIC_FIRELINE_ENDPOINT` injection through the isolated daemon helper. |
-| `05-next-open-cloudflare` | Tier 1 advanced framework shape | Good reference, not first tutorial | Fireline usage is clean, but OpenNext/Cloudflare build artifacts and deployment framing make it too heavy as a primary example. | TL2 example fix | Keep as advanced framework reference; add a short "use 04 first" note in local docs if examples are turned into public tutorials. |
+| `03-tanstack-shaped-app` | Tier 1 idiomatic framework shape | Good | Now standalone after PR #3; Fireline usage is visible in the example instead of hidden in shared helper code. It still lacks the same one-command daemon wrapper/recovery polish as example 02. | TL2 example fix | Add a `dev:tanstack-shaped` wrapper or README recipe that injects `FIRELINE_ENDPOINT` through `fireline-v3-dev`. |
+| `04-next-basic` | Tier 1 idiomatic framework shape | Good | Now standalone after PR #3 and no longer depends on shared helper code. Endpoint entry is still manual and Next dev needs framework-specific build validation. | TL2 example fix | Add a Next fresh/reuse reviewer recipe with `NEXT_PUBLIC_FIRELINE_ENDPOINT` injection through the isolated daemon helper. |
+| `05-next-open-cloudflare` | Tier 1 advanced framework shape | Good reference, not first tutorial | Now standalone after PR #3. Fireline usage is visible, but OpenNext/Cloudflare build artifacts and deployment framing make it too heavy as a primary example. | TL2 example fix | Keep as advanced framework reference; add a short "use 04 first" note in local docs if examples are turned into public tutorials. |
 | `06-flamecast-v3-shaped` | Tier 1 product-shaped characterization | Good evidence, not canonical product demo | Clean Fireline boundary, but generated harness and product-shaped naming make it a discovery artifact rather than a polished app example. | TL2 example fix | Keep as characterization evidence; if promoted, split the Fireline adapter pattern from Flamecast-specific scaffolding. |
 | `07-curl-shell-raw-http` | Tier 2 raw protocol reference | Good for intended purpose | Deliberately teaches `fireline.launch_request` / `fireline.launch_stop` and exact stream URL derivation. This is not an idiomatic app path. | None unless docs confuse it with Tier 1 | Keep as raw shell reference; ensure README always labels it Tier 2. |
 | `08-cloudflare-worker-direct` | Tier 1 Worker reference | Good advanced reference | Uses Tier 1 API, but Wrangler local vars require explicit `--var` handling. Not one-command and still asks the reviewer to align daemon and Worker config. | TL2 example fix | Add a wrapper script or package command that starts Wrangler with the derived endpoint vars. |
@@ -50,9 +50,10 @@ Fireline lifecycle code is on the Tier 1 API.
   `@fireline/client/events`, `@fireline/state`, and
   `@fireline/client/acp-browser` imports are absent from the current Tier 1
   example set.
-- **Dead bridge helpers are gone:** `examples/shared/managed-agent-launch.ts`
-  and `examples/shared/stream-launch.ts` are no longer present on main. The
-  remaining mentions are checker ban-list entries.
+- **Shared lifecycle helpers are gone:** `examples/shared/managed-agent-launch.ts`,
+  `examples/shared/stream-launch.ts`, and `examples/shared/run-inline-fireline.ts`
+  are no longer present on main. Examples 03/04/05 now carry their Fireline
+  code locally, which makes the Tier 1 shape easier to review.
 - **Endpoint handling is the biggest UX rough edge:** example 02 is the best
   model because it wraps `fireline-v3-dev`, injects `FIRELINE_ENDPOINT`, and
   gives recovery guidance. Most advanced examples still require explicit
