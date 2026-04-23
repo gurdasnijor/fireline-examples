@@ -141,6 +141,20 @@ Local runtime-dev recipes use the native `fireline runtime dev` command from
 `@fireline/runtime`. That command starts or reuses the local runtime services,
 ensures the launch/control stream, and injects `FIRELINE_ENDPOINT` into the
 child process. Examples pass that value directly to `new Fireline({ endpoint })`.
+Local examples should not add custom Fireline wrappers or require
+`--durable-streams-url`; current `fireline runtime dev` owns local streams,
+daemon startup, launch/control stream setup, and child-process env injection.
+
+When testing against a sibling Fireline checkout instead of the pinned example
+artifacts, put that checkout's debug binaries first on `PATH`:
+
+```sh
+cd /Users/gnijor/gurdasnijor/fireline
+cargo build --locked --bin fireline --bin fireline-streams
+
+cd /Users/gnijor/gurdasnijor/fireline-examples
+PATH=/Users/gnijor/gurdasnijor/fireline/target/debug:$PATH pnpm dev:editable-agent-web
+```
 
 Framework-shaped checks:
 

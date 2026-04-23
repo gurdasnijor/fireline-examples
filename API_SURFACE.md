@@ -176,12 +176,29 @@ violations.
 - `bun`
 - `deno`
 
+Local sibling-repo testing can override the pinned runtime artifact without an
+example-local wrapper:
+
+```sh
+cd /Users/gnijor/gurdasnijor/fireline
+cargo build --locked --bin fireline --bin fireline-streams
+
+cd /Users/gnijor/gurdasnijor/fireline-examples
+PATH=/Users/gnijor/gurdasnijor/fireline/target/debug:$PATH pnpm dev:editable-agent-web
+```
+
+That PATH override is for local source-to-source development only. Published
+consumer examples and CI should keep using the pinned package/runtime artifact
+refs until the artifact channel changes.
+
 ## Environment Variables
 
 - `FIRELINE_ENDPOINT`: canonical app-facing endpoint for Tier 1 examples. It
   is the full Durable Streams stream URL passed to `new Fireline({ endpoint })`
   in examples 01-06 and injected into child processes by
-  `fireline runtime dev`.
+  `fireline runtime dev`. Native runtime dev also injects
+  `FIRELINE_LAUNCH_CONTROL_STREAM_URL`, `FIRELINE_DURABLE_STREAMS_URL`, and
+  `FIRELINE_DAEMON_URL` for examples that need lower-level diagnostics.
 - `VITE_FIRELINE_ENDPOINT`: optional Vite dev/build seed for examples 02-03.
   Public dev commands should receive `FIRELINE_ENDPOINT` from
   `fireline runtime dev`; private Vite child scripts expose this value to the
@@ -191,7 +208,9 @@ violations.
 - `FIRELINE_DURABLE_STREAMS_URL`: optional durable streams append base ending
   in `/v1/stream`. Example 06 appends `/<FIRELINE_CONTROL_STREAM>` to this
   base when `FIRELINE_ENDPOINT` is not provided. Runtime-shaped Tier 1 examples
-  use the same derivation when an exact endpoint is not provided.
+  use the same derivation when an exact endpoint is not provided. Local dev
+  scripts should not require callers to pass this; native `fireline runtime dev`
+  owns the default local Durable Streams URL and injection.
 - `FIRELINE_CONTROL_STREAM`: README helper variable used only to align the
   local `fireline runtime dev` process with the full control stream
   URL. Example 06 also uses it to derive `FIRELINE_ENDPOINT` when an exact
