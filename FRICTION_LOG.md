@@ -58,7 +58,10 @@ a Fireline bead or be closed as an intentional boundary.
    The runtime starts or reuses the local services, ensures the launch/control
    stream, and injects the full appendable stream URL as `FIRELINE_ENDPOINT`
    into the child process. Tier 1 code passes that value directly to
-   `new Fireline({ endpoint })`.
+   `new Fireline({ endpoint })`. Local source-to-source validation should use
+   a PATH override to `/Users/gnijor/gurdasnijor/fireline/target/debug` after
+   building `fireline` and `fireline-streams`; examples should not carry custom
+   orchestration wrappers or require `--durable-streams-url`.
 
    `mono-oet.29.3.20` prior-daemon evidence originally found a substrate
    blocker: the old runtime dev wrapper could reuse an existing daemon, export
@@ -234,7 +237,9 @@ a Fireline bead or be closed as an intentional boundary.
    rather than the daemon's exported URL. Historical fresh and prior-daemon
    runs injected a daemon endpoint into the Vite environment and launch/stop
    completed. Current reruns should use native `fireline runtime dev` and its
-   `FIRELINE_ENDPOINT` child-env contract. Older evidence logged
+   `FIRELINE_ENDPOINT` child-env contract; `pnpm run dev:editable-agent-web`
+   now shells directly through `fireline runtime dev -- pnpm run
+   dev:editable-agent-web:vite`. Older evidence logged
    `Symbol(liveQueryInternal)` durable-state/TanStack DB warnings while
    processing `fireline.runtime_instance`; that needs repro against current
    published managed-agent artifacts before being treated as still open.

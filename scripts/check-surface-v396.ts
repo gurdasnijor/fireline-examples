@@ -63,7 +63,6 @@ const staleSurfaceBans = [
   '--state-stream',
   'VITE_FIRELINE_STREAMS_PORT',
   'VITE_FIRELINE_CONTROL_STREAM',
-  'FIRELINE_LAUNCH_CONTROL_STREAM_URL',
 ] as const
 
 const managedAgentSpecifier = '@fireline/client/managed-agent'

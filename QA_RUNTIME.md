@@ -10,6 +10,16 @@ runtime-dev path. Current reruns should use native `fireline runtime dev`.
 
 Do not use the historical artifact paths below as current runnable recipes.
 Use `fireline runtime dev` for new fresh-daemon and prior-daemon reuse sweeps.
+For sibling Fireline source validation, build the local runtime binaries and
+put them first on `PATH` instead of adding example-local wrappers:
+
+```sh
+cd /Users/gnijor/gurdasnijor/fireline
+cargo build --locked --bin fireline --bin fireline-streams
+
+cd /Users/gnijor/gurdasnijor/fireline-examples
+PATH=/Users/gnijor/gurdasnijor/fireline/target/debug:$PATH pnpm dev:editable-agent-web
+```
 
 ## Static Checks
 
@@ -74,8 +84,8 @@ FIRELINE_ENDPOINT=<full appendable launch/control stream URL>
 
 The examples should pass that value directly to `new Fireline({ endpoint })`
 or expose it to the browser as the app-facing endpoint value. Do not re-add
-deleted JS runtime-dev recipes or temporary binary wrappers to synthesize the
-endpoint.
+deleted JS runtime-dev recipes, temporary binary wrappers, or mandatory
+`--durable-streams-url` flags to synthesize the endpoint.
 
 ## Notes
 
