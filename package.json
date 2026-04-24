@@ -43,9 +43,9 @@
     "dev:next-open-cloudflare:next": "NEXT_PUBLIC_FIRELINE_ENDPOINT=\"${NEXT_PUBLIC_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" next dev examples/05-next-open-cloudflare -p 5175"
   },
   "dependencies": {
-    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7",
+    "@fireline/client": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-client-artifact-1b0b12418fd20d334e33575e827121d04a409c7d",
     "@fireline/runtime": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-runtime-artifact-8a1d66ecd7356b93b5010716fcea54d76aa66ff0",
-    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-75a6cdb66f6b147e2d9c5988fb5f1ab77eeff9e7",
+    "@fireline/state": "git+ssh://git@github.com/smithery-ai/fireline.git#fireline-state-artifact-1b0b12418fd20d334e33575e827121d04a409c7d",
     "@agentclientprotocol/sdk": "0.19.0"
   },
   "devDependencies": {
