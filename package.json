@@ -13,6 +13,7 @@
     "build:next-basic": "next build examples/04-next-basic",
     "build:next-open-cloudflare": "next build examples/05-next-open-cloudflare",
     "build:opennext-cloudflare": "cd examples/05-next-open-cloudflare && opennextjs-cloudflare build --skipWranglerConfigCheck --dangerouslyUseUnsupportedNextVersion",
+    "build:tanstack-planner-team-demo": "vite build --config examples/19-tanstack-planner-team-demo/vite.config.ts",
     "build:tanstack-shaped": "vite build --config examples/03-tanstack-shaped-app/vite.config.ts",
     "build:vercel-edge-runtime": "vite build --config examples/13-vercel-edge-runtime/vite.config.ts",
     "dev:cloudflare-worker-direct": "pnpm dlx wrangler@4.83.0 dev --config examples/08-cloudflare-worker-direct/wrangler.toml",
@@ -20,6 +21,7 @@
     "dev:next-basic": "fireline runtime dev -- pnpm run dev:next-basic:next --",
     "dev:next-open-cloudflare": "fireline runtime dev -- pnpm run dev:next-open-cloudflare:next --",
     "dev:tanstack-shaped": "fireline runtime dev -- pnpm run dev:tanstack-shaped:vite",
+    "dev:tanstack-planner-team-demo": "fireline runtime dev -- pnpm run dev:tanstack-planner-team-demo:vite",
     "typecheck": "tsc --noEmit",
     "smoke:inline-js-local": "fireline runtime dev --launch-control-stream fireline-examples-control -- tsx examples/01-inline-js-local/run.ts",
     "dev:editable-agent-web:vite": "VITE_FIRELINE_ENDPOINT=\"${VITE_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" vite --config examples/02-editable-agent-web/vite.config.ts",
@@ -35,6 +37,7 @@
     "smoke:vercel-function-node": "fireline runtime dev --launch-control-stream fireline-vercel-function-control -- tsx examples/12-vercel-function-node/src/run-local.ts",
     "smoke:vercel-edge-runtime": "fireline runtime dev --launch-control-stream fireline-vercel-edge-control -- sh -c \"pnpm run build:vercel-edge-runtime >/dev/null && tsx examples/13-vercel-edge-runtime/src/run-local.ts\"",
     "smoke:bun": "fireline runtime dev --launch-control-stream fireline-bun-control -- bun examples/14-bun/src/run.ts",
+    "dev:tanstack-planner-team-demo:vite": "VITE_FIRELINE_ENDPOINT=\"${VITE_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" vite --config examples/19-tanstack-planner-team-demo/vite.config.ts",
     "dev:tanstack-shaped:vite": "VITE_FIRELINE_ENDPOINT=\"${VITE_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" vite --config examples/03-tanstack-shaped-app/vite.config.ts",
     "dev:next-basic:next": "NEXT_PUBLIC_FIRELINE_ENDPOINT=\"${NEXT_PUBLIC_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" next dev examples/04-next-basic -p 5174",
     "dev:next-open-cloudflare:next": "NEXT_PUBLIC_FIRELINE_ENDPOINT=\"${NEXT_PUBLIC_FIRELINE_ENDPOINT:-${FIRELINE_ENDPOINT:-}}\" next dev examples/05-next-open-cloudflare -p 5175"

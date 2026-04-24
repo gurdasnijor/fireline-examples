@@ -39,6 +39,7 @@ const tier1Examples = [
   'examples/16-deno/',
   'examples/17-acp-registry-chat/',
   'examples/18-middleware-stack/',
+  'examples/19-tanstack-planner-team-demo/',
 ] as const
 
 const tier3EscapeHatchExamples = [] as const
