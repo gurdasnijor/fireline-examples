@@ -33,7 +33,7 @@ export interface LaunchTeamResult {
   readonly mailboxSends: readonly MailboxSendAffordance[]
 }
 
-export async function launchPlannerTeam(options: LaunchTeamOptions): Promise<LaunchTeamResult> {
+export async function launchPreviewTeamSessions(options: LaunchTeamOptions): Promise<LaunchTeamResult> {
   const clientRequestId = `${options.spec.id}-${Date.now()}`
   const fireline = new Fireline({
     endpoint: options.endpoint,
@@ -45,8 +45,9 @@ export async function launchPlannerTeam(options: LaunchTeamOptions): Promise<Lau
       fireline,
       member: options.spec.planner,
       prompt: [
-        'Create the phase-1 team launch plan.',
+        'Review this phase-1 local planner preview.',
         `Objective: ${options.spec.objective}`,
+        `Spec source: ${options.spec.source}`,
         `Team: ${options.spec.members.map((member) => `${member.title} -> ${member.mailbox}`).join('; ')}`,
       ].join('\n'),
       clientRequestId,
@@ -70,7 +71,7 @@ export async function launchPlannerTeam(options: LaunchTeamOptions): Promise<Lau
       mailboxSends: options.spec.mailboxIntents.map((intent) => ({
         intent,
         state: 'gated',
-        reason: 'Phase 1 prepares send intents only; real mailbox send/observe wiring waits on installable mailbox artifacts and mono-zofa.',
+        reason: 'Phase 1 prepares send intents only; real mailbox send/observe wiring waits on mono-8v54 installable artifacts and mono-zofa.',
       })),
     }
   } finally {
@@ -94,7 +95,7 @@ async function runTeamAgent(options: {
         mediaType: 'text/javascript',
         content: `export default async function handle(ctx) {
   const text = ctx.prompt.find((block) => block.type === "text")?.text ?? ""
-  await ctx.session.text(${JSON.stringify(`${options.member.title} initialized. Mailbox: ${options.member.mailbox}. `)} + text.slice(0, 320))
+  await ctx.session.text(${JSON.stringify(`${options.member.title} session initialized from the app preview. Mailbox: ${options.member.mailbox}. `)} + text.slice(0, 320))
   await ctx.session.complete()
 }
 `,

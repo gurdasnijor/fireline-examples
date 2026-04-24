@@ -32,6 +32,7 @@ export interface MailboxSendIntent {
 export interface PlannerTeamSpec {
   readonly id: string
   readonly objective: string
+  readonly source: 'local-preview'
   readonly planner: TeamMemberSpec
   readonly members: readonly TeamMemberSpec[]
   readonly mailboxIntents: readonly MailboxSendIntent[]
@@ -79,6 +80,7 @@ export function buildPlannerTeamSpec(prompt: string): PlannerTeamSpec {
   return {
     id,
     objective,
+    source: 'local-preview',
     planner,
     members,
     mailboxIntents: members.map((member) => ({

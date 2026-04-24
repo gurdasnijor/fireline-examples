@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { StrictMode, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { launchPlannerTeam, type LaunchTeamResult } from './fireline.js'
+import { launchPreviewTeamSessions, type LaunchTeamResult } from './fireline.js'
 import { buildPlannerTeamSpec, type PlannerTeamSpec } from './planner.js'
 import './styles.css'
 
@@ -40,7 +40,7 @@ declare module '@tanstack/react-router' {
 
 function PlannerTeamDemo() {
   const [endpoint, setEndpoint] = useState(import.meta.env.VITE_FIRELINE_ENDPOINT ?? '')
-  const [prompt, setPrompt] = useState('Plan a launch-ready team for a mailbox-backed customer triage workflow.')
+  const [prompt, setPrompt] = useState('Preview a launch-ready team for a mailbox-backed customer triage workflow.')
   const [spec, setSpec] = useState<PlannerTeamSpec>(() => buildPlannerTeamSpec(prompt))
   const [result, setResult] = useState<LaunchTeamResult | undefined>()
   const canLaunch = endpoint.trim().length > 0
@@ -48,7 +48,7 @@ function PlannerTeamDemo() {
     mutationFn: async () => {
       const nextSpec = buildPlannerTeamSpec(prompt)
       setSpec(nextSpec)
-      const launch = await launchPlannerTeam({
+      const launch = await launchPreviewTeamSessions({
         endpoint,
         spec: nextSpec,
       })
@@ -74,7 +74,7 @@ function PlannerTeamDemo() {
         <header className="topbar">
           <div>
             <p className="eyebrow">Fireline examples / TanStack</p>
-            <h1>Planner team demo</h1>
+            <h1>Planner preview demo</h1>
           </div>
           <div className={`run-state ${launchState.replace(' ', '-')}`}>{launchState}</div>
         </header>
@@ -90,7 +90,7 @@ function PlannerTeamDemo() {
               />
             </label>
             <label>
-              Planning objective
+              Preview objective
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -98,14 +98,14 @@ function PlannerTeamDemo() {
               />
             </label>
             <div className="button-row">
-              <button type="button" onClick={refreshPlan}>Plan team</button>
+              <button type="button" onClick={refreshPlan}>Preview team</button>
               <button
                 type="button"
                 className="primary"
                 disabled={!canLaunch || mutation.isPending}
                 onClick={() => mutation.mutate()}
               >
-                Launch sessions
+                Launch preview sessions
               </button>
             </div>
             {mutation.error ? <p className="error">{String(mutation.error)}</p> : null}
@@ -114,7 +114,7 @@ function PlannerTeamDemo() {
           <section className="stage" aria-label="team dashboard">
             <div className="panel roster">
               <div className="panel-head">
-                <h2>Roster</h2>
+                <h2>Preview roster</h2>
                 <span>{spec.members.length + 1} agents</span>
               </div>
               <Roster spec={spec} result={result} />
@@ -122,7 +122,7 @@ function PlannerTeamDemo() {
 
             <div className="panel inboxes">
               <div className="panel-head">
-                <h2>Mailbox outbox</h2>
+                <h2>Mailbox send intents</h2>
                 <span>{spec.mailboxIntents.length} sends</span>
               </div>
               <MailboxOutbox spec={spec} result={result} />
@@ -180,7 +180,7 @@ function MailboxOutbox(props: { readonly spec: PlannerTeamSpec; readonly result:
           <code>{intent.to}</code>
           <p>{intent.payload.instructions}</p>
           <span className={sent.has(intent.id) ? 'pill gated' : 'pill ready'}>
-            {sent.has(intent.id) ? 'send gated' : 'ready'}
+            {sent.has(intent.id) ? 'gated' : 'prepared'}
           </span>
         </article>
       ))}
@@ -190,7 +190,7 @@ function MailboxOutbox(props: { readonly spec: PlannerTeamSpec; readonly result:
 
 function Outputs(props: { readonly result: LaunchTeamResult | undefined }) {
   if (!props.result) {
-    return <div className="empty-state">No sessions launched.</div>
+    return <div className="empty-state">No preview sessions launched.</div>
   }
   return (
     <div className="output-stack">
